@@ -176,10 +176,12 @@ typedef struct {
 	char name[8];
 	unsigned long size;
 	char *device;
-	char *vendor;
+	char *manufacturer;
 	char *serial;
 	char *speed;
 	char *maxchild;
+	char *idproduct;
+	char *idvendor;
 } USB;
 
 typedef struct jiffy_counts_t {
