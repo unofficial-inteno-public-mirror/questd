@@ -478,7 +478,7 @@ wireless_details(Client *clnt, Detail *dtl)
 		pclose(stainfo);
 	}
 
-	sprintf(cmnd, "wlctl -i %s noise", clnt->wdev);
+	sprintf(cmnd, "wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", clnt->wdev);
 	if ((stainfo = popen(cmnd, "r"))) {
 		fgets(line, sizeof(line), stainfo);
 		remove_newline(line);
