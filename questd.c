@@ -1394,7 +1394,7 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 static void
 router_dump_events(struct blob_buf *b)
 {
-	void *a, *t;
+	void *a, *t, *d;
 	int i;
 
 	a = blobmsg_open_array(&bb, "list");
@@ -1404,7 +1404,9 @@ router_dump_events(struct blob_buf *b)
 		t = blobmsg_open_table(b, "");
 		blobmsg_add_string(b, "type", events[i].type);
 		blobmsg_add_u32(b, "time", events[i].time);
-		blobmsg_add_string(b, "data", events[i].data);
+		d = blobmsg_open_table(b, "data");
+		blobmsg_add_json_from_string(b, events[i].data);
+		blobmsg_close_table(b, d);
 		blobmsg_close_table(b, t);
 	}
 	blobmsg_close_array(b, a);
