@@ -21,22 +21,28 @@
  */
 
 #include <libubox/blobmsg.h>
+#include <libubox/blobmsg_json.h>
 #include <libubox/uloop.h>
 #include <libubox/ustream.h>
 #include <libubox/utils.h>
 
 #include <libubus.h>
 
+#include <time.h>
+#include <stdio.h>
+
 #include "questd.h"
 
 #define DEFAULT_SLEEP	5000000
 
 static struct uci_context *uci_ctx;
+static struct ubus_event_handler event_listener;
 static struct uci_package *uci_network, *uci_wireless;
 static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
 static const char *ubus_path;
 
+static Event events[MAX_EVENT];
 static Radio radio[MAX_RADIO];
 static Wireless wireless[MAX_VIF];
 static Network network[MAX_NETWORK];
@@ -52,6 +58,7 @@ static Spec spec;
 static USB usb[MAX_USB];
 static int clnum = 0;
 static int cl6num = 0;
+static int evno = 0;
 
 /* POLICIES */
 enum {
@@ -299,7 +306,7 @@ load_wireless()
 				if (device) {
 					wireless[wno].device = device;
 					usleep(10000);
-					wireless[wno].noise = atoi(chrCmd("wlctl -i %s noise", wireless[wno].device));
+					wireless[wno].noise = atoi(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wireless[wno].device));
 					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
 					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
 					if (!strcmp(device, "wl0")) {
@@ -429,7 +436,7 @@ wireless_assoclist()
 	for (i = 0; wireless[i].device; i++) {
 		if (wireless[i].noise > -60) {
 			usleep(10000);
-			wireless[i].noise = atoi(chrCmd("wlctl -i %s noise", wireless[i].device));
+			wireless[i].noise = atoi(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wireless[i].device));
 		}
 		usleep(10000);
 		sprintf(cmnd, "wlctl -i %s assoclist", wireless[i].vif);
@@ -1375,6 +1382,25 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 	}
 }
 
+static void
+router_dump_events(struct blob_buf *b)
+{
+	void *a, *t;
+	int i;
+
+	a = blobmsg_open_array(&bb, "list");
+	for (i = 0; i < MAX_EVENT; i++) {
+		if (!(events[i].time) || events[i].time <= ((int)time(NULL)-10))
+			continue;
+		t = blobmsg_open_table(b, "");
+		blobmsg_add_string(b, "type", events[i].type);
+		blobmsg_add_u32(b, "time", events[i].time);
+		blobmsg_add_string(b, "data", events[i].data);
+		blobmsg_close_table(b, t);
+	}
+	blobmsg_close_array(b, a);
+}
+
 /* ROUTER OBJECT */
 static int
 quest_router_specific(struct ubus_context *ctx, struct ubus_object *obj,
@@ -1814,6 +1840,21 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+static int
+quest_router_events(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__QUEST_MAX];
+
+	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
+
+	blob_buf_init(&bb, 0);
+	router_dump_events(&bb);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
 
 static int
 quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
@@ -1827,6 +1868,7 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static struct ubus_method router_object_methods[] = {
+	UBUS_METHOD_NOARG("events", quest_router_events),
 	UBUS_METHOD_NOARG("info", quest_router_info),
 	UBUS_METHOD_NOARG("boardinfo", quest_board_info), 
 	UBUS_METHOD("quest", quest_router_specific, quest_policy),
@@ -2162,9 +2204,28 @@ void *dump_router_info(void *arg)
 	return NULL;
 }
 
+static void
+receive_event(struct ubus_context *ctx, struct ubus_event_handler *ev, const char *type, struct blob_attr *msg)
+{
+	char *str;
+
+	str = blobmsg_format_json(msg, true);
+
+	events[evno].time = (int)time(NULL);
+	strncpy(events[evno].type, type, 64);
+	strncpy(events[evno].data, str, 1024);
+
+	evno++;
+
+	if (evno > MAX_EVENT)
+		evno = 0;
+
+	free(str);
+}
+
 int main(int argc, char **argv)
 {
-	int pt;
+	int pt, ret;
 
 	const char *path = NULL; 
 	if(argc > 1 && argv[1] && strlen(argv[1]) > 0){
@@ -2180,6 +2241,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to create thread\n");
 		return 1;
 	}
+
+	event_listener.cb = receive_event;
+	ret = ubus_register_event_handler(ctx, &event_listener, "*");
+	if (ret)
+		fprintf(stderr, "Couldn't register to router events\n");
+
 	uloop_run();
 	ubus_free(ctx);	
 

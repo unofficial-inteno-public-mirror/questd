@@ -30,6 +30,7 @@
 #define MAX_CLIENT	128
 #define MAX_PORT	8
 #define MAX_USB		18
+#define MAX_EVENT	100
 
 typedef struct {
 	const char *vif;
@@ -183,6 +184,12 @@ typedef struct {
 	char *idproduct;
 	char *idvendor;
 } USB;
+
+typedef struct {
+	int time ;
+	char type[64];
+	char data[1024];
+} Event;
 
 typedef struct jiffy_counts_t {
 	unsigned long long usr, nic, sys, idle;

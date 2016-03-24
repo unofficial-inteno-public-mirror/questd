@@ -1,7 +1,7 @@
 CC		= gcc
 CFLAGS		= -g -Wall 
 LOCLIBS		= 
-LIBS		= -luci -lubus -lubox -lpthread
+LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json
 OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o igmp.o
 SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c igmp.c
 LIBSRCS		= 
