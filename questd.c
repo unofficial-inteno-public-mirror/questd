@@ -450,6 +450,7 @@ wireless_assoclist()
 					strcpy(stas[j].wdev, wireless[i].vif);
 					usleep(10000);
 					rssi = atoi(chrCmd("wlctl -i %s rssi %s", wireless[i].vif, stas[j].macaddr));
+					stas[j].rssi = rssi;
 					stas[j].snr = rssi - wireless[i].noise;
 					j++;
 				}
@@ -497,7 +498,8 @@ wireless_details(Client *clnt, Detail *dtl)
 	if ((stainfo = popen(cmnd, "r"))) {
 		fgets(line, sizeof(line), stainfo);
 		remove_newline(line);
-		dtl->snr = atoi(line) - noise;
+		dtl->rssi = atoi(line);
+		dtl->snr = dtl->rssi - noise;
 		pclose(stainfo);
 	}
 
@@ -521,6 +523,7 @@ wireless_sta(Client *clnt, Detail *dtl)
 			there = true;
 			strncpy(clnt->wdev, stas[i].wdev, sizeof(clnt->wdev));
 			dtl->snr = stas[i].snr;
+			dtl->rssi = stas[i].rssi;
 			break;
 		}
 		i++;
@@ -539,6 +542,7 @@ wireless_sta6(Client6 *clnt, Detail *dtl)
 			there = true;
 			strncpy(clnt->wdev, stas[i].wdev, sizeof(clnt->wdev));
 			dtl->snr = stas[i].snr;
+			dtl->rssi = stas[i].rssi;
 			break;
 		}
 		i++;
@@ -966,6 +970,7 @@ router_dump_clients(struct blob_buf *b)
 			blobmsg_add_u32(b, "idle", details[i].idle);
 			blobmsg_add_u32(b, "in_network", details[i].in_network);
 			blobmsg_add_string(b, "frequency", details[i].frequency);
+			blobmsg_add_u32(b, "rssi", details[i].rssi);
 			blobmsg_add_u32(b, "snr", details[i].snr);
 			blobmsg_add_u64(b, "tx_bytes", details[i].tx_bytes);
 			blobmsg_add_u64(b, "rx_bytes", details[i].rx_bytes);
@@ -1005,6 +1010,7 @@ router_dump_connected_clients(struct blob_buf *b)
 			blobmsg_add_u32(b, "idle", details[i].idle);
 			blobmsg_add_u32(b, "in_network", details[i].in_network);
 			blobmsg_add_string(b, "frequency", details[i].frequency);
+			blobmsg_add_u32(b, "rssi", details[i].rssi);
 			blobmsg_add_u32(b, "snr", details[i].snr);
 			blobmsg_add_u64(b, "tx_bytes", details[i].tx_bytes);
 			blobmsg_add_u64(b, "rx_bytes", details[i].rx_bytes);
@@ -1046,6 +1052,7 @@ router_dump_network_clients(struct blob_buf *b, char *net)
 			blobmsg_add_u32(b, "idle", details[i].idle);
 			blobmsg_add_u32(b, "in_network", details[i].in_network);
 			blobmsg_add_string(b, "frequency", details[i].frequency);
+			blobmsg_add_u32(b, "rssi", details[i].rssi);
 			blobmsg_add_u32(b, "snr", details[i].snr);
 			blobmsg_add_u64(b, "tx_bytes", details[i].tx_bytes);
 			blobmsg_add_u64(b, "rx_bytes", details[i].rx_bytes);
@@ -1141,6 +1148,7 @@ router_dump_stas(struct blob_buf *b)
 		blobmsg_add_u32(b, "idle", details[i].idle);
 		blobmsg_add_u32(b, "in_network", details[i].in_network);
 		blobmsg_add_string(b, "frequency", details[i].frequency);
+		blobmsg_add_u32(b, "rssi", details[i].rssi);
 		blobmsg_add_u32(b, "snr", details[i].snr);
 		blobmsg_add_u64(b, "tx_bytes", details[i].tx_bytes);
 		blobmsg_add_u64(b, "rx_bytes", details[i].rx_bytes);
@@ -1190,6 +1198,7 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u32(b, "idle", details[i].idle);
 		blobmsg_add_u32(b, "in_network", details[i].in_network);
 		blobmsg_add_string(b, "frequency", details[i].frequency);
+		blobmsg_add_u32(b, "rssi", details[i].rssi);
 		blobmsg_add_u32(b, "snr", details[i].snr);
 		blobmsg_add_u64(b, "tx_bytes", details[i].tx_bytes);
 		blobmsg_add_u64(b, "rx_bytes", details[i].rx_bytes);

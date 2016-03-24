@@ -60,6 +60,7 @@ typedef struct {
 	int tx_rate;
 	int rx_rate;
 	int snr;
+	int rssi;
 	char frequency[8];
 } Detail;
 
@@ -83,6 +84,7 @@ typedef struct {
 	char macaddr[24];
 	char wdev[8];
 	int snr;
+	int rssi;
 } Sta;
 
 typedef struct {
