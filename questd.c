@@ -59,6 +59,7 @@ static USB usb[MAX_USB];
 static int clnum = 0;
 static int cl6num = 0;
 static int evno = 0;
+static int ran = 0;
 
 /* POLICIES */
 enum {
@@ -2212,6 +2213,8 @@ void *dump_router_info(void *arg)
 		}
 	}
 
+	ran = 1;
+
 	return NULL;
 }
 
@@ -2251,6 +2254,11 @@ int main(int argc, char **argv)
 	if ((pt = pthread_create(&(tid[0]), NULL, &dump_router_info, NULL) != 0)) {
 		fprintf(stderr, "Failed to create thread\n");
 		return 1;
+	}
+
+	while (ran == 0)
+	{
+		usleep(100000);
 	}
 
 	event_listener.cb = receive_event;
