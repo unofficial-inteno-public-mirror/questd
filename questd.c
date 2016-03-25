@@ -2211,9 +2211,8 @@ void *dump_router_info(void *arg)
 			memset(clients, '\0', sizeof(clients));
 			memset(clients6, '\0', sizeof(clients6));
 		}
+		ran = 1;
 	}
-
-	ran = 1;
 
 	return NULL;
 }
