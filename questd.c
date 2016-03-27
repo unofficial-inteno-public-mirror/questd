@@ -48,7 +48,7 @@ static Wireless wireless[MAX_VIF];
 static Network network[MAX_NETWORK];
 static Detail details[MAX_CLIENT], details6[MAX_CLIENT];
 static Client clients[MAX_CLIENT];
-//static Client clients_old[MAX_CLIENT], clients_new[MAX_CLIENT];
+static Client clients_old[MAX_CLIENT], clients_new[MAX_CLIENT];
 static Client6 clients6[MAX_CLIENT];
 static Sta stas[MAX_CLIENT];
 static Router router;
@@ -56,8 +56,6 @@ static Memory memory;
 static Key keys;
 static Spec spec;
 static USB usb[MAX_USB];
-static int clnum = 0;
-static int cl6num = 0;
 static int evno = 0;
 static int ran = 0;
 
@@ -583,15 +581,14 @@ ipv4_clients()
 	char line[256];
 	int cno = 0;
 	int lno = 0;
-	int conn = 0;
 	int hw;
 	int flag;
 	char mask[256];
-	int i;
+	int i, j;
 	bool there;
 	int toms = 1000;
 
-	//memset(clients_new, '\0', sizeof(clients));
+	memset(clients_new, '\0', sizeof(clients));
 
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
 		while(fgets(line, sizeof(line), leases) != NULL)
@@ -611,9 +608,8 @@ ipv4_clients()
 				else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 					recalc_sleep_time(true, toms);
 
-				if (clients[cno].connected)
-					conn++;
-					//details[cno].connum = active_connections(clients[cno].ipaddr);
+/*				if (clients[cno].connected)*/
+/*					details[cno].connum = active_connections(clients[cno].ipaddr);*/
 
 				cno++;
 			}
@@ -655,9 +651,9 @@ ipv4_clients()
 						} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 							recalc_sleep_time(true, toms);
 
-						if (clients[cno].connected)
-							conn++;
-							//details[cno].connum = active_connections(clients[cno].ipaddr);
+/*						if (clients[cno].connected)*/
+/*							details[cno].connum = active_connections(clients[cno].ipaddr);*/
+
 						cno++;
 					}
 				}
@@ -667,14 +663,41 @@ ipv4_clients()
 		fclose(arpt);
 	}
 
-	if (clnum != conn)
-		system("ubus send client");
-	clnum = conn;
-
-/*	memcpy(&clients_new, &clients, sizeof(clients));*/
+	memcpy(&clients_new, &clients, sizeof(clients));
 /*	if(memcmp(&clients_new, &clients_old, sizeof(clients)))*/
 /*		system("ubus send client");*/
-/*	memcpy(&clients_old, &clients_new, sizeof(clients));*/
+
+	bool still_there;
+	for(i=0; clients_old[i].exists; i++) {
+		still_there = false;
+		if(!clients_old[i].connected) continue;
+		for(j=0; clients_new[j].exists; j++) {
+			if(!clients_new[j].connected) continue;
+			if(!strcmp(clients_old[i].macaddr, clients_new[j].macaddr)) {
+				still_there = true;
+				break;
+			}
+		}
+		if(!still_there)
+			runCmd("ubus send client '{\"action\":\"disconnect\",\"macaddr\":\"%s\"}'", clients_old[i].macaddr);
+	}
+
+	bool was_there;
+	for(i=0; clients_new[i].exists; i++) {
+		was_there = false;
+		if(!clients_new[i].connected) continue;
+		for(j=0; clients_old[j].exists; j++) {
+			if(!clients_old[j].connected) continue;
+			if(!strcmp(clients_new[i].macaddr, clients_old[j].macaddr)) {
+				was_there = true;
+				break;
+			}
+		}
+		if(!was_there)
+			runCmd("ubus send client '{\"action\":\"connect\",\"macaddr\":\"%s\"}'", clients_new[i].macaddr);
+	}
+
+	memcpy(&clients_old, &clients_new, sizeof(clients));
 }
 
 static void
@@ -683,7 +706,6 @@ ipv6_clients()
 	FILE *hosts6;
 	char line[512];
 	int cno = 0;
-	int conn = 0;
 	int iaid, ts, id, length;
 	int toms = 500;
 
@@ -706,18 +728,11 @@ ipv6_clients()
 				} else
 					recalc_sleep_time(true, toms);
 
-				if (clients6[cno].connected)
-					conn++;
-
 				cno++;
 			}
 		}
 		fclose(hosts6);
 	}
-
-	if (cl6num != conn)
-		system("ubus send client6");
-	cl6num = conn;
 }
 
 static void
