@@ -1594,7 +1594,8 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	int channel;
 
 	const char *chanspec = strdup(chrCmd("wlctl -i %s chanspec | awk '{print$1}'", wldev));
-	const char *bssid = strdup(chrCmd("wl -i %s cur_etheraddr | awk '{print$2}'", wldev));
+	const char *bssid = strdup(chrCmd("wlctl -i %s cur_etheraddr | awk '{print$2}'", wldev));
+	int noise = atoi(strdup(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wldev)));
 	int isup = atoi(strdup(chrCmd("wlctl -i %s isup", wldev)));
 
 
@@ -1616,6 +1617,7 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "frequency", freq);
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bw);
+	blobmsg_add_u32(&bb, "noise", noise);
 
 	ubus_send_reply(ctx, req, bb.head);
 
