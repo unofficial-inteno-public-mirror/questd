@@ -31,6 +31,8 @@
 #include <time.h>
 #include <stdio.h>
 
+#include <dirent.h>
+
 #include "questd.h"
 
 #define DEFAULT_SLEEP	5000000
@@ -2134,14 +2136,12 @@ static struct ubus_object wps_object = {
 
 /* JUCI OBJECT */
 enum {
-	OBJECT,
 	METHOD,
 	ARGS,
 	__JUCI_MAX,
 };
 
 static const struct blobmsg_policy juci_policy[__JUCI_MAX] = {
-	[OBJECT] = { .name = "object", .type = BLOBMSG_TYPE_STRING },
 	[METHOD] = { .name = "method", .type = BLOBMSG_TYPE_STRING },
 	[ARGS] = { .name = "args", .type = BLOBMSG_TYPE_STRING },
 };
@@ -2155,15 +2155,15 @@ juci_run(struct ubus_context *ctx, struct ubus_object *obj,
 
 	blobmsg_parse(juci_policy, __JUCI_MAX, tb, blob_data(msg), blob_len(msg));
 
-	if (!(tb[OBJECT]) || !(tb[METHOD]))
+	if (!(tb[METHOD]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	char *result;
 
 	if (tb[ARGS])
-		result = chrCmd("./usr/lib/ubus/juci/%s %s '%s'", blobmsg_get_string(tb[OBJECT]), blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
+		result = chrCmd("./usr/lib/ubus/%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
 	else
-		result = chrCmd("./usr/lib/ubus/juci/%s %s", blobmsg_get_string(tb[OBJECT]), blobmsg_get_string(tb[METHOD]));
+		result = chrCmd("./usr/lib/ubus/%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
 
 	blob_buf_init(&bb, 0);
 	blobmsg_add_json_from_string(&bb, result);
@@ -2232,6 +2232,36 @@ quest_add_object(struct ubus_object *obj)
 		fprintf(stderr, "Failed to publish object '%s': %s\n", obj->name, ubus_strerror(ret));
 }
 
+static void
+add_object_foreach(char *path)
+{
+	struct ubus_object *jobj;
+	DIR *dir;
+	struct dirent *ent;
+	char name[64];
+
+	if ((dir = opendir (path)) != NULL) {
+		while ((ent = readdir (dir)) != NULL) {
+			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || ent->d_type == DT_DIR)
+				continue;
+			snprintf(name, 64, "/juci/%s", ent->d_name);
+
+			jobj = malloc(sizeof(struct ubus_object));
+			memset(jobj, 0, sizeof(struct ubus_object));
+			snprintf(name, 64, "/juci/%s", ent->d_name);
+			jobj->name      = strdup(name);
+			jobj->methods   = juci_object_methods;
+			jobj->n_methods = ARRAY_SIZE(juci_object_methods);
+			jobj->type      = &juci_object_type;
+			quest_add_object(jobj);
+		}
+		closedir (dir);
+	} else {
+		perror ("Could not open directory");
+	}
+}
+
+
 static int
 quest_ubus_init(const char *path)
 {
@@ -2248,7 +2278,7 @@ quest_ubus_init(const char *path)
 
 	quest_add_object(&router_object);
 	quest_add_object(&wps_object);
-	quest_add_object(&juci_object);
+	add_object_foreach("/usr/lib/ubus/juci");
 
 	return 0;
 }
