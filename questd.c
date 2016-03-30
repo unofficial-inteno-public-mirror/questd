@@ -1932,7 +1932,6 @@ static struct ubus_object router_object = {
 /* END OF ROUTER OBJECT */
 
 /* WPS OBJECT */
-/* JUCI does not use this object */
 
 static int
 wps_status(struct ubus_context *ctx, struct ubus_object *obj,
@@ -2133,6 +2132,64 @@ static struct ubus_object wps_object = {
 
 /* END OF WPS OBJECT */
 
+/* JUCI OBJECT */
+enum {
+	OBJECT,
+	METHOD,
+	ARGS,
+	__JUCI_MAX,
+};
+
+static const struct blobmsg_policy juci_policy[__JUCI_MAX] = {
+	[OBJECT] = { .name = "object", .type = BLOBMSG_TYPE_STRING },
+	[METHOD] = { .name = "method", .type = BLOBMSG_TYPE_STRING },
+	[ARGS] = { .name = "args", .type = BLOBMSG_TYPE_STRING },
+};
+
+static int
+juci_run(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__JUCI_MAX];
+
+	blobmsg_parse(juci_policy, __JUCI_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!(tb[OBJECT]) || !(tb[METHOD]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	char *result;
+
+	if (tb[ARGS])
+		result = chrCmd("./usr/lib/ubus/juci/%s %s '%s'", blobmsg_get_string(tb[OBJECT]), blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
+	else
+		result = chrCmd("./usr/lib/ubus/juci/%s %s", blobmsg_get_string(tb[OBJECT]), blobmsg_get_string(tb[METHOD]));
+
+	blob_buf_init(&bb, 0);
+	blobmsg_add_json_from_string(&bb, result);
+	ubus_send_reply(ctx, req, bb.head);
+
+	free(result);
+
+	return 0;
+}
+
+static struct ubus_method juci_object_methods[] = {
+	UBUS_METHOD("run", juci_run, juci_policy),
+};
+
+static struct ubus_object_type juci_object_type =
+	UBUS_OBJECT_TYPE("juci", juci_object_methods);
+
+static struct ubus_object juci_object = {
+	.name = "juci",
+	.type = &juci_object_type,
+	.methods = juci_object_methods,
+	.n_methods = ARRAY_SIZE(juci_object_methods),
+};
+
+/* END OF JUCI OBJECT */
+
 static void
 quest_ubus_add_fd(void)
 {
@@ -2191,6 +2248,7 @@ quest_ubus_init(const char *path)
 
 	quest_add_object(&router_object);
 	quest_add_object(&wps_object);
+	quest_add_object(&juci_object);
 
 	return 0;
 }
