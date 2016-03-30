@@ -2166,7 +2166,8 @@ juci_run(struct ubus_context *ctx, struct ubus_object *obj,
 		result = chrCmd("./usr/lib/ubus/%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
 
 	blob_buf_init(&bb, 0);
-	blobmsg_add_json_from_string(&bb, result);
+	if(!blobmsg_add_json_from_string(&bb, result))
+		blobmsg_add_string(&bb, "methods", result);
 	ubus_send_reply(ctx, req, bb.head);
 
 	free(result);
@@ -2174,19 +2175,7 @@ juci_run(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-static struct ubus_method juci_object_methods[] = {
-	UBUS_METHOD("run", juci_run, juci_policy),
-};
-
-static struct ubus_object_type juci_object_type =
-	UBUS_OBJECT_TYPE("juci", juci_object_methods);
-
-static struct ubus_object juci_object = {
-	.name = "juci",
-	.type = &juci_object_type,
-	.methods = juci_object_methods,
-	.n_methods = ARRAY_SIZE(juci_object_methods),
-};
+struct ubus_method juci_object_methods[3] = {0};
 
 /* END OF JUCI OBJECT */
 
@@ -2236,23 +2225,37 @@ static void
 add_object_foreach(char *path)
 {
 	struct ubus_object *jobj;
+	struct ubus_object_type *jobj_type;
+
 	DIR *dir;
 	struct dirent *ent;
 	char name[64];
+
+	juci_object_methods[0].name = "run";
+	juci_object_methods[0].handler = juci_run;
+	juci_object_methods[0].policy = juci_policy;
+	juci_object_methods[1].name = "fire";
+	juci_object_methods[1].handler = juci_run;
+	juci_object_methods[1].policy = juci_policy;
 
 	if ((dir = opendir (path)) != NULL) {
 		while ((ent = readdir (dir)) != NULL) {
 			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || ent->d_type == DT_DIR)
 				continue;
+
 			snprintf(name, 64, "/juci/%s", ent->d_name);
+
+			jobj_type = malloc(sizeof(struct ubus_object_type));
+			memset(jobj_type, 0, sizeof(struct ubus_object_type));
+			jobj_type->name      = strdup(name);
+			jobj_type->methods   = juci_object_methods;
 
 			jobj = malloc(sizeof(struct ubus_object));
 			memset(jobj, 0, sizeof(struct ubus_object));
-			snprintf(name, 64, "/juci/%s", ent->d_name);
 			jobj->name      = strdup(name);
 			jobj->methods   = juci_object_methods;
-			jobj->n_methods = ARRAY_SIZE(juci_object_methods);
-			jobj->type      = &juci_object_type;
+			jobj->n_methods = 2;
+			jobj->type      = jobj_type;
 			quest_add_object(jobj);
 		}
 		closedir (dir);
