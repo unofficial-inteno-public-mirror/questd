@@ -2161,9 +2161,9 @@ juci_run(struct ubus_context *ctx, struct ubus_object *obj,
 	char *result;
 
 	if (tb[ARGS])
-		result = chrCmd("./usr/lib/ubus/%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
+		result = chrCmd("./usr/lib/ubus%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
 	else
-		result = chrCmd("./usr/lib/ubus/%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
+		result = chrCmd("./usr/lib/ubus%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
 
 	blob_buf_init(&bb, 0);
 	blobmsg_add_json_from_string(&bb, result);
