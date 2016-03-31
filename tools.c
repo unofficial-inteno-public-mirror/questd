@@ -68,7 +68,7 @@ chrCmd(const char *pFmt, ...)
 	va_end(ap);
 
 	FILE *pipe = 0;
-	static char buffer[12800] = {0};
+	static char buffer[51200] = {0};
 	if ((pipe = popen(cmd, "r"))){
 		fgets(buffer, sizeof(buffer), pipe);
 		pclose(pipe);
