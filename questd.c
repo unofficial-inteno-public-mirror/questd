@@ -1641,22 +1641,63 @@ quest_router_connected_clients6(struct ubus_context *ctx, struct ubus_object *ob
 
 	return 0;
 }
-/*
+
 static int
 quest_router_igmp_table(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
+	IGMPTable table[MAX_IGMP_ENTRY];
+	FILE *snptable;
+	char line[256];
+	int idx = 0;
+	void *t, *a;
 
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
+	if ((snptable = fopen("/proc/net/igmp_snooping", "r"))) {
+		while(fgets(line, sizeof(line), snptable) != NULL)
+		{
+			remove_newline(line);
+			table[idx].exists = false;
+			if(sscanf(single_space(line),"%s %s %s %s %x %x %s %s %s %s %s %d %x %d",
+					table[idx].bridge, table[idx].device, table[idx].srcdev, table[idx].tags, &(table[idx].lantci), &(table[idx].wantci),
+					table[idx].group, table[idx].mode, table[idx].RxGroup, table[idx].source, table[idx].reporter,
+					&(table[idx].timeout), &(table[idx].Index), &(table[idx].ExcludPt)) == 14)
+			{
+				table[idx].exists = true;
+				idx++;
+			}
+		}
+		fclose(snptable);
+	} else
+		return UBUS_STATUS_NOT_FOUND;
 
 	blob_buf_init(&bb, 0);
-	igpm_rpc(&bb);
+	a = blobmsg_open_array(&bb, "table");
+	for (idx = 0; idx < MAX_IGMP_ENTRY; idx++) {
+		if (!table[idx].exists)
+			break;
+		t = blobmsg_open_table(&bb, NULL);
+		blobmsg_add_string(&bb,"bridge", table[idx].bridge);
+		blobmsg_add_string(&bb,"device", table[idx].device);
+		blobmsg_add_string(&bb,"srcdev", table[idx].srcdev);
+		blobmsg_add_string(&bb,"tags", table[idx].tags);
+		blobmsg_add_u32(&bb,"lantci", table[idx].lantci);
+		blobmsg_add_u32(&bb,"wantci", table[idx].wantci);
+		blobmsg_add_string(&bb,"group", table[idx].group);
+		blobmsg_add_string(&bb,"mode", table[idx].mode);
+		blobmsg_add_string(&bb,"rxgroup", table[idx].RxGroup);
+		blobmsg_add_string(&bb,"source", table[idx].source);
+		blobmsg_add_string(&bb,"reporter", table[idx].reporter);
+		blobmsg_add_u32(&bb,"timeout", table[idx].timeout);
+		blobmsg_add_u32(&bb,"index", table[idx].Index);
+		blobmsg_add_u32(&bb,"excludpt", table[idx].ExcludPt);
+		blobmsg_close_table(&bb, t);
+	}
+	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
-}*/
+}
 
 static int
 quest_router_clients6(struct ubus_context *ctx, struct ubus_object *obj,
@@ -1911,7 +1952,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("clients6", quest_router_clients6),
 	UBUS_METHOD_NOARG("connected", quest_router_connected_clients),
 	UBUS_METHOD_NOARG("connected6", quest_router_connected_clients6),
-	UBUS_METHOD_NOARG("igmptable", igmp_rpc),
+	UBUS_METHOD_NOARG("igmptable", quest_router_igmp_table),
 	UBUS_METHOD("sta", quest_router_wireless_stas, wl_policy),
 	UBUS_METHOD_NOARG("stas", quest_router_stas),
 	UBUS_METHOD("ports", quest_router_ports, network_policy),

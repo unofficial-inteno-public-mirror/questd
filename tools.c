@@ -82,3 +82,27 @@ chrCmd(const char *pFmt, ...)
 		return ""; 
 	}
 }
+
+char* convert_to_ipaddr(int ip)
+{
+	struct in_addr ip_addr;
+	ip_addr.s_addr = ip;
+	return inet_ntoa(ip_addr);
+}
+
+char* single_space(char* str){
+	char *from, *to;
+	int space = 0;
+	from = to = str;
+	while(1) {
+		if(space && *from == ' ' && to[-1] == ' ') {
+			++from;
+		} else {
+			space = (*from == ' ') ? 1 : 0;
+			*to++ = *from++;
+			if(!to[-1])
+				break;
+		}
+	}
+	return str;
+}

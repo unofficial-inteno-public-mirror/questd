@@ -22,7 +22,6 @@
 #include <libubus.h>
 
 #include "dslstats.h"
-#include "igmp.h"
 
 #define MAX_RADIO	4
 #define MAX_VIF		8
@@ -31,6 +30,7 @@
 #define MAX_PORT	8
 #define MAX_USB		18
 #define MAX_EVENT	100
+#define MAX_IGMP_ENTRY	128
 
 typedef struct {
 	const char *vif;
@@ -192,6 +192,25 @@ typedef struct {
 	char type[64];
 	char data[1024];
 } Event;
+
+typedef struct {
+	bool exists;
+	char bridge[32];
+	char device[32];
+	char srcdev[32];
+	char tags[32];
+	int lantci;
+	int wantci;
+	char group[16];
+	char mode[32];
+	char RxGroup[16];
+	char source[16];
+	char reporter[16];
+	int timeout;
+	int Index;
+	int ExcludPt;
+
+}IGMPTable;
 
 typedef struct jiffy_counts_t {
 	unsigned long long usr, nic, sys, idle;
