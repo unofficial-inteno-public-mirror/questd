@@ -7,4 +7,6 @@
 ipkg-*
 *.o
 questd
+uscriptd
+ueventd
 

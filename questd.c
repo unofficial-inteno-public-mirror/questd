@@ -31,20 +31,16 @@
 #include <time.h>
 #include <stdio.h>
 
-#include <dirent.h>
-
 #include "questd.h"
 
 #define DEFAULT_SLEEP	5000000
 
 static struct uci_context *uci_ctx;
-static struct ubus_event_handler event_listener;
 static struct uci_package *uci_network, *uci_wireless;
 static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
 static const char *ubus_path;
 
-static Event events[MAX_EVENT];
 static Radio radio[MAX_RADIO];
 static Wireless wireless[MAX_VIF];
 static Network network[MAX_NETWORK];
@@ -58,8 +54,6 @@ static Memory memory;
 static Key keys;
 static Spec spec;
 static USB usb[MAX_USB];
-static int evno = 0;
-static int ran = 0;
 
 /* POLICIES */
 enum {
@@ -1409,27 +1403,6 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 	}
 }
 
-static void
-router_dump_events(struct blob_buf *b)
-{
-	void *a, *t, *d;
-	int i;
-
-	a = blobmsg_open_array(&bb, "list");
-	for (i = 0; i < MAX_EVENT; i++) {
-		if (!(events[i].time) || events[i].time <= ((int)time(NULL)-10))
-			continue;
-		t = blobmsg_open_table(b, "");
-		blobmsg_add_string(b, "type", events[i].type);
-		blobmsg_add_u32(b, "time", events[i].time);
-		d = blobmsg_open_table(b, "data");
-		blobmsg_add_json_from_string(b, events[i].data);
-		blobmsg_close_table(b, d);
-		blobmsg_close_table(b, t);
-	}
-	blobmsg_close_array(b, a);
-}
-
 /* ROUTER OBJECT */
 static int
 quest_router_specific(struct ubus_context *ctx, struct ubus_object *obj,
@@ -1913,22 +1886,6 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
-quest_router_events(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
-	blob_buf_init(&bb, 0);
-	router_dump_events(&bb);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
 quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -1940,7 +1897,6 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static struct ubus_method router_object_methods[] = {
-	UBUS_METHOD_NOARG("events", quest_router_events),
 	UBUS_METHOD_NOARG("info", quest_router_info),
 	UBUS_METHOD_NOARG("boardinfo", quest_board_info), 
 	UBUS_METHOD("quest", quest_router_specific, quest_policy),
@@ -2175,62 +2131,6 @@ static struct ubus_object wps_object = {
 
 /* END OF WPS OBJECT */
 
-/* JUCI OBJECT */
-enum {
-	METHOD,
-	ARGS,
-	__JUCI_MAX,
-};
-
-static const struct blobmsg_policy juci_policy[__JUCI_MAX] = {
-	[METHOD] = { .name = "method", .type = BLOBMSG_TYPE_STRING },
-	[ARGS] = { .name = "args", .type = BLOBMSG_TYPE_STRING },
-};
-
-static int
-juci_run(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__JUCI_MAX];
-
-	blobmsg_parse(juci_policy, __JUCI_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[METHOD]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	char *result;
-
-	if (tb[ARGS])
-		result = chrCmd("./usr/lib/ubus%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
-	else
-		result = chrCmd("./usr/lib/ubus%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
-
-	blob_buf_init(&bb, 0);
-	blobmsg_add_json_from_string(&bb, result);
-	ubus_send_reply(ctx, req, bb.head);
-
-	free(result);
-
-	return 0;
-}
-
-static struct ubus_method juci_object_methods[] = {
-	UBUS_METHOD("run", juci_run, juci_policy),
-};
-
-static struct ubus_object_type juci_object_type =
-	UBUS_OBJECT_TYPE("juci", juci_object_methods);
-
-static struct ubus_object juci_object = {
-	.name = "juci",
-	.type = &juci_object_type,
-	.methods = juci_object_methods,
-	.n_methods = ARRAY_SIZE(juci_object_methods),
-};
-
-/* END OF JUCI OBJECT */
-
 static void
 quest_ubus_add_fd(void)
 {
@@ -2273,36 +2173,6 @@ quest_add_object(struct ubus_object *obj)
 		fprintf(stderr, "Failed to publish object '%s': %s\n", obj->name, ubus_strerror(ret));
 }
 
-static void
-add_object_foreach(char *path)
-{
-	struct ubus_object *jobj;
-	DIR *dir;
-	struct dirent *ent;
-	char name[64];
-
-	if ((dir = opendir (path)) != NULL) {
-		while ((ent = readdir (dir)) != NULL) {
-			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || ent->d_type == DT_DIR)
-				continue;
-			snprintf(name, 64, "/juci/%s", ent->d_name);
-
-			jobj = malloc(sizeof(struct ubus_object));
-			memset(jobj, 0, sizeof(struct ubus_object));
-			snprintf(name, 64, "/juci/%s", ent->d_name);
-			jobj->name      = strdup(name);
-			jobj->methods   = juci_object_methods;
-			jobj->n_methods = ARRAY_SIZE(juci_object_methods);
-			jobj->type      = &juci_object_type;
-			quest_add_object(jobj);
-		}
-		closedir (dir);
-	} else {
-		perror ("Could not open directory");
-	}
-}
-
-
 static int
 quest_ubus_init(const char *path)
 {
@@ -2319,7 +2189,6 @@ quest_ubus_init(const char *path)
 
 	quest_add_object(&router_object);
 	quest_add_object(&wps_object);
-	add_object_foreach("/usr/lib/ubus/juci");
 
 	return 0;
 }
@@ -2357,29 +2226,9 @@ void *dump_router_info(void *arg)
 			memset(clients, '\0', sizeof(clients));
 			memset(clients6, '\0', sizeof(clients6));
 		}
-		ran = 1;
 	}
 
 	return NULL;
-}
-
-static void
-receive_event(struct ubus_context *ctx, struct ubus_event_handler *ev, const char *type, struct blob_attr *msg)
-{
-	char *str;
-
-	str = blobmsg_format_json(msg, true);
-
-	events[evno].time = (int)time(NULL);
-	strncpy(events[evno].type, type, 64);
-	strncpy(events[evno].data, str, 1024);
-
-	evno++;
-
-	if (evno > MAX_EVENT)
-		evno = 0;
-
-	free(str);
 }
 
 int main(int argc, char **argv)
@@ -2400,16 +2249,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to create thread\n");
 		return 1;
 	}
-
-	while (ran == 0)
-	{
-		usleep(100000);
-	}
-
-	event_listener.cb = receive_event;
-	ret = ubus_register_event_handler(ctx, &event_listener, "*");
-	if (ret)
-		fprintf(stderr, "Couldn't register to router events\n");
 
 	uloop_run();
 	ubus_free(ctx);	
