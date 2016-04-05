@@ -108,6 +108,7 @@ static const struct blobmsg_policy pin_policy[__PIN_MAX] = {
 /* END POLICIES */
 
 pthread_t tid[1];
+pthread_mutex_t lock;
 static long sleep_time = DEFAULT_SLEEP;
 
 void recalc_sleep_time(bool calc, int toms)
@@ -2208,6 +2209,7 @@ void *dump_router_info(void *arg)
 	dump_static_router_info(&router);
 	dump_hostname(&router);
 	while (true) {
+		pthread_mutex_lock(&lock);
 		dump_sysinfo(&router, &memory);
 		dump_cpuinfo(&router, &prev_jif, &cur_jif);
 		if (popc) {
@@ -2216,6 +2218,7 @@ void *dump_router_info(void *arg)
 		} else
 			popc = true;
 
+		pthread_mutex_unlock(&lock);
 		get_jif_val(&prev_jif);
 		usleep(sleep_time);
 		recalc_sleep_time(false, 0);
@@ -2244,6 +2247,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to connect to ubus\n");
 		return 1;
 	}
+
+	if (pthread_mutex_init(&lock, NULL) != 0)
+	{
+		fprintf(stderr, "Failed to initialize mutex\n");
+		return 1;
+	}
 	
 	if ((pt = pthread_create(&(tid[0]), NULL, &dump_router_info, NULL) != 0)) {
 		fprintf(stderr, "Failed to create thread\n");
@@ -2251,6 +2260,7 @@ int main(int argc, char **argv)
 	}
 
 	uloop_run();
+	pthread_mutex_destroy(&lock);
 	ubus_free(ctx);	
 
 	return 0;
