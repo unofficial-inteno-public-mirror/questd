@@ -31,8 +31,56 @@
 #include <fcntl.h>
 #include <dirent.h>
 
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
 static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
+
+static void
+remove_newline(char *buf)
+{
+	int len;
+	len = strlen(buf) - 1;
+	if (buf[len] == '\n')
+		buf[len] = 0;
+}
+
+static const char*
+cmd_to_str(const char *pFmt, ...)
+{
+	va_list ap;
+	char cmd[256] = {0};
+	int len=0, maxLen;
+
+	maxLen = sizeof(cmd);
+
+	va_start(ap, pFmt);
+
+	if (len < maxLen)
+	{
+		maxLen -= len;
+		vsnprintf(&cmd[len], maxLen, pFmt, ap);
+	}
+
+	va_end(ap);
+
+	FILE *pipe = 0;
+	static char buffer[100000] = {0};
+	if ((pipe = popen(cmd, "r"))){
+		fgets(buffer, sizeof(buffer), pipe);
+		pclose(pipe);
+
+		remove_newline(buffer);
+		if (strlen(buffer))
+			return (const char*)buffer;
+		else
+			return "";
+	} else {
+		return "";
+	}
+}
 
 enum {
 	METHOD,
@@ -60,9 +108,9 @@ script_run(struct ubus_context *ctx, struct ubus_object *obj,
 	char *result;
 
 	if (tb[ARGS])
-		result = chrCmd("./usr/lib/ubus%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
+		result = cmd_to_str("./usr/lib/ubus%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
 	else
-		result = chrCmd("./usr/lib/ubus%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
+		result = cmd_to_str("./usr/lib/ubus%s %s", obj->name, blobmsg_get_string(tb[METHOD]));
 
 	blob_buf_init(&bb, 0);
 	blobmsg_add_json_from_string(&bb, result);

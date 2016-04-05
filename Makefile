@@ -18,8 +18,8 @@ ESRCS		= eventd.c
 ueventd: ${EOBJS}
 	${CC} ${LDFLAGS} -o ueventd ${EOBJS} ${LIBS}
 
-SOBJS		= scriptd.o tools.o
-SSRCS		= scriptd.c tools.c
+SOBJS		= scriptd.o
+SSRCS		= scriptd.c
 
 uscriptd: ${SOBJS}
 	${CC} ${LDFLAGS} -o uscriptd ${SOBJS} ${LIBS}
