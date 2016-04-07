@@ -913,6 +913,7 @@ router_dump_system_info(struct blob_buf *b, bool table)
 	blobmsg_add_string(b, "kernel", router.kernel);
 	blobmsg_add_string(b, "basemac", router.basemac);
 	blobmsg_add_string(b, "serialno", router.serialno);
+	blobmsg_add_string(b, "localtime", router.localtime);
 	blobmsg_add_string(b, "uptime", router.uptime);
 	blobmsg_add_u32(b, "procs", router.procs);
 	blobmsg_add_u32(b, "cpu_per", router.cpu);
@@ -1442,6 +1443,8 @@ quest_router_info(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_attr *tb[__QUEST_MAX];
 
 	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
+
+	dump_sysinfo(&router, &memory);
 
 	blob_buf_init(&bb, 0);
 	router_dump_system_info(&bb, true);
@@ -2250,7 +2253,6 @@ void *dump_router_info(void *arg)
 	dump_hostname(&router);
 	while (true) {
 		pthread_mutex_lock(&lock);
-		dump_sysinfo(&router, &memory);
 		dump_cpuinfo(&router, &prev_jif, &cur_jif);
 		if (popc) {
 			populate_clients();

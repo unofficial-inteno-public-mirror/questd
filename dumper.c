@@ -173,6 +173,7 @@ dump_sysinfo(Router *router, Memory *memory)
 	struct sysinfo sinfo;
 	long int seconds;
 	int days, hours, minutes;
+	time_t curtime;
 
 	if (sysinfo(&sinfo) == 0) {
 		seconds = sinfo.uptime;
@@ -192,6 +193,10 @@ dump_sysinfo(Router *router, Memory *memory)
 		memory->shared = (sinfo.sharedram / 1024);
 		memory->buffers = (sinfo.bufferram / 1024);
 	}
+
+	curtime = time(NULL);
+	strcpy(router->localtime, ctime(&curtime));
+	remove_newline(router->localtime);
 }
 
 void

@@ -142,6 +142,7 @@ typedef struct {
 	char *kernel;
 	char *basemac;
 	char *serialno;
+	char localtime[64];
 	char uptime[64];
 	unsigned int procs;
 	unsigned int cpu;
