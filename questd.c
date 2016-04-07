@@ -1843,6 +1843,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		if (!radio[i].name)
 			break;
 		t = blobmsg_open_table(&bb, radio[i].name);
+		blobmsg_add_u8(&bb, "isup", atoi(chrCmd("wlctl -i %s isup", radio[i].name)));
 		blobmsg_add_string(&bb, "band", radio[i].band);
 		blobmsg_add_u32(&bb, "frequency", radio[i].frequency);
 		c = blobmsg_open_array(&bb, "hwmodes");
