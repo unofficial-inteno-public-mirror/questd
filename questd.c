@@ -110,6 +110,7 @@ static const struct blobmsg_policy pin_policy[__PIN_MAX] = {
 pthread_t tid[1];
 pthread_mutex_t lock;
 static long sleep_time = DEFAULT_SLEEP;
+static bool popc = true;
 
 void recalc_sleep_time(bool calc, int toms)
 {
@@ -735,9 +736,13 @@ ipv6_clients()
 static void
 populate_clients()
 {
-	wireless_assoclist();
-	ipv4_clients();
-	ipv6_clients();
+	if (popc) {
+		wireless_assoclist();
+		ipv4_clients();
+		ipv6_clients();
+		popc = false;
+	} else
+		popc = true;
 }
 
 static void
@@ -2242,7 +2247,6 @@ quest_ubus_init(const char *path)
 void *dump_router_info(void *arg)
 {
 	int lpcnt = 0;
-	bool popc = true;
 
 	jiffy_counts_t cur_jif = {0}, prev_jif = {0};
 	
@@ -2256,12 +2260,7 @@ void *dump_router_info(void *arg)
 	while (true) {
 		pthread_mutex_lock(&lock);
 		dump_cpuinfo(&router, &prev_jif, &cur_jif);
-		if (popc) {
-			populate_clients();
-			popc = false;
-		} else
-			popc = true;
-
+		populate_clients();
 		pthread_mutex_unlock(&lock);
 		get_jif_val(&prev_jif);
 		usleep(sleep_time);
