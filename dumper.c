@@ -195,7 +195,7 @@ dump_sysinfo(Router *router, Memory *memory)
 	}
 
 	curtime = time(NULL);
-	strcpy(router->localtime, ctime(&curtime));
+	strncpy(router->localtime, ctime(&curtime), 64);
 	remove_newline(router->localtime);
 }
 
