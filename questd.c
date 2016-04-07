@@ -1551,10 +1551,10 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	int bw = 20;
 	int channel;
 
-	const char *chanspec = strdup(chrCmd("wlctl -i %s chanspec | awk '{print$1}'", wldev));
-	const char *bssid = strdup(chrCmd("wlctl -i %s cur_etheraddr | awk '{print$2}'", wldev));
-	int noise = atoi(strdup(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wldev)));
-	int isup = atoi(strdup(chrCmd("wlctl -i %s isup", wldev)));
+	const char *chanspec = chrCmd("wlctl -i %s chanspec | awk '{print$1}'", wldev);
+	const char *bssid = chrCmd("wlctl -i %s cur_etheraddr | awk '{print$2}'", wldev);
+	int noise = atoi(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wldev));
+	int isup = atoi(chrCmd("wlctl -i %s isup", wldev));
 
 
 	if (strstr(chanspec, "/80") && sscanf(chanspec, "%d/80", &channel) == 1)
