@@ -1454,6 +1454,45 @@ quest_router_info(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+quest_router_filesystem(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	void *a, *t;
+	FILE *df;
+	char line[128];
+	char name[64];
+	char mounted_on[128];
+	char use_per[5];
+	int blocks, used, available;
+
+	blob_buf_init(&bb, 0);
+	a = blobmsg_open_array(&bb, "filesystem");
+	if ((df = popen("df", "r"))) {
+		while(fgets(line, sizeof(line), df) != NULL)
+		{
+			remove_newline(line);
+			single_space(line);
+			if (sscanf(line, "%s %d %d %d %s %s", name, &blocks, &used, &available, use_per, mounted_on) == 6) {
+				use_per[strlen(use_per)-1] = '\0';
+				t = blobmsg_open_table(&bb, "");
+				blobmsg_add_string(&bb, "name", name);
+				blobmsg_add_u32(&bb, "1kblocks", blocks);
+				blobmsg_add_u32(&bb, "used", used);
+				blobmsg_add_u32(&bb, "available", available);
+				blobmsg_add_u32(&bb, "use_pre", atoi(use_per));
+				blobmsg_add_string(&bb, "mounted_on", mounted_on);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(df);
+	}
+	blobmsg_close_array(&bb, a);
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
+static int
 quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -1899,6 +1938,7 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 
 static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("info", quest_router_info),
+	UBUS_METHOD_NOARG("filesystem", quest_router_filesystem),
 	UBUS_METHOD_NOARG("boardinfo", quest_board_info), 
 	UBUS_METHOD("quest", quest_router_specific, quest_policy),
 	UBUS_METHOD_NOARG("networks", quest_router_networks),
