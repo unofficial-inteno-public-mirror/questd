@@ -853,7 +853,8 @@ router_dump_system_info(struct blob_buf *b, bool table)
 	blobmsg_add_string(b, "kernel", router.kernel);
 	blobmsg_add_string(b, "basemac", router.basemac);
 	blobmsg_add_string(b, "serialno", router.serialno);
-	blobmsg_add_string(b, "localtime", router.localtime);
+	blobmsg_add_u32(b, "localtime", router.localtime);
+	blobmsg_add_string(b, "date", router.date);
 	blobmsg_add_string(b, "uptime", router.uptime);
 	blobmsg_add_u32(b, "procs", router.procs);
 	blobmsg_add_u32(b, "cpu_per", router.cpu);
