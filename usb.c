@@ -23,31 +23,28 @@
 #include "questd.h"
 #include <string.h>
 
-static void
-get_usb_infos(char **val, char *usbno, char *info) {
+char*
+get_usb_infos(char *usbno, char *info) {
 	FILE *in;
-	char cmnd[64];
+	char file[64];
 	char result[32];
 
-	*val = "";
-
-	sprintf(cmnd, "/sys/bus/usb/devices/%s/%s", usbno, info);
-	if ((in = fopen(cmnd, "r"))) {
+	memset(result, '\0', sizeof(result));
+	sprintf(file, "/sys/bus/usb/devices/%s/%s", usbno, info);
+	if ((in = fopen(file, "r"))) {
 		fgets(result, sizeof(result), in);
 		remove_newline(result);
 		fclose(in);
-		*val = strdup(result);
-	}	
+	}
+	return result;
 }
 
-static void
-get_usb_device(char **val, char *mount) {
+char*
+get_usb_device(char *mount) {
 	FILE *mounts;
 	char line[128];
 	char dev[16];
 	char mnt[64];
-
-	*val = NULL;
 
 	if ((mounts = fopen("/var/usbmounts", "r"))) {
 		while(fgets(line, sizeof(line), mounts) != NULL)
@@ -55,61 +52,65 @@ get_usb_device(char **val, char *mount) {
 			remove_newline(line);
 			if (sscanf(line, "/dev/%s /mnt/%s", dev, mnt) == 2) {
 				if (!strcmp(mnt, mount) || strstr(mount, mnt)) {
-					*val = strdup(dev);
 					break;
 				}
 			}
+			memset(dev, '\0', sizeof(dev));
 		}
 		fclose(mounts);
 	}
+	return dev;
 }
 
-static void
-get_usb_size(unsigned long *val, char *device) {
+long
+get_usb_size(char *device) {
 	FILE *in;
-	char cmnd[64];
+	char file[64];
 	char result[32];
+	long size = 0;
 
-	*val = 0;
-
-	sprintf(cmnd, "/sys/class/block/%s/size", device);
-	if ((in = fopen(cmnd, "r"))) {
+	memset(result, '\0', sizeof(result));
+	sprintf(file, "/sys/class/block/%s/size", device);
+	if ((in = fopen(file, "r"))) {
 		fgets(result, sizeof(result), in);
 		remove_newline(result);
 		fclose(in);
-		*val = (long)(atoi(result) / 2048);
+		size = (long)(atoi(result) / 2048);
 	}
+	return size;
 }
 
 void
 dump_usb_info(USB *usb, char *usbno)
 {
 	FILE *in;
-	char cmnd[64];
+	char file[64];
 	char result[32];
 
-	sprintf(cmnd, "/sys/bus/usb/devices/%s/product", usbno);
-	if ((in = fopen(cmnd, "r"))) {
+	sprintf(file, "/sys/bus/usb/devices/%s/product", usbno);
+	if ((in = fopen(file, "r"))) {
 		fgets(result, sizeof(result), in);
 		remove_newline(result);
 		fclose(in);
 
 		strcpy(usb->product, result);
+		memset(result, '\0', sizeof(result));
 		sprintf(usb->no, "%s", usbno);
-		sprintf(usb->name, "USB%s", strndup(usbno+2, strlen(usbno)));
-		get_usb_infos(&usb->manufacturer, usb->no, "manufacturer");
-		get_usb_infos(&usb->serial, usb->no, "serial");
-		get_usb_infos(&usb->speed, usb->no, "speed");
-		get_usb_infos(&usb->maxchild, usb->no, "maxchild");
-		get_usb_infos(&usb->idproduct, usb->no, "idProduct");
-		get_usb_infos(&usb->idvendor, usb->no, "idVendor");
+		strncpy(result, &usbno[2], strlen(usbno)-2);
+		sprintf(usb->name, "USB%s", result);
+		strncpy(usb->manufacturer, get_usb_infos(usb->no, "manufacturer"), 64);
+		strncpy(usb->serial, get_usb_infos(usb->no, "serial"), 64);
+		strncpy(usb->speed, get_usb_infos(usb->no, "speed"), 64);
+		strncpy(usb->maxchild, get_usb_infos(usb->no, "maxchild"), 64);
+		strncpy(usb->idproduct, get_usb_infos(usb->no, "idProduct"), 64);
+		strncpy(usb->idvendor, get_usb_infos(usb->no, "idVendor"), 64);
 		sprintf(usb->mount, "%s%s", usb->manufacturer, usb->serial);
 		remove_space(usb->mount);
 		if(!strcmp(usb->mount, usb->serial)) {
 			sprintf(usb->mount, "%s%s", usb->product, usb->serial);
 			remove_space(usb->mount);
 		}
-		get_usb_device(&usb->device, usb->mount);
-		get_usb_size(&usb->size, usb->device);
+		strncpy(usb->device, get_usb_device(usb->mount), 64);
+		usb->size = get_usb_size(usb->device);
 	}
 }

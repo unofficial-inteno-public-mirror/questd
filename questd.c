@@ -30,6 +30,7 @@
 
 #include <time.h>
 #include <stdio.h>
+#include <dirent.h>
 
 #include "questd.h"
 
@@ -1167,21 +1168,26 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 static void
 router_dump_usbs(struct blob_buf *b)
 {
+	FILE *usbdevs;
+	DIR *dir;
+	struct dirent *ent;
+	char name[64];
 	void *t;
 	int uno = 0;
-	FILE *usbdevs;
-	char cmnd[64];
-	char line[16];
 
 	memset(usb, '\0', sizeof(usb));
-	sprintf(cmnd, "ls /sys/bus/usb/devices/ | grep -v ':' | grep -v 'usb'");
-	if ((usbdevs = popen(cmnd, "r"))) {
-		while(fgets(line, sizeof(line), usbdevs) != NULL)
-		{
-			remove_newline(line);
-			dump_usb_info(&usb[uno], line);
+	if ((dir = opendir ("/sys/bus/usb/devices")) != NULL) {
+		while ((ent = readdir (dir)) != NULL) {
+			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
+				continue;
+			if(strchr(ent->d_name, ':') || strstr(ent->d_name, "usb"))
+				continue;
+
+			dump_usb_info(&usb[uno], ent->d_name);
+
 			if(strlen(usb[uno].product) < 1)
 				continue;
+
 			t = blobmsg_open_table(b, usb[uno].name);
 			blobmsg_add_string(b, "idproduct", usb[uno].idproduct);
 			blobmsg_add_string(b, "idvendor", usb[uno].idvendor);
@@ -1193,7 +1199,7 @@ router_dump_usbs(struct blob_buf *b)
 			else {
 				blobmsg_add_string(b, "manufacturer", usb[uno].manufacturer);
 				blobmsg_add_string(b, "serial", usb[uno].serial);
-				if(usb[uno].device) {
+				if(strlen(usb[uno].device) > 1) {
 					blobmsg_add_string(b, "device", usb[uno].device);
 					blobmsg_add_u64(b, "size", usb[uno].size);
 					blobmsg_add_string(b, "mntdir", usb[uno].mount);
@@ -1202,7 +1208,9 @@ router_dump_usbs(struct blob_buf *b)
 			blobmsg_close_table(b, t);
 			uno++;
 		}
-		pclose(usbdevs);
+		closedir(dir);
+	} else {
+		perror ("Could not open /sys/bus/usb/devices directory");
 	}
 }
 

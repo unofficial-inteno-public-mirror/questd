@@ -179,13 +179,13 @@ typedef struct {
 	char no[8];
 	char name[8];
 	unsigned long size;
-	char *device;
-	char *manufacturer;
-	char *serial;
-	char *speed;
-	char *maxchild;
-	char *idproduct;
-	char *idvendor;
+	char device[64];
+	char manufacturer[64];
+	char serial[64];
+	char speed[64];
+	char maxchild[64];
+	char idproduct[64];
+	char idvendor[64];
 } USB;
 
 typedef struct {
