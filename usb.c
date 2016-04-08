@@ -24,24 +24,6 @@
 #include <string.h>
 
 static void
-remove_space(char *buf)
-{
-	char *newbuf = malloc(strlen(buf)+1);
-	int i = 0;
-	int j = 0;
-
-	while (buf[i]) {
-		newbuf[j] = buf[i];
-		if (buf[i] != ' ')
-			j++;
-		i++;
-	}
-	newbuf[j] = '\0';
-	strcpy(buf, newbuf);
-	free(newbuf); 
-}
-
-static void
 get_usb_infos(char **val, char *usbno, char *info) {
 	FILE *in;
 	char cmnd[64];

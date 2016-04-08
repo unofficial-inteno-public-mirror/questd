@@ -223,6 +223,7 @@ struct fdb_entry
 void recalc_sleep_time(bool calc, int toms);
 void init_db_hw_config(void);
 bool arping(char *target, char *device, int toms);
+void remove_space(char *buf);
 void remove_newline(char *buf);
 void replace_char(char *buf, char a, char b);
 void runCmd(const char *pFmt, ...);

@@ -4,6 +4,23 @@
 
 #include "questd.h"
 
+void
+remove_space(char *buf)
+{
+	char newbuf[strlen(buf)+1];
+	int i = 0;
+	int j = 0;
+
+	while (buf[i]) {
+		newbuf[j] = buf[i];
+		if (buf[i] != ' ')
+			j++;
+		i++;
+	}
+	newbuf[j] = '\0';
+	strcpy(buf, newbuf);
+}
+
 void 
 remove_newline(char *buf)
 {
