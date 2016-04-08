@@ -141,22 +141,22 @@ bridge_read_fdb(const char *bridge, struct fdb_entry *fdbs, unsigned long offset
 	return n;
 }
 
-void
-get_clients_onport(char *bridge, int portno, char **macaddr)
+char*
+get_clients_onport(char *bridge, int portno)
 {
 	int i, n;
 	struct fdb_entry *fdb = NULL;
 	int offset = 0;
 	char tmpmac[2400];
 	char mac[24];
-	
-	*macaddr = "";
+
+	memset(tmpmac, '\0', 2400);
 
 	for(;;) {
 		fdb = realloc(fdb, (offset + CHUNK) * sizeof(struct fdb_entry));
 		if (!fdb) {
 			fprintf(stderr, "Out of memory\n");
-			return;
+			return "";
 		}
 			
 		n = bridge_read_fdb(bridge, fdb+offset, offset, CHUNK);
@@ -166,7 +166,9 @@ get_clients_onport(char *bridge, int portno, char **macaddr)
 		if (n < 0) {
 			fprintf(stderr, "read of forward table failed: %s\n",
 				strerror(errno));
-			return;
+
+			free(fdb);
+			return "";
 		}
 
 		offset += n;
@@ -182,8 +184,8 @@ get_clients_onport(char *bridge, int portno, char **macaddr)
 			strcat(tmpmac, mac);
 		}
 	}
-	*macaddr = strdup(tmpmac);
 
 	free(fdb);
-	memset(tmpmac, '\0', sizeof(tmpmac));
+
+	return tmpmac;
 }

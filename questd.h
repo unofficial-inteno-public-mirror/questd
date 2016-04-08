@@ -239,7 +239,7 @@ void dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_
 void get_port_name(Port *port);
 void get_port_stats(Port *port);
 void get_bridge_ports(char *network, char **ifname);
-void get_clients_onport(char *bridge, int portno, char **macaddr);
+char *get_clients_onport(char *bridge, int portno);
 void dump_usb_info(USB *usb, char *usbno);
 void clear_macaddr(void);
 char *get_macaddr(void);

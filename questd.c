@@ -750,7 +750,7 @@ static void
 populate_ports(Network *network)
 {
 	char bridge[32];
-	char *macaddr;
+	char macaddr[2400];
 	char *theports;
 	char *prt, *mac;
 	int i = 1;
@@ -785,7 +785,7 @@ get_clients:
 		}
 		
 		get_port_stats(&port[i]);
-		get_clients_onport(bridge, i, &macaddr);
+		strncpy(macaddr, get_clients_onport(bridge, i), 2400);
 
 		l = 0;
 		if(network->is_lan) {
