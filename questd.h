@@ -36,7 +36,6 @@ typedef struct {
 	const char *device;
 	const char *ssid;
 	const char *network;
-	int noise;
 } Wireless;
 
 typedef struct {
@@ -44,8 +43,8 @@ typedef struct {
 	const char *band;
 	int frequency;
 	const char *hwmodes[6];
-	int channels[16];
-	const char *pcid;
+	int channels[64];
+	int chipnum;
 	int bwcaps[4];
 	bool is_ac;
 } Radio;
@@ -54,10 +53,10 @@ typedef struct {
 	int connum;
 	int idle;
 	int in_network;
-	long tx_bytes;
-	long rx_bytes;
-	int tx_rate;
-	int rx_rate;
+	unsigned long tx_bytes;
+	unsigned long rx_bytes;
+	unsigned int tx_rate;
+	unsigned int rx_rate;
 	int snr;
 	int rssi;
 	char frequency[8];

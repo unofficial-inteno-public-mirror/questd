@@ -34,6 +34,8 @@
 
 #include "questd.h"
 
+#include "broadcom.h" // WILL NOT BE NEEDED LATER
+
 #define DEFAULT_SLEEP	5000000
 
 static struct uci_context *uci_ctx;
@@ -303,8 +305,6 @@ load_wireless()
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
 				if (device) {
 					wireless[wno].device = device;
-					usleep(10000);
-					wireless[wno].noise = atoi(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wireless[wno].device));
 					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
 					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
 					if (!strcmp(device, "wl0")) {
@@ -328,12 +328,9 @@ load_wireless()
 				if(!(radio[rno].band = uci_lookup_option_string(uci_ctx, s, "band")))
 					radio[rno].band = "b";
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
-				usleep(10000);
-				runCmd("wlctl -i %s band %s", radio[rno].name, radio[rno].band);
-				usleep(10000);
-				radio[rno].pcid = chrCmd("wlctl -i %s revinfo | awk 'FNR == 2 {print}' | cut -d'x' -f2", radio[rno].name);
+				wl_get_chipnum(radio[rno].name, &(radio[rno].chipnum));
 				radio[rno].is_ac = false;
-				if (radio[rno].pcid && atoi(chrCmd("db -q get hw.%s.is_ac", radio[rno].pcid)) == 1)
+				if (radio[rno].chipnum && atoi(chrCmd("db -q get hw.%x.is_ac", radio[rno].chipnum)) == 1)
 					radio[rno].is_ac = true;
 
 				if(radio[rno].frequency == 2) {
@@ -357,18 +354,7 @@ load_wireless()
 						radio[rno].hwmodes[2] = "11ac";
 				}
 
-				chn = 0;
-				usleep(10000);
-				token = strtok(chrCmd("wlctl -i %s channels", radio[rno].name), " ");
-				while (token != NULL)
-				{
-					radio[rno].channels[chn] = atoi(token);
-					if (radio[rno].channels[chn] > 48)
-						break;
-					token = strtok (NULL, " ");
-					chn++;
-				}
-				radio[rno].channels[chn] = '\0';
+				wl_get_chanlist(radio[rno].name, radio[rno].channels);
 
 				rno++;
 			}
@@ -422,38 +408,30 @@ handle_client(Client *clnt)
 static void
 wireless_assoclist()
 {
-	FILE *assoclist;
-	char cmnd[64];
-	char line[64];
-	int i = 0;
-	int j = 0;
-	int rssi = 0;
+	struct wl_maclist *macs = NULL;
+	int bandwidth, channel, noise, rssi;
+	int i, j;
 
 	memset(stas, '\0', sizeof(stas));
 
 	for (i = 0; wireless[i].device; i++) {
-		if (wireless[i].noise > -60) {
-			usleep(10000);
-			wireless[i].noise = atoi(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wireless[i].device));
-		}
-		usleep(10000);
-		sprintf(cmnd, "wlctl -i %s assoclist", wireless[i].vif);
-		if ((assoclist = popen(cmnd, "r"))) {
-			while(fgets(line, sizeof(line), assoclist) != NULL)
+		wl_get_bssinfo(wireless[i].device, &bandwidth, &channel, &noise);
+		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
+		{
+			for (j = 0; j < macs->count; j++)
 			{
-				remove_newline(line);
-				stas[j].exists = false;
-				if (sscanf(line, "assoclist %s", stas[j].macaddr) == 1) {
-					stas[j].exists = true;
-					strcpy(stas[j].wdev, wireless[i].vif);
-					usleep(10000);
-					rssi = atoi(chrCmd("wlctl -i %s rssi %s", wireless[i].vif, stas[j].macaddr));
-					stas[j].rssi = rssi;
-					stas[j].snr = rssi - wireless[i].noise;
-					j++;
-				}
+				stas[j].exists = true;
+				sprintf(stas[j].macaddr, "%02X:%02X:%02X:%02X:%02X:%02X",
+					macs->ea[j].octet[0], macs->ea[j].octet[1], macs->ea[j].octet[2],
+					macs->ea[j].octet[3], macs->ea[j].octet[4], macs->ea[j].octet[5]
+				);
+				strcpy(stas[j].wdev, wireless[j].vif);
+				wl_get_rssi(stas[j].wdev, stas[j].macaddr, &rssi);
+				stas[j].rssi = rssi;
+				stas[j].snr = rssi - noise;
 			}
-			pclose(assoclist);
+
+			free(macs);
 		}
 	}
 }
@@ -464,63 +442,35 @@ wireless_details(Client *clnt, Detail *dtl)
 	FILE *stainfo;
 	char cmnd[64];
 	char line[128];
-	int i = 0;
-	int tmp;
-	int noise;
 
-/*	wl_sta_info_t sta = { 0 };*/
-/*	uint8_t	mac[6];*/
+	wl_sta_info_t sta = { 0 };
+	uint8_t	mac[6];
 
-/*	sscanf("E8:50:8B:B8:84:91", "%02X:%02X:%02X:%02X:%02X:%02X",*/
-/*		&mac[0], &mac[1], &mac[2],*/
-/*		&mac[3], &mac[4], &mac[5]*/
-/*	);*/
+	sscanf(clnt->macaddr, "%02X:%02X:%02X:%02X:%02X:%02X",
+		&mac[0], &mac[1], &mac[2],
+		&mac[3], &mac[4], &mac[5]
+	);
 
-/*	if (!wl_iovar(wldev, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))*/
-/*	{*/
-/*		printf("IDLE %d\n", sta.idle);*/
-/*	}*/
-
-	sprintf(cmnd, "wlctl -i %s sta_info %s 2>/dev/null", clnt->wdev, clnt->macaddr);
-	if ((stainfo = popen(cmnd, "r"))) {
-		while(fgets(line, sizeof(line), stainfo) != NULL)
-		{
-			remove_newline(line);
-			sscanf(line, "\t idle %d seconds", &(dtl->idle));
-			sscanf(line, "\t in network %d seconds", &(dtl->in_network));
-			sscanf(line, "\t tx total bytes: %ld\n", &(dtl->tx_bytes));
-			sscanf(line, "\t rx data bytes: %ld", &(dtl->rx_bytes));
-			sscanf(line, "\t rate of last tx pkt: %d kbps - %d kbps", &tmp, &(dtl->tx_rate));
-			if (dtl->tx_rate < 0) dtl->tx_rate = tmp;
-			sscanf(line, "\t rate of last rx pkt: %d kbps", &(dtl->rx_rate));
-		}
-		pclose(stainfo);
+	if (!wl_iovar(clnt->wdev, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))
+	{
+		dtl->idle = sta.idle;
+		dtl->in_network = sta.in;
+		dtl->tx_bytes = sta.tx_tot_bytes;
+		dtl->rx_bytes = sta.rx_tot_bytes;
+		dtl->tx_rate = sta.tx_rate;
+		dtl->rx_rate = sta.rx_rate;
 	}
 
-	sprintf(cmnd, "wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", clnt->wdev);
-	if ((stainfo = popen(cmnd, "r"))) {
-		fgets(line, sizeof(line), stainfo);
-		remove_newline(line);
-		noise = atoi(line);
-		pclose(stainfo);
-	}
+	int bandwidth, channel, noise;
+	wl_get_bssinfo(clnt->wdev, &bandwidth, &channel, &noise);
 
-	sprintf(cmnd, "wlctl -i %s rssi %s", clnt->wdev, clnt->macaddr);
-	if ((stainfo = popen(cmnd, "r"))) {
-		fgets(line, sizeof(line), stainfo);
-		remove_newline(line);
-		dtl->rssi = atoi(line);
-		dtl->snr = dtl->rssi - noise;
-		pclose(stainfo);
-	}
+	sprintf(dtl->frequency, "%sGHz", (channel >= 36)?"5":"2.4");
 
-	sprintf(cmnd, "wlctl -i %s assoc | grep Chanspec | awk '{print$2}'", clnt->wdev);
-	if ((stainfo = popen(cmnd, "r"))) {
-		fgets(line, sizeof(line), stainfo);
-		remove_newline(line);
-		strncpy(dtl->frequency, line, sizeof(dtl->frequency));
-		pclose(stainfo);
-	}
+	int rssi;
+	wl_get_rssi(clnt->wdev, clnt->macaddr, &rssi);
+
+	dtl->rssi = rssi;
+	dtl->snr = rssi - noise;
 }
 
 static bool
@@ -1894,7 +1844,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		}
 		blobmsg_close_array(&bb, c);
 		c = blobmsg_open_array(&bb, "channels");
-		for(j=0; radio[i].channels[j]; j++) {
+		for(j=0; radio[i].channels[j] != 0; j++) {
 			blobmsg_add_u32(&bb, "", radio[i].channels[j]);
 		}
 		blobmsg_close_array(&bb, c);

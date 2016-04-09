@@ -17,6 +17,9 @@
 #define SSID_FMT_BUF_LEN (4*32+1)	/* Length for SSID format string */
 #define	LEGACY_WL_BSS_INFO_VERSION	107
 #define MCSSET_LEN	16	/* 16-bits per 8-bit set to give 128-bits bitmap of MCS Index */
+#define WL_STA_ANT_MAX		4	/**< max possible rx antennas */
+#define WL_STA_VER		4
+#define WL_NUMCHANNELS		64
 
 #include "typedefs.h"
 #include "bcmwifi_channels.h"
@@ -358,6 +361,13 @@
 #define WLC_SET_WAI_REKEY			315	/* for WAPI */
 #define WLC_LAST
 
+/* uint32 list */
+typedef struct wl_uint32_list {
+	/* in - # of elements, out - # of entries */
+	uint32 count;
+	/* variable length uint32 list */
+	uint32 element[1];
+} wl_uint32_list_t;
 
 struct wl_ether_addr {
 	uint8_t					octet[6];
@@ -421,22 +431,81 @@ typedef struct wl_bss_info {
 	/* variable length Information Elements */
 } wl_bss_info_t;
 
+/* Used to get specific STA parameters */
+typedef struct wl_scb_val {
+	uint32	val;
+	struct wl_ether_addr ea;
+} wl_scb_val_t;
+
+/* Used to get specific link/ac parameters */
+typedef struct wl_link_val {
+	int ac;
+	uint8 val;
+	struct wl_ether_addr ea;
+} wl_link_val_t;
+
+/* Used by iovar versions of some ioctls, i.e. WLC_SCB_AUTHORIZE et al */
+typedef struct wl_authops {
+	uint32 code;
+	wl_scb_val_t ioctl_args;
+} wl_authops_t;
+
 typedef struct wl_sta_info {
-    uint16_t				ver;        /* version of this struct */
-    uint16_t				len;        /* length in bytes of this structure */
-    uint16_t				cap;        /* sta's advertised capabilities */
-    uint32_t				flags;      /* flags defined below */
-    uint32_t				idle;       /* time since data pkt rx'd from sta */
-    unsigned char			ea[6];      /* Station address */
-    wl_rateset_t			rateset;    /* rateset in use */
-    uint32_t				in;   		/* seconds elapsed since associated */
-    uint32_t				listen_interval_inms; /* Min Listen interval in ms for this STA */
-    uint32_t				tx_pkts;    /* # of packets transmitted */
-    uint32_t				tx_failures;    /* # of packets failed */
-    uint32_t				rx_ucast_pkts;  /* # of unicast packets received */
-    uint32_t				rx_mcast_pkts;  /* # of multicast packets received */
-    uint32_t				tx_rate;    /* Rate of last successful tx frame */
-    uint32_t				rx_rate;    /* Rate of last successful rx frame */
+	uint16			ver;		/**< version of this struct */
+	uint16			len;		/**< length in bytes of this structure */
+	uint16			cap;		/**< sta's advertised capabilities */
+	uint32			flags;		/**< flags defined below */
+	uint32			idle;		/**< time since data pkt rx'd from sta */
+	struct wl_ether_addr	ea;		/**< Station address */
+	wl_rateset_t		rateset;	/**< rateset in use */
+	uint32			in;		/**< seconds elapsed since associated */
+	uint32			listen_interval_inms; /* Min Listen interval in ms for this STA */
+	uint32			tx_pkts;	/**< # of user packets transmitted (unicast) */
+	uint32			tx_failures;	/**< # of user packets failed */
+	uint32			rx_ucast_pkts;	/**< # of unicast packets received */
+	uint32			rx_mcast_pkts;	/**< # of multicast packets received */
+	uint32			tx_rate;	/**< Rate used by last tx frame */
+	uint32			rx_rate;	/**< Rate of last successful rx frame */
+	uint32			rx_decrypt_succeeds;	/**< # of packet decrypted successfully */
+	uint32			rx_decrypt_failures;	/**< # of packet decrypted unsuccessfully */
+	uint32			tx_tot_pkts;	/**< # of user tx pkts (ucast + mcast) */
+	uint32			rx_tot_pkts;	/**< # of data packets recvd (uni + mcast) */
+	uint32			tx_mcast_pkts;	/**< # of mcast pkts txed */
+	uint64			tx_tot_bytes;	/**< data bytes txed (ucast + mcast) */
+	uint64			rx_tot_bytes;	/**< data bytes recvd (ucast + mcast) */
+	uint64			tx_ucast_bytes;	/**< data bytes txed (ucast) */
+	uint64			tx_mcast_bytes;	/**< # data bytes txed (mcast) */
+	uint64			rx_ucast_bytes;	/**< data bytes recvd (ucast) */
+	uint64			rx_mcast_bytes;	/**< data bytes recvd (mcast) */
+	int8			rssi[WL_STA_ANT_MAX]; /* average rssi per antenna
+										   * of data frames
+										   */
+	int8			nf[WL_STA_ANT_MAX];	/**< per antenna noise floor */
+	uint16			aid;		/**< association ID */
+	uint16			ht_capabilities;	/**< advertised ht caps */
+	uint16			vht_flags;		/**< converted vht flags */
+	uint32			tx_pkts_retried;	/**< # of frames where a retry was
+							 * necessary
+							 */
+	uint32			tx_pkts_retry_exhausted; /* # of user frames where a retry
+							  * was exhausted
+							  */
+	int8			rx_lastpkt_rssi[WL_STA_ANT_MAX]; /* Per antenna RSSI of last
+								  * received data frame.
+								  */
+	/* TX WLAN retry/failure statistics:
+	 * Separated for host requested frames and WLAN locally generated frames.
+	 * Include unicast frame only where the retries/failures can be counted.
+	 */
+	uint32			tx_pkts_total;		/**< # user frames sent successfully */
+	uint32			tx_pkts_retries;	/**< # user frames retries */
+	uint32			tx_pkts_fw_total;	/**< # FW generated sent successfully */
+	uint32			tx_pkts_fw_retries;	/**< # retries for FW generated frames */
+	uint32			tx_pkts_fw_retry_exhausted;	/**< # FW generated where a retry
+								 * was exhausted
+								 */
+	uint32			rx_pkts_retried;	/**< # rx with retry bit set */
+	uint32			tx_rate_fallback;	/**< lowest fallback TX rate */
 } wl_sta_info_t;
 
 typedef struct wlc_ssid {
@@ -454,23 +523,28 @@ typedef struct wl_ioctl {
 	uint32_t				needed;	/* bytes needed (optional) */
 } wl_ioctl_t;
 
-/* Revision info */
+/*
+ * Structure for passing hardware and software
+ * revision info up from the driver.
+ */
 typedef struct wlc_rev_info {
-	uint		vendorid;	/* PCI vendor id */
-	uint		deviceid;	/* device id of chip */
-	uint		radiorev;	/* radio revision */
-	uint		chiprev;	/* chip revision */
-	uint		corerev;	/* core revision */
-	uint		boardid;	/* board identifier (usu. PCI sub-device id) */
-	uint		boardvendor;	/* board vendor (usu. PCI sub-vendor id) */
-	uint		boardrev;	/* board revision */
-	uint		driverrev;	/* driver version */
-	uint		ucoderev;	/* microcode version */
-	uint		bus;		/* bus type */
-	uint		chipnum;	/* chip number */
-	uint		phytype;	/* phy type */
-	uint		phyrev;		/* phy revision */
-	uint		anarev;		/* anacore rev */
+	uint		vendorid;	/**< PCI vendor id */
+	uint		deviceid;	/**< device id of chip */
+	uint		radiorev;	/**< radio revision */
+	uint		chiprev;	/**< chip revision */
+	uint		corerev;	/**< core revision */
+	uint		boardid;	/**< board identifier (usu. PCI sub-device id) */
+	uint		boardvendor;	/**< board vendor (usu. PCI sub-vendor id) */
+	uint		boardrev;	/**< board revision */
+	uint		driverrev;	/**< driver version */
+	uint		ucoderev;	/**< microcode version */
+	uint		bus;		/**< bus type */
+	uint		chipnum;	/**< chip number */
+	uint		phytype;	/**< phy type */
+	uint		phyrev;		/**< phy revision */
+	uint		anarev;		/**< anacore rev */
+	uint		chippkg;	/**< chip package info */
+	uint		nvramrev;	/**< nvram revision number */
 } wlc_rev_info_t;
 
 typedef struct wl_country_list {

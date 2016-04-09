@@ -97,28 +97,21 @@ int wl_get_noise(const char *ifname, int *buf)
 	return 0;
 }
 
-int wl_get_noise2(const char *ifname, int *buf)
+int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
-	unsigned int ap, noise;
-	int ioctl_req_version = 0x2000;
-	char tmp[WLC_IOCTL_MAXLEN];
+	wl_scb_val_t scb_val;
+	uint8_t	mac[6];
+	int ret;
 
-	memset(tmp, 0, WLC_IOCTL_MAXLEN);
-	memcpy(tmp, &ioctl_req_version, sizeof(ioctl_req_version));
+	sscanf(sta, "%02X:%02X:%02X:%02X:%02X:%02X",
+		&scb_val.ea.octet[0], &scb_val.ea.octet[1], &scb_val.ea.octet[2],
+		&scb_val.ea.octet[3], &scb_val.ea.octet[4], &scb_val.ea.octet[5]
+	);
 
-	wl_ioctl(ifname, WLC_GET_BSS_INFO, tmp, WLC_IOCTL_MAXLEN);
+	if ((ret = wl_ioctl(ifname, WLC_GET_RSSI, &scb_val, sizeof(scb_val))) < 0)
+		return ret;
 
-	if ((wl_ioctl(ifname, WLC_GET_AP, &ap, sizeof(ap)) < 0) || ap)
-	{
-		if (wl_ioctl(ifname, WLC_GET_PHY_NOISE, &noise, sizeof(noise)) < 0)
-			noise = 0;
-	}
-	else
-	{
-		noise = tmp[WL_BSS_NOISE_OFFSET];
-	}
-
-	*buf = noise;
+	*buf = scb_val.val;
 
 	return 0;
 }
@@ -251,4 +244,60 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 	//dump_bss_info_summary(bi);
 
 	return 0;
+}
+
+int wl_get_chanlist(const char *ifname, int *buf)
+{
+	uint32 chan_buf[WL_NUMCHANNELS + 1];
+	wl_uint32_list_t *list;
+	int ret;
+	uint i;
+
+	list = (wl_uint32_list_t *)(void *)chan_buf;
+	list->count = WL_NUMCHANNELS;
+	ret = wl_ioctl(ifname, WLC_GET_VALID_CHANNELS, chan_buf, sizeof(chan_buf));
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < list->count; i++)
+		buf[i] = list->element[i];
+
+	if (i < WL_NUMCHANNELS)
+		buf[i+1] = 0;
+
+	return ret;
+}
+
+int wl_get_chipnum(const char *ifname, int *buf)
+{
+	wlc_rev_info_t revinfo;
+
+	if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo)))
+		return -1;
+
+	*buf = revinfo.chipnum;
+
+	return 0;
+}
+
+struct wl_maclist * wl_read_assoclist(const char *ifname)
+{
+	struct wl_maclist *macs;
+	int maclen = 4 + WL_MAX_STA_COUNT * 6;
+
+	if (strstr(ifname, "wds"))
+		return NULL;
+
+	if ((macs = (struct wl_maclist *) malloc(maclen)) != NULL)
+	{
+		memset(macs, 0, maclen);
+		macs->count = WL_MAX_STA_COUNT;
+
+		if (!wl_ioctl(ifname, WLC_GET_ASSOCLIST, macs, maclen))
+			return macs;
+
+		free(macs);
+	}
+
+	return NULL;
 }
