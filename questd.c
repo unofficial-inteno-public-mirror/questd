@@ -468,6 +468,19 @@ wireless_details(Client *clnt, Detail *dtl)
 	int tmp;
 	int noise;
 
+/*	wl_sta_info_t sta = { 0 };*/
+/*	uint8_t	mac[6];*/
+
+/*	sscanf("E8:50:8B:B8:84:91", "%02X:%02X:%02X:%02X:%02X:%02X",*/
+/*		&mac[0], &mac[1], &mac[2],*/
+/*		&mac[3], &mac[4], &mac[5]*/
+/*	);*/
+
+/*	if (!wl_iovar(wldev, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))*/
+/*	{*/
+/*		printf("IDLE %d\n", sta.idle);*/
+/*	}*/
+
 	sprintf(cmnd, "wlctl -i %s sta_info %s 2>/dev/null", clnt->wdev, clnt->macaddr);
 	if ((stainfo = popen(cmnd, "r"))) {
 		while(fgets(line, sizeof(line), stainfo) != NULL)
@@ -1555,36 +1568,32 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(nthere))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	int isup;
+	wl_get_isup(wldev, &isup);
+
+	int band;
+	wl_get_band(wldev, &band);
+
+	char bssid[24];
+	wl_get_bssid(wldev, bssid);
+
+	int rate;
+	wl_get_bitrate(wldev, &rate);
+
+	int bandwidth, channel, noise;
+	wl_get_bssinfo(wldev, &bandwidth, &channel, &noise);
+
+
 	void *t;
-	int freq = 2;
-	int bw = 20;
-	int channel;
-
-	const char *chanspec = chrCmd("wlctl -i %s chanspec | awk '{print$1}'", wldev);
-	const char *bssid = chrCmd("wlctl -i %s cur_etheraddr | awk '{print$2}'", wldev);
-	int noise = atoi(chrCmd("wlctl -i %s assoc | grep 'noise: ' | awk '{print($10)}'", wldev));
-	int isup = atoi(chrCmd("wlctl -i %s isup", wldev));
-
-
-	if (strstr(chanspec, "/80") && sscanf(chanspec, "%d/80", &channel) == 1)
-		bw = 80;
-	else if ((strstr(chanspec, "u") || strstr(chanspec, "l")) &&
-			(sscanf(chanspec, "%dl", &channel) == 1 || sscanf(chanspec, "%du", &channel) == 1))
-		bw = 40;
-	else
-		channel = atoi(chanspec);
-
-	if (channel >= 36)
-		freq = 5;
-
 	blob_buf_init(&bb, 0);
 	blobmsg_add_string(&bb, "wldev", wldev);
 	blobmsg_add_u32(&bb, "radio", isup);
 	blobmsg_add_string(&bb, "bssid", bssid);
-	blobmsg_add_u32(&bb, "frequency", freq);
+	blobmsg_add_u32(&bb, "frequency", (band==1)?5:2);
 	blobmsg_add_u32(&bb, "channel", channel);
-	blobmsg_add_u32(&bb, "bandwidth", bw);
+	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
 	blobmsg_add_u32(&bb, "noise", noise);
+	blobmsg_add_u32(&bb, "rate", rate);
 
 	ubus_send_reply(ctx, req, bb.head);
 
@@ -1845,16 +1854,35 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	void *t, *c;
 	int i, j;
+	int isup, band, rate, bw, channel, noise;
+	char bitrate[10];
+	char frequency[10];
+	char bandwidth[10];
 
 	blob_buf_init(&bb, 0);
 
 	for (i = 0; i < MAX_RADIO; i++) {
 		if (!radio[i].name)
 			break;
+
+		wl_get_isup(radio[i].name, &isup);
+
+		wl_get_band(radio[i].name, &band);
+		sprintf(frequency, "%sGHz", (band==1)?"5":"2.4");
+
+		wl_get_bitrate(radio[i].name, &rate);
+		sprintf(bitrate, "%d Mbps", (rate/1000));
+
+		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
+		sprintf(bandwidth, "%dMHz", bw);
+
 		t = blobmsg_open_table(&bb, radio[i].name);
-		blobmsg_add_u8(&bb, "isup", atoi(chrCmd("wlctl -i %s isup", radio[i].name)));
-		blobmsg_add_string(&bb, "band", radio[i].band);
-		blobmsg_add_u32(&bb, "frequency", radio[i].frequency);
+		blobmsg_add_u8(&bb, "isup", isup);
+		blobmsg_add_string(&bb, "frequency", frequency);
+		blobmsg_add_string(&bb, "bandwidth", bandwidth);
+		blobmsg_add_u32(&bb, "channel", channel);
+		blobmsg_add_u32(&bb, "noise", noise);
+		blobmsg_add_string(&bb, "rate", bitrate);
 		c = blobmsg_open_array(&bb, "hwmodes");
 		for(j=0; radio[i].hwmodes[j]; j++) {
 			blobmsg_add_string(&bb, "", radio[i].hwmodes[j]);

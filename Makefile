@@ -2,10 +2,16 @@ CC		= gcc
 CFLAGS		= -g -Wall 
 LOCLIBS		= 
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json
-OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o
-SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c
+
+# IF BROADCOM
+WLOBJS = broadcom.o
+WLSRCS = broadcom.c
+#
+
+OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o ${WLOBJS}
+SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c ${WLSRCS}
 LIBSRCS		= 
-ISRCS		= questd.h
+ISRCS		= questd.h broadcom.h
 
 all: questd ueventd uscriptd
 
