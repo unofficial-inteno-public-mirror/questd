@@ -50,9 +50,9 @@ typedef struct {
 } Radio;
 
 typedef struct {
-	int connum;
-	int idle;
-	int in_network;
+	unsigned int connum;
+	unsigned int idle;
+	unsigned int in_network;
 	unsigned long tx_bytes;
 	unsigned long rx_bytes;
 	unsigned int tx_rate;

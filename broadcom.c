@@ -43,7 +43,7 @@ static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 	return ioctl(iosocket, SIOCDEVPRIVATE, &ifr);
 }
 
-int wl_iovar(const char *name, const char *cmd, const char *arg, int arglen, void *buf, int buflen)
+static int wl_iovar(const char *name, const char *cmd, const char *arg, int arglen, void *buf, int buflen)
 {
 	int cmdlen = strlen(cmd) + 1;
 
@@ -53,6 +53,36 @@ int wl_iovar(const char *name, const char *cmd, const char *arg, int arglen, voi
 		memcpy(buf + cmdlen, arg, arglen);
 
 	return wl_ioctl(name, WLC_GET_VAR, buf, buflen);
+}
+
+int
+wl_ether_atoe(const char *a, struct wl_ether_addr *n)
+{
+	char *c = NULL;
+	int i = 0;
+
+	memset(n, 0, ETHER_ADDR_LEN);
+	for (;;) {
+		n->octet[i++] = (uint8)strtoul(a, &c, 16);
+		if (!*c++ || i == ETHER_ADDR_LEN)
+			break;
+		a = c;
+	}
+	return (i == ETHER_ADDR_LEN);
+}
+char *
+wl_ether_etoa(const struct wl_ether_addr *n)
+{
+	static char etoa_buf[ETHER_ADDR_LEN * 3];
+	char *c = etoa_buf;
+	int i;
+
+	for (i = 0; i < ETHER_ADDR_LEN; i++) {
+		if (i)
+			*c++ = ':';
+		c += sprintf(c, "%02X", n->octet[i] & 0xff);
+	}
+	return etoa_buf;
 }
 
 int wl_get_channel(const char *ifname, int *buf)
@@ -104,14 +134,14 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf)
 	int ret;
 
 	sscanf(sta, "%02X:%02X:%02X:%02X:%02X:%02X",
-		&scb_val.ea.octet[0], &scb_val.ea.octet[1], &scb_val.ea.octet[2],
-		&scb_val.ea.octet[3], &scb_val.ea.octet[4], &scb_val.ea.octet[5]
+		(uint32*)&(scb_val.ea.octet[0]), (uint32*)&(scb_val.ea.octet[1]), (uint32*)&(scb_val.ea.octet[2]),
+		(uint32*)&(scb_val.ea.octet[3]), (uint32*)&(scb_val.ea.octet[4]), (uint32*)&(scb_val.ea.octet[5])
 	);
 
 	if ((ret = wl_ioctl(ifname, WLC_GET_RSSI, &scb_val, sizeof(scb_val))) < 0)
-		return ret;
-
-	*buf = scb_val.val;
+		*buf = 0;
+	else
+		*buf = scb_val.val;
 
 	return 0;
 }
@@ -300,4 +330,73 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 	}
 
 	return NULL;
+}
+
+int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
+{
+	wl_sta_info_t sta;
+	uint8_t mac[6];
+
+	sscanf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X",
+		&mac[0], &mac[1], &mac[2],
+		&mac[3], &mac[4], &mac[5]
+	);
+
+	if (!wl_iovar(ifname, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))
+	{
+		printf("VIF %s BSSID %s DETAILS %d\n", ifname, bssid, sta.tx_pkts_total);
+		buf[0] = sta.idle;
+		buf[1] = sta.in;
+		buf[2] = sta.tx_tot_bytes;
+		buf[3] = sta.rx_tot_bytes;
+		buf[4] = sta.tx_rate;
+		buf[5] = sta.rx_rate;
+	}
+	else
+		printf("COULD NOT OPEN VIF %s BSSID %s\n", ifname, bssid);
+
+	return 0;
+}
+
+int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *detail)
+{
+	wl_sta_info_t *sta;
+	struct wl_ether_addr ea;
+	char *param;
+	char buf[WLC_IOCTL_MEDLEN];
+	int buflen, err;
+	int i;
+
+	strcpy(buf, "sta_info");
+
+	/* convert the ea string into an ea struct */
+	if (!wl_ether_atoe(bssid, &ea)) {
+		printf(" ERROR: no valid ether addr provided\n");
+		return -1;
+	}
+
+	buflen = strlen(buf) + 1;
+	param = (char *)(buf + buflen);
+	memcpy(param, (char*)&ea, ETHER_ADDR_LEN);
+
+	if ((err = wl_ioctl(ifname, WLC_GET_VAR, buf, WLC_IOCTL_MEDLEN)) < 0)
+		return err;
+
+	/* display the sta info */
+	sta = (wl_sta_info_t *)buf;
+
+	/* Report unrecognized version */
+	if (sta->ver > WL_STA_VER) {
+		printf(" ERROR: unknown driver station info version %d\n", sta->ver);
+		return -1;
+	}
+
+	detail[0] = sta->idle;
+	detail[1] = sta->in;
+	detail[2] = sta->tx_tot_bytes;
+	detail[3] = sta->rx_tot_bytes;
+	detail[4] = sta->tx_rate;
+	detail[5] = sta->rx_rate;
+
+	return 0;
 }

@@ -20,6 +20,8 @@
 #define WL_STA_ANT_MAX		4	/**< max possible rx antennas */
 #define WL_STA_VER		4
 #define WL_NUMCHANNELS		64
+#define	ETHER_ADDR_LEN		6
+#define WLC_IOCTL_MEDLEN	1536    /* "med" length ioctl buffer required */
 
 #include "typedefs.h"
 #include "bcmwifi_channels.h"

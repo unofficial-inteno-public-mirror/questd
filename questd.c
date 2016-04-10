@@ -415,7 +415,7 @@ wireless_assoclist()
 	memset(stas, '\0', sizeof(stas));
 
 	for (i = 0; wireless[i].device; i++) {
-		wl_get_bssinfo(wireless[i].device, &bandwidth, &channel, &noise);
+/*		wl_get_bssinfo(wireless[i].device, &bandwidth, &channel, &noise);*/
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
 			for (j = 0; j < macs->count; j++)
@@ -426,9 +426,9 @@ wireless_assoclist()
 					macs->ea[j].octet[3], macs->ea[j].octet[4], macs->ea[j].octet[5]
 				);
 				strcpy(stas[j].wdev, wireless[j].vif);
-				wl_get_rssi(stas[j].wdev, stas[j].macaddr, &rssi);
-				stas[j].rssi = rssi;
-				stas[j].snr = rssi - noise;
+/*				wl_get_rssi(stas[j].wdev, stas[j].macaddr, &rssi);*/
+/*				stas[j].rssi = rssi;*/
+/*				stas[j].snr = rssi - noise;*/
 			}
 
 			free(macs);
@@ -439,27 +439,16 @@ wireless_assoclist()
 static void
 wireless_details(Client *clnt, Detail *dtl)
 {
-	FILE *stainfo;
-	char cmnd[64];
-	char line[128];
+	unsigned long detail[6] = { 0 };
 
-	wl_sta_info_t sta = { 0 };
-	uint8_t	mac[6];
+	wl_get_stainfo(clnt->wdev, clnt->macaddr, detail);
 
-	sscanf(clnt->macaddr, "%02X:%02X:%02X:%02X:%02X:%02X",
-		&mac[0], &mac[1], &mac[2],
-		&mac[3], &mac[4], &mac[5]
-	);
-
-	if (!wl_iovar(clnt->wdev, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))
-	{
-		dtl->idle = sta.idle;
-		dtl->in_network = sta.in;
-		dtl->tx_bytes = sta.tx_tot_bytes;
-		dtl->rx_bytes = sta.rx_tot_bytes;
-		dtl->tx_rate = sta.tx_rate;
-		dtl->rx_rate = sta.rx_rate;
-	}
+	dtl->idle = (uint)(detail[0]);
+	dtl->in_network = (uint)(detail[1]);
+	dtl->tx_bytes = detail[2];
+	dtl->rx_bytes = detail[3];
+	dtl->tx_rate = (uint)(detail[4]);
+	dtl->rx_rate = (uint)(detail[5]);
 
 	int bandwidth, channel, noise;
 	wl_get_bssinfo(clnt->wdev, &bandwidth, &channel, &noise);
