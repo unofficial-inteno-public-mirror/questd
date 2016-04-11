@@ -557,5 +557,19 @@ typedef struct wl_country_list {
 	char country_abbrev[1];
 } wl_country_list_t;
 
+int wl_get_channel(const char *ifname, int *buf);
+int wl_get_ssid(const char *ifname, char *buf);
+int wl_get_bssid(const char *ifname, char *buf);
+int wl_get_noise(const char *ifname, int *buf);
+int wl_get_rssi(const char *ifname, char *sta, int *buf);
+int wl_get_bitrate(const char *ifname, int *buf);
+int wl_get_isup(const char *ifname, int *buf);
+int wl_get_band(const char *ifname, int *buf);
+int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise);
+int wl_get_chanlist(const char *ifname, int *buf);
+int wl_get_deviceid(const char *ifname, int *buf);
+int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
+int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
+int wl_get_stas_info(const char *ifname, char *bssid, unsigned long *buf);
 
 #endif

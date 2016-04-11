@@ -44,7 +44,7 @@ typedef struct {
 	int frequency;
 	const char *hwmodes[6];
 	int channels[64];
-	int chipnum;
+	int deviceid;
 	int bwcaps[4];
 	bool is_ac;
 } Radio;
@@ -60,7 +60,7 @@ typedef struct {
 	int snr;
 	int rssi;
 	char frequency[8];
-} Detail;
+} StaInfo;
 
 typedef struct {
 	bool exists;

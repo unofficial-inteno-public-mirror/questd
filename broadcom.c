@@ -130,7 +130,6 @@ int wl_get_noise(const char *ifname, int *buf)
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
 	wl_scb_val_t scb_val;
-	uint8_t	mac[6];
 	int ret;
 
 	sscanf(sta, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -248,7 +247,7 @@ void dump_bss_info_summary(wl_bss_info_t *bi)
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
 	wl_bss_info_t *bi;
-	unsigned int ap;
+/*	unsigned int ap;*/
 	int ioctl_req_version = 0x2000;
 	char tmp[WLC_IOCTL_MAXLEN];
 
@@ -298,14 +297,14 @@ int wl_get_chanlist(const char *ifname, int *buf)
 	return ret;
 }
 
-int wl_get_chipnum(const char *ifname, int *buf)
+int wl_get_deviceid(const char *ifname, int *buf)
 {
 	wlc_rev_info_t revinfo;
 
 	if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo)))
 		return -1;
 
-	*buf = revinfo.chipnum;
+	*buf = revinfo.deviceid;
 
 	return 0;
 }
@@ -335,7 +334,7 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
 {
 	wl_sta_info_t sta;
-	uint8_t mac[6];
+	uint mac[6];
 
 	sscanf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X",
 		&mac[0], &mac[1], &mac[2],
@@ -344,7 +343,6 @@ int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
 
 	if (!wl_iovar(ifname, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))
 	{
-		printf("VIF %s BSSID %s DETAILS %d\n", ifname, bssid, sta.tx_pkts_total);
 		buf[0] = sta.idle;
 		buf[1] = sta.in;
 		buf[2] = sta.tx_tot_bytes;
@@ -352,20 +350,17 @@ int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
 		buf[4] = sta.tx_rate;
 		buf[5] = sta.rx_rate;
 	}
-	else
-		printf("COULD NOT OPEN VIF %s BSSID %s\n", ifname, bssid);
 
 	return 0;
 }
 
-int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *detail)
+int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 {
 	wl_sta_info_t *sta;
 	struct wl_ether_addr ea;
 	char *param;
 	char buf[WLC_IOCTL_MEDLEN];
 	int buflen, err;
-	int i;
 
 	strcpy(buf, "sta_info");
 
@@ -391,12 +386,37 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *detail)
 		return -1;
 	}
 
-	detail[0] = sta->idle;
-	detail[1] = sta->in;
-	detail[2] = sta->tx_tot_bytes;
-	detail[3] = sta->rx_tot_bytes;
-	detail[4] = sta->tx_rate;
-	detail[5] = sta->rx_rate;
+	stainfo[0] = sta->idle;
+	stainfo[1] = sta->in;
+	stainfo[2] = sta->tx_tot_bytes;
+	stainfo[3] = sta->rx_tot_bytes;
+	stainfo[4] = sta->tx_rate;
+	stainfo[5] = sta->rx_rate;
 
 	return 0;
 }
+
+int wl_get_stas_info(const char *ifname, char *bssid, unsigned long *buf)
+{
+	FILE *stainfo;
+	char cmnd[64];
+	char line[128];
+	int tmp;
+
+	sprintf(cmnd, "wlctl -i %s sta_info %s 2>/dev/null", ifname, bssid);
+	if ((stainfo = popen(cmnd, "r"))) {
+		while(fgets(line, sizeof(line), stainfo) != NULL)
+		{
+			remove_newline(line);
+			sscanf(line, "\t idle %d seconds", &(buf[0]));
+			sscanf(line, "\t in network %d seconds", &(buf[1]));
+			sscanf(line, "\t tx total bytes: %ld\n", &(buf[2]));
+			sscanf(line, "\t rx data bytes: %ld", &(buf[3]));
+			sscanf(line, "\t rate of last tx pkt: %d kbps - %d kbps", &tmp, &(buf[4]));
+			if (buf[4] < 0) buf[4] = tmp;
+			sscanf(line, "\t rate of last rx pkt: %d kbps", &(buf[5]));
+		}
+		pclose(stainfo);
+	}
+}
+
