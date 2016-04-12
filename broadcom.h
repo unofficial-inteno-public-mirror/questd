@@ -14,6 +14,30 @@
  *
  */
 
+/* Reverse the bytes in a 16-bit value */
+#define BCMSWAP16(val) \
+	((uint16)((((uint16)(val) & (uint16)0x00ffU) << 8) | \
+		  (((uint16)(val) & (uint16)0xff00U) >> 8)))
+
+/* Reverse the bytes in a 32-bit value */
+#define BCMSWAP32(val) \
+	((uint32)((((uint32)(val) & (uint32)0x000000ffU) << 24) | \
+		  (((uint32)(val) & (uint32)0x0000ff00U) <<  8) | \
+		  (((uint32)(val) & (uint32)0x00ff0000U) >>  8) | \
+		  (((uint32)(val) & (uint32)0xff000000U) >> 24)))
+
+/* Reverse the bytes in a 64-bit value */
+#define BCMSWAP64(val) \
+	((uint64)((((uint64)(val) & 0x00000000000000ffULL) << 56) | \
+	          (((uint64)(val) & 0x000000000000ff00ULL) << 40) | \
+	          (((uint64)(val) & 0x0000000000ff0000ULL) << 24) | \
+	          (((uint64)(val) & 0x00000000ff000000ULL) <<  8) | \
+	          (((uint64)(val) & 0x000000ff00000000ULL) >>  8) | \
+	          (((uint64)(val) & 0x0000ff0000000000ULL) >> 24) | \
+	          (((uint64)(val) & 0x00ff000000000000ULL) >> 40) | \
+	          (((uint64)(val) & 0xff00000000000000ULL) >> 56)))
+
+
 #define SSID_FMT_BUF_LEN (4*32+1)	/* Length for SSID format string */
 #define	LEGACY_WL_BSS_INFO_VERSION	107
 #define MCSSET_LEN	16	/* 16-bits per 8-bit set to give 128-bits bitmap of MCS Index */

@@ -21,6 +21,11 @@
 #include "bcmwifi_channels.h"
 
 static int iosocket = -1;
+static int e_swap = 0;
+
+#define eswap64(val) (e_swap)?BCMSWAP64(val):val
+#define eswap32(val) (e_swap)?BCMSWAP32(val):val
+#define eswap16(val) (e_swap)?BCMSWAP16(val):val
 
 static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 {
@@ -41,6 +46,23 @@ static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 	}
 
 	return ioctl(iosocket, SIOCDEVPRIVATE, &ifr);
+}
+
+static int wl_endianness_check(void *wl)
+{
+	int ret;
+	int val;
+
+	if ((ret = wl_ioctl(wl, WLC_GET_MAGIC, &val, sizeof(int))) < 0)
+		return ret;
+
+	/* Detect if IOCTL swapping is necessary */
+	if (val == (int)BCMSWAP32(WLC_IOCTL_MAGIC))
+		e_swap = 1;
+	else
+		e_swap = 0; /*retore it back in case it is called multiple times on different wl instance */
+
+	return 0;
 }
 
 static int wl_iovar(const char *name, const char *cmd, const char *arg, int arglen, void *buf, int buflen)
@@ -70,6 +92,7 @@ wl_ether_atoe(const char *a, struct wl_ether_addr *n)
 	}
 	return (i == ETHER_ADDR_LEN);
 }
+
 char *
 wl_ether_etoa(const struct wl_ether_addr *n)
 {
@@ -130,17 +153,20 @@ int wl_get_noise(const char *ifname, int *buf)
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
 	wl_scb_val_t scb_val;
+	int rssi = 0;
 	int ret;
 
-	sscanf(sta, "%02X:%02X:%02X:%02X:%02X:%02X",
-		(uint32*)&(scb_val.ea.octet[0]), (uint32*)&(scb_val.ea.octet[1]), (uint32*)&(scb_val.ea.octet[2]),
-		(uint32*)&(scb_val.ea.octet[3]), (uint32*)&(scb_val.ea.octet[4]), (uint32*)&(scb_val.ea.octet[5])
-	);
+	if (!wl_ether_atoe(sta, &(scb_val.ea))) {
+		printf("ERROR: no valid ether addr provided\n");
+		return -1;
+	}
+
+	wl_endianness_check(ifname);
 
 	if ((ret = wl_ioctl(ifname, WLC_GET_RSSI, &scb_val, sizeof(scb_val))) < 0)
 		*buf = 0;
 	else
-		*buf = scb_val.val;
+		*buf = eswap32(scb_val.val);
 
 	return 0;
 }
@@ -150,8 +176,10 @@ int wl_get_bitrate(const char *ifname, int *buf)
 	int ret = -1;
 	int rate = 0;
 
+	wl_endianness_check(ifname);
+
 	if( !(ret = wl_ioctl(ifname, WLC_GET_RATE, &rate, sizeof(rate))) && (rate > 0))
-		*buf = ((rate / 2) * 1000) + ((rate & 1) ? 500 : 0);
+		*buf = ((eswap32(rate) / 2) * 1000) + ((eswap32(rate) & 1) ? 500 : 0);
 
 	return ret;
 }
@@ -160,10 +188,12 @@ int wl_get_isup(const char *ifname, int *buf)
 {
 	unsigned int isup;
 
+	wl_endianness_check(ifname);
+
 	if (wl_ioctl(ifname, WLC_GET_UP, &isup, sizeof(isup)) < 0)
 		isup = 0;
 
-	*buf = isup;
+	*buf = eswap32(isup);
 
 	return 0;
 }
@@ -172,10 +202,12 @@ int wl_get_band(const char *ifname, int *buf)
 {
 	unsigned int band;
 
+	wl_endianness_check(ifname);
+
 	if (wl_ioctl(ifname, WLC_GET_BAND, &band, sizeof(band)) < 0)
 		band = 0;
 
-	*buf = band;
+	*buf = eswap32(band);
 
 	return 0;
 }
@@ -270,8 +302,6 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 		80 : (CHSPEC_IS40(bi->chanspec) ?
 		40 : (CHSPEC_IS20(bi->chanspec) ? 20 : 10))));
 
-	//dump_bss_info_summary(bi);
-
 	return 0;
 }
 
@@ -279,17 +309,22 @@ int wl_get_chanlist(const char *ifname, int *buf)
 {
 	uint32 chan_buf[WL_NUMCHANNELS + 1];
 	wl_uint32_list_t *list;
-	int ret;
+	int ret, chan_count;
 	uint i;
 
+	wl_endianness_check(ifname);
+
 	list = (wl_uint32_list_t *)(void *)chan_buf;
-	list->count = WL_NUMCHANNELS;
+	list->count = eswap32(WL_NUMCHANNELS);
 	ret = wl_ioctl(ifname, WLC_GET_VALID_CHANNELS, chan_buf, sizeof(chan_buf));
 	if (ret < 0)
 		return ret;
 
-	for (i = 0; i < list->count; i++)
-		buf[i] = list->element[i];
+	chan_count = eswap32(list->count);
+
+	for (i = 0; i < chan_count; i++) {
+		buf[i] = eswap32(list->element[i]);
+	}
 
 	if (i < WL_NUMCHANNELS)
 		buf[i+1] = 0;
@@ -301,10 +336,12 @@ int wl_get_deviceid(const char *ifname, int *buf)
 {
 	wlc_rev_info_t revinfo;
 
+	wl_endianness_check(ifname);
+
 	if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo)))
 		return -1;
 
-	*buf = revinfo.deviceid;
+	*buf = eswap32(revinfo.deviceid);
 
 	return 0;
 }
@@ -317,13 +354,17 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 	if (strstr(ifname, "wds"))
 		return NULL;
 
+	wl_endianness_check(ifname);
+
 	if ((macs = (struct wl_maclist *) malloc(maclen)) != NULL)
 	{
 		memset(macs, 0, maclen);
 		macs->count = WL_MAX_STA_COUNT;
 
-		if (!wl_ioctl(ifname, WLC_GET_ASSOCLIST, macs, maclen))
+		if (!wl_ioctl(ifname, WLC_GET_ASSOCLIST, macs, maclen)) {
+			macs->count = eswap32(macs->count);
 			return macs;
+		}
 
 		free(macs);
 	}

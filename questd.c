@@ -409,7 +409,6 @@ static void
 wireless_assoclist()
 {
 	struct wl_maclist *macs = NULL;
-	int bandwidth, channel, noise, rssi;
 	int sno = 0;
 	int i, j;
 
