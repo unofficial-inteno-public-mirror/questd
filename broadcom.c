@@ -216,7 +216,8 @@ int wl_get_bitrate(const char *ifname, int *buf)
 	wl_endianness_check(ifname);
 
 	if( !(ret = wl_ioctl(ifname, WLC_GET_RATE, &rate, sizeof(rate))) && (rate > 0))
-		*buf = ((eswap32(rate) / 2) * 1000) + ((eswap32(rate) & 1) ? 500 : 0);
+		*buf = eswap32(rate);
+		//*buf = ((eswap32(rate) / 2) * 1000) + ((rate & 1) ? 500 : 0);
 	else
 		*buf = 0;
 

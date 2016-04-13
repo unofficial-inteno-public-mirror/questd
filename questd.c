@@ -1806,7 +1806,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		sprintf(frequency, "%sGHz", (band==1)?"5":"2.4");
 
 		wl_get_bitrate(radio[i].name, &rate);
-		sprintf(bitrate, "%d Mbps", (rate/1000));
+		sprintf(bitrate, "%d%s Mbps", (rate / 2), (rate & 1) ? ".5" : "");
 
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
