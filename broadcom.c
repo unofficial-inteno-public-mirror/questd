@@ -20,8 +20,14 @@
 #include "broadcom.h"
 #include "bcmwifi_channels.h"
 
+typedef enum {
+	WL0,
+	WL1
+} WL;
+
 static int iosocket = -1;
 static int e_swap = 0;
+static int wl_swap[sizeof(WL)] = { -1, -1 };
 
 #define eswap64(val) (e_swap)?BCMSWAP64(val):val
 #define eswap32(val) (e_swap)?BCMSWAP32(val):val
@@ -53,6 +59,16 @@ static int wl_endianness_check(void *wl)
 	int ret;
 	int val;
 
+	if(!strcmp((char*)wl, "wl0") && wl_swap[WL0] != -1) {
+		e_swap = wl_swap[WL0];
+		return 0;
+	}
+
+	if (!strcmp((char*)wl, "wl1") && wl_swap[WL1] != -1) {
+		e_swap = wl_swap[WL1];
+		return 0;
+	}
+
 	if ((ret = wl_ioctl(wl, WLC_GET_MAGIC, &val, sizeof(int))) < 0)
 		return ret;
 
@@ -61,6 +77,11 @@ static int wl_endianness_check(void *wl)
 		e_swap = 1;
 	else
 		e_swap = 0; /*retore it back in case it is called multiple times on different wl instance */
+
+	if(!strcmp((char*)wl, "wl0"))
+		wl_swap[WL0] = e_swap;
+	else if (!strcmp((char*)wl, "wl1"))
+		wl_swap[WL1] = e_swap;
 
 	return 0;
 }
