@@ -180,6 +180,8 @@ int wl_get_bitrate(const char *ifname, int *buf)
 
 	if( !(ret = wl_ioctl(ifname, WLC_GET_RATE, &rate, sizeof(rate))) && (rate > 0))
 		*buf = ((eswap32(rate) / 2) * 1000) + ((eswap32(rate) & 1) ? 500 : 0);
+	else
+		*buf = 0;
 
 	return ret;
 }
@@ -283,6 +285,8 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 	int ioctl_req_version = 0x2000;
 	char tmp[WLC_IOCTL_MAXLEN];
 
+	wl_endianness_check(ifname);
+
 	memset(tmp, 0, WLC_IOCTL_MAXLEN);
 	memcpy(tmp, &ioctl_req_version, sizeof(ioctl_req_version));
 
@@ -295,12 +299,12 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 
 	bi = (wl_bss_info_t*)(tmp + 4);
 
-	*channel = (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(bi->chanspec);
+	*channel = (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(eswap16(bi->chanspec));
 	*noise = (int16)(bi->phy_noise);
-	*bandwidth = (CHSPEC_IS160(bi->chanspec) ?
-		160:(CHSPEC_IS80(bi->chanspec) ?
-		80 : (CHSPEC_IS40(bi->chanspec) ?
-		40 : (CHSPEC_IS20(bi->chanspec) ? 20 : 10))));
+	*bandwidth = (CHSPEC_IS160(eswap16(bi->chanspec)) ?
+		160:(CHSPEC_IS80(eswap16(bi->chanspec)) ?
+		80 : (CHSPEC_IS40(eswap16(bi->chanspec)) ?
+		40 : (CHSPEC_IS20(eswap16(bi->chanspec)) ? 20 : 10))));
 
 	return 0;
 }
