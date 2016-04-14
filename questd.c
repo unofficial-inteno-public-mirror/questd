@@ -1940,6 +1940,15 @@ wps_pbc(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+wps_pbc_client(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	system("INTERFACE=wpscbutton ACTION=register /sbin/hotplug-call button &");
+	return 0;
+}
+
+static int
 wps_genpin(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -2070,6 +2079,7 @@ wps_stop(struct ubus_context *ctx, struct ubus_object *obj,
 static struct ubus_method wps_object_methods[] = {
 	UBUS_METHOD_NOARG("status", wps_status),
 	UBUS_METHOD_NOARG("pbc", wps_pbc),
+	UBUS_METHOD_NOARG("pbc_client", wps_pbc_client),
 	UBUS_METHOD_NOARG("genpin", wps_genpin),
 	UBUS_METHOD("checkpin", wps_checkpin, pin_policy),
 	UBUS_METHOD("stapin", wps_stapin, pin_policy),
