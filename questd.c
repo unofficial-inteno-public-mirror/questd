@@ -108,6 +108,17 @@ enum {
 static const struct blobmsg_policy pin_policy[__PIN_MAX] = {
 	[PIN] = { .name = "pin", .type = BLOBMSG_TYPE_STRING },
 };
+
+enum {
+	LISTUSERS_SID,
+	LISTUSERS_UNAME,
+	__LISTUSERS_MAX,
+};
+
+static const struct blobmsg_policy listusers_policy[__LISTUSERS_MAX] = {
+	[LISTUSERS_SID] = { .name = "sid", .type = BLOBMSG_TYPE_STRING },
+	[LISTUSERS_UNAME] = { .name = "username", .type = BLOBMSG_TYPE_STRING },
+};
 /* END POLICIES */
 
 pthread_t tid[1];
@@ -2100,6 +2111,44 @@ static struct ubus_object wps_object = {
 
 /* END OF WPS OBJECT */
 
+/* START OF USERS OBJECT */
+static int
+users_listusers(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__LISTUSERS_MAX];
+
+	blobmsg_parse(listusers_policy, __LISTUSERS_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!(tb[LISTUSERS_UNAME]) || !(tb[LISTUSERS_SID])){
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
+	blob_buf_init(&bb, 0);
+	
+	blobmsg_add_string(&bb, "uname", blobmsg_data(tb[LISTUSERS_UNAME]));
+	blobmsg_add_string(&bb, "sid", blobmsg_data(tb[LISTUSERS_SID]));
+
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+static struct ubus_method users_object_methods[] = {
+	UBUS_METHOD("listusers", users_listusers, listusers_policy),
+};
+
+static struct ubus_object_type users_object_type =
+	UBUS_OBJECT_TYPE("users", users_object_methods);
+
+static struct ubus_object users_object = {
+	.name = "users",
+	.type = &users_object_type,
+	.methods = users_object_methods,
+	.n_methods = ARRAY_SIZE(users_object_methods),
+};
+
+/* END OF USERS OBJECT */
+
 static void
 quest_ubus_add_fd(void)
 {
@@ -2158,6 +2207,7 @@ quest_ubus_init(const char *path)
 
 	quest_add_object(&router_object);
 	quest_add_object(&wps_object);
+	quest_add_object(&users_object);
 
 	return 0;
 }
