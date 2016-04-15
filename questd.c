@@ -27,7 +27,8 @@
 #include <libubox/utils.h>
 
 #include <libubus.h>
-
+#include <pwd.h>
+#include <sys/types.h>
 #include <time.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -2125,8 +2126,15 @@ users_listusers(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
 
+	//Look up the id of the session object
+	uint32_t id;
+	if(ubus_lookup_id(ctx, "session", &id)) {
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+
 	blob_buf_init(&bb, 0);
 	
+	blobmsg_add_uint32(&bb "id", id);
 	blobmsg_add_string(&bb, "uname", blobmsg_data(tb[LISTUSERS_UNAME]));
 	blobmsg_add_string(&bb, "sid", blobmsg_data(tb[LISTUSERS_SID]));
 
