@@ -1393,6 +1393,47 @@ quest_router_filesystem(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+quest_router_logread(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	void *a, *t;
+	FILE *log;
+	char line[512];
+	char dayofweek[8];
+	char month[8];
+	int dayofmonth;
+	char hour[8];
+	int year;
+	char id[32];
+	char source[32];
+	char time[64];
+
+	blob_buf_init(&bb, 0);
+	a = blobmsg_open_array(&bb, "logs");
+	if ((log = popen("logread -l 400", "r"))) {
+		while(fgets(line, sizeof(line), log) != NULL)
+		{
+			remove_newline(line);
+			if (sscanf(line, "%s %s %d %s %d %s %s:", dayofweek, month, &dayofmonth, hour, &year, id, source)) {
+				sprintf(time, "%s %s %d %s %d", dayofweek, month, dayofmonth, hour, year);
+				source[strlen(source)-1] = '\0';
+				t = blobmsg_open_table(&bb, "");
+				blobmsg_add_string(&bb, "time", time);
+				blobmsg_add_string(&bb, "id", id);
+				blobmsg_add_string(&bb, "source", source);
+				blobmsg_add_string(&bb, "message", line+(int)(strstr(line,source)-&line[0])+strlen(source)+2);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(log);
+	}
+	blobmsg_close_array(&bb, a);
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
+static int
 quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -1858,6 +1899,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("info", quest_router_info),
 	UBUS_METHOD_NOARG("filesystem", quest_router_filesystem),
 	UBUS_METHOD("quest", quest_router_specific, quest_policy),
+	UBUS_METHOD_NOARG("logs", quest_router_logread),
 	UBUS_METHOD_NOARG("networks", quest_router_networks),
 	UBUS_METHOD("wl", quest_router_wl, wl_policy),
 	UBUS_METHOD_NOARG("dslstats", dslstats_rpc), 
