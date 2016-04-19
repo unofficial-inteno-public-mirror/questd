@@ -225,6 +225,7 @@ void init_db_hw_config(void);
 bool arping(char *target, char *device, int toms);
 void remove_space(char *buf);
 void remove_newline(char *buf);
+char* single_space(char* str);
 void replace_char(char *buf, char a, char b);
 void runCmd(const char *pFmt, ...);
 const char *chrCmd(const char *pFmt, ...);
