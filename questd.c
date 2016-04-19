@@ -2239,9 +2239,9 @@ void *dump_router_info(void *arg)
 
 int main(int argc, char **argv)
 {
-	int pt, ret;
+	const char *path = NULL;
+	int pt;
 
-	const char *path = NULL; 
 	if(argc > 1 && argv[1] && strlen(argv[1]) > 0){
 		path = argv[1]; 
 	}
