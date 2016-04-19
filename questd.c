@@ -283,11 +283,9 @@ load_wireless()
 	const char *device = NULL;
 	const char *network = NULL;
 	const char *ssid = NULL;
-	char *token;
 	char wdev[16];
 	int rno = 0;
 	int wno = 0;
-	int chn;
 	int vif;
 	int vif0 = 0;
 	int vif1 = 0;
