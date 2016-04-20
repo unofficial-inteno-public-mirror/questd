@@ -596,4 +596,6 @@ int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
 int wl_get_stas_info(const char *ifname, char *bssid, unsigned long *buf);
 
+struct wl_maclist * wl_read_assoclist(const char *ifname);
+
 #endif

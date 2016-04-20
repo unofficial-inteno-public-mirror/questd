@@ -17,6 +17,7 @@
 #include <net/if.h>
 #include <errno.h>
 
+#include "tools.h"
 #include "broadcom.h"
 #include "bcmwifi_channels.h"
 
@@ -56,27 +57,27 @@ static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 	return ioctl(iosocket, SIOCDEVPRIVATE, &ifr);
 }
 
-static int wl_endianness_check(void *wl)
+static int wl_endianness_check(const char *wl)
 {
 	int ret;
 	int val;
 
-	if(!strcmp((char*)wl, "wl0") && wl_swap[WL0] != -1) {
+	if(!strcmp(wl, "wl0") && wl_swap[WL0] != -1) {
 		e_swap = wl_swap[WL0];
 		return 0;
 	}
 
-	if (!strcmp((char*)wl, "wl1") && wl_swap[WL1] != -1) {
+	if (!strcmp(wl, "wl1") && wl_swap[WL1] != -1) {
 		e_swap = wl_swap[WL1];
 		return 0;
 	}
 
-	if(!strcmp((char*)wl, "wl0.1") && wl_swap[WL0_1] != -1) {
+	if(!strcmp(wl, "wl0.1") && wl_swap[WL0_1] != -1) {
 		e_swap = wl_swap[WL0_1];
 		return 0;
 	}
 
-	if(!strcmp((char*)wl, "wl1.1") && wl_swap[WL1_1] != -1) {
+	if(!strcmp(wl, "wl1.1") && wl_swap[WL1_1] != -1) {
 		e_swap = wl_swap[WL1_1];
 		return 0;
 	}
@@ -90,13 +91,13 @@ static int wl_endianness_check(void *wl)
 	else
 		e_swap = 0; /*retore it back in case it is called multiple times on different wl instance */
 
-	if(!strcmp((char*)wl, "wl0"))
+	if(!strcmp(wl, "wl0"))
 		wl_swap[WL0] = e_swap;
-	else if (!strcmp((char*)wl, "wl1"))
+	else if (!strcmp(wl, "wl1"))
 		wl_swap[WL1] = e_swap;
-	else if (!strcmp((char*)wl, "wl0.1"))
+	else if (!strcmp(wl, "wl0.1"))
 		wl_swap[WL0_1] = e_swap;
-	else if (!strcmp((char*)wl, "wl1.1"))
+	else if (!strcmp(wl, "wl1.1"))
 		wl_swap[WL1_1] = e_swap;
 
 	return 0;
@@ -104,7 +105,7 @@ static int wl_endianness_check(void *wl)
 
 static int wl_iovar(const char *name, const char *cmd, const char *arg, int arglen, void *buf, int buflen)
 {
-	int cmdlen = strlen(cmd) + 1;
+	unsigned cmdlen = strlen(cmd) + 1;
 
 	memcpy(buf, cmd, cmdlen);
 
@@ -190,7 +191,6 @@ int wl_get_noise(const char *ifname, int *buf)
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
 	wl_scb_val_t scb_val;
-	int rssi = 0;
 	int ret;
 
 	if (!wl_ether_atoe(sta, &(scb_val.ea))) {
@@ -417,12 +417,20 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
 {
 	wl_sta_info_t sta;
-	uint mac[6];
+	uint dummy[6];
+	char mac[6];
 
 	sscanf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X",
-		&mac[0], &mac[1], &mac[2],
-		&mac[3], &mac[4], &mac[5]
+		&dummy[0], &dummy[1], &dummy[2],
+		&dummy[3], &dummy[4], &dummy[5]
 	);
+
+	mac[0] = dummy[0];
+	mac[1] = dummy[1];
+	mac[2] = dummy[2];
+	mac[3] = dummy[3];
+	mac[4] = dummy[4];
+	mac[5] = dummy[5];
 
 	if (!wl_iovar(ifname, "sta_info", mac, 6, &sta, sizeof(sta)) && (sta.ver >= 2))
 	{
@@ -484,22 +492,23 @@ int wl_get_stas_info(const char *ifname, char *bssid, unsigned long *buf)
 	FILE *stainfo;
 	char cmnd[64];
 	char line[128];
-	int tmp;
+	unsigned long tmp;
 
 	sprintf(cmnd, "wlctl -i %s sta_info %s 2>/dev/null", ifname, bssid);
 	if ((stainfo = popen(cmnd, "r"))) {
 		while(fgets(line, sizeof(line), stainfo) != NULL)
 		{
 			remove_newline(line);
-			sscanf(line, "\t idle %d seconds", &(buf[0]));
-			sscanf(line, "\t in network %d seconds", &(buf[1]));
-			sscanf(line, "\t tx total bytes: %ld\n", &(buf[2]));
-			sscanf(line, "\t rx data bytes: %ld", &(buf[3]));
-			sscanf(line, "\t rate of last tx pkt: %d kbps - %d kbps", &tmp, &(buf[4]));
+			sscanf(line, "\t idle %lu seconds", &(buf[0]));
+			sscanf(line, "\t in network %lu seconds", &(buf[1]));
+			sscanf(line, "\t tx total bytes: %lu\n", &(buf[2]));
+			sscanf(line, "\t rx data bytes: %lu", &(buf[3]));
+			sscanf(line, "\t rate of last tx pkt: %lu kbps - %lu kbps", &tmp, &(buf[4]));
 			if (buf[4] < 0) buf[4] = tmp;
-			sscanf(line, "\t rate of last rx pkt: %d kbps", &(buf[5]));
+			sscanf(line, "\t rate of last rx pkt: %lu kbps", &(buf[5]));
 		}
 		pclose(stainfo);
 	}
+	return 0;
 }
 

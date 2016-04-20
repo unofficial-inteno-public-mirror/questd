@@ -33,7 +33,7 @@
 #include <dirent.h>
 
 #include "questd.h"
-
+#include "tools.h"
 #include "broadcom.h" // WILL NOT BE NEEDED LATER
 
 #define DEFAULT_SLEEP	5000000
@@ -1114,10 +1114,8 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 static void
 router_dump_usbs(struct blob_buf *b)
 {
-	FILE *usbdevs;
 	DIR *dir;
 	struct dirent *ent;
-	char name[64];
 	void *t;
 	int uno = 0;
 
@@ -1558,7 +1556,6 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	wl_get_bssinfo(wldev, &bandwidth, &channel, &noise);
 
 
-	void *t;
 	blob_buf_init(&bb, 0);
 	blobmsg_add_string(&bb, "wldev", wldev);
 	blobmsg_add_u32(&bb, "radio", isup);
