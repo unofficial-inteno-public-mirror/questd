@@ -41,7 +41,7 @@ static int evno = 0;
 
 static int
 list_router_events(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_reevent_data *req, const char *method,
+		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
 	void *a, *t, *d;

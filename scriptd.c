@@ -35,17 +35,10 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include "tools.h"
+
 static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
-
-static void
-remove_newline(char *buf)
-{
-	int len;
-	len = strlen(buf) - 1;
-	if (buf[len] == '\n')
-		buf[len] = 0;
-}
 
 static const char*
 cmd_to_str(const char *pFmt, ...)
@@ -95,17 +88,16 @@ static const struct blobmsg_policy script_policy[__SCRIPT_MAX] = {
 
 static int
 script_run(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_rescript_data *req, const char *method,
+		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
 	struct blob_attr *tb[__SCRIPT_MAX];
+	const char *result;
 
 	blobmsg_parse(script_policy, __SCRIPT_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (!(tb[METHOD]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	char *result;
 
 	if (tb[ARGS])
 		result = cmd_to_str("./usr/lib/ubus%s %s '%s'", obj->name, blobmsg_get_string(tb[METHOD]), blobmsg_get_string(tb[ARGS]));
@@ -115,8 +107,6 @@ script_run(struct ubus_context *ctx, struct ubus_object *obj,
 	blob_buf_init(&bb, 0);
 	blobmsg_add_json_from_string(&bb, result);
 	ubus_send_reply(ctx, req, bb.head);
-
-	memset(result, '\0', sizeof(result));
 
 	return 0;
 }
@@ -206,8 +196,6 @@ add_object_foreach(char *path)
 
 int main(int argc, char **argv)
 {
-	int ret;
-
 	uloop_init();
 
 	ctx = ubus_connect(NULL);

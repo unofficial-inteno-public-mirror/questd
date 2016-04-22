@@ -20,9 +20,13 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <linux/if_bridge.h>
 #include <errno.h>
+
+#include "questd.h"
+#include "tools.h"
 
 #define CHUNK		128
 
@@ -147,7 +151,7 @@ get_clients_onport(char *bridge, int portno)
 	int i, n;
 	struct fdb_entry *fdb = NULL;
 	int offset = 0;
-	char tmpmac[2400];
+	static char tmpmac[2400];
 	char mac[24];
 
 	memset(tmpmac, '\0', 2400);

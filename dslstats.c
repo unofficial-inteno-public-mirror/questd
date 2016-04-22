@@ -21,6 +21,7 @@
  */
 
 #include "questd.h"
+#include "tools.h"
 
 #define DSLDEBUG(...) {} //printf(__VA_ARGS__)
 

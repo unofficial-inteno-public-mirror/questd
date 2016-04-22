@@ -36,8 +36,6 @@ struct sockaddr_ll me;
 struct sockaddr_ll he;
 int sock_fd;
 
-//void *mempcpy(void *dst, const void *src, size_t n); 
-
 static int
 send_pack(struct in_addr *src_addr, struct in_addr *dst_addr, struct sockaddr_ll *ME, struct sockaddr_ll *HE)
 {
@@ -52,11 +50,11 @@ send_pack(struct in_addr *src_addr, struct in_addr *dst_addr, struct sockaddr_ll
 	ah->ar_pln = 4;
 	ah->ar_op = htons(ARPOP_REQUEST);
 
-	p = mempcpy(p, &ME->sll_addr, ah->ar_hln);
-	p = mempcpy(p, src_addr, 4);
+	p = memcpy(p, &ME->sll_addr, ah->ar_hln);
+	p = memcpy(p, src_addr, 4);
 
-	p = mempcpy(p, &HE->sll_addr, ah->ar_hln);
-	p = mempcpy(p, dst_addr, 4);
+	p = memcpy(p, &HE->sll_addr, ah->ar_hln);
+	p = memcpy(p, dst_addr, 4);
 
 	err = sendto(sock_fd, buf, p - buf, 0, (struct sockaddr *) HE, sizeof(*HE));
 	return err;

@@ -7,7 +7,6 @@ void replace_char(char *buf, char a, char b);
 void runCmd(const char *pFmt, ...);
 const char* chrCmd(const char *pFmt, ...);
 char* convert_to_ipaddr(int ip);
-char* single_space(char* str);
+char* single_space(char *str);
 
-#endif
-
+#endif /* QUESTD_TOOLS_H */

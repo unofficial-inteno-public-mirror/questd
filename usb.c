@@ -20,14 +20,16 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
 #include <string.h>
+
+#include "questd.h"
+#include "tools.h"
 
 char*
 get_usb_infos(char *usbno, char *info) {
 	FILE *in;
 	char file[64];
-	char result[32];
+	static char result[32];
 
 	memset(result, '\0', sizeof(result));
 	sprintf(file, "/sys/bus/usb/devices/%s/%s", usbno, info);
@@ -43,7 +45,7 @@ char*
 get_usb_device(char *mount) {
 	FILE *mounts;
 	char line[128];
-	char dev[16];
+	static char dev[16];
 	char mnt[64];
 
 	if ((mounts = fopen("/var/usbmounts", "r"))) {

@@ -21,6 +21,8 @@
  */
 
 #include "questd.h"
+#include "tools.h"
+#include "uboot_env.h"
 
 struct uci_context *db_ctx;
 static bool dbLoaded = false;
@@ -125,14 +127,36 @@ dump_specs(Spec *spec)
 void
 dump_keys(Key *keys)
 {
+#if defined(IOPSYS_MARVELL) || defined(IOPSYS_LANTIQ)
+	uboot_env_get("authKey", &keys->auth);
+	uboot_env_get("desKey", &keys->des);
+	uboot_env_get("wpaKey", &keys->wpa);
+#elif defined(IOPSYS_BROADCOM)
 	get_db_hw_value("authKey", &keys->auth);
 	get_db_hw_value("desKey", &keys->des);
 	get_db_hw_value("wpaKey", &keys->wpa);
+#else
+	#error "dumper.c: dump_keys()"
+#endif
 }
 
 void
 dump_static_router_info(Router *router)
 {
+#if defined(IOPSYS_MARVELL) || defined(IOPSYS_LANTIQ)
+	uboot_env_get("boardId", &router->boardid);
+	uboot_env_get("hardwareVersion", &router->hardware);
+	uboot_env_get("routerModel", &router->model);
+	uboot_env_get("iopVersion", &router->firmware);
+	uboot_env_get("brcmVersion", &router->brcmver);
+	uboot_env_get("filesystem", &router->filesystem);
+	uboot_env_get("socModel", &router->socmod);
+	uboot_env_get("socRevision", &router->socrev);
+	uboot_env_get("cfeVersion", &router->cfever);
+	uboot_env_get("kernelVersion", &router->kernel);
+	uboot_env_get("BaseMacAddr", &router->basemac);
+	uboot_env_get("serialNumber", &router->serialno);
+#elif defined(IOPSYS_BROADCOM)
 	get_db_hw_value("boardId", &router->boardid);
 	get_db_hw_value("hardwareVersion", &router->hardware);
 	get_db_hw_value("routerModel", &router->model);
@@ -145,6 +169,9 @@ dump_static_router_info(Router *router)
 	get_db_hw_value("kernelVersion", &router->kernel);
 	get_db_hw_value("BaseMacAddr", &router->basemac);
 	get_db_hw_value("serialNumber", &router->serialno);
+#else
+	#error "dumper.c: dump_static_router_info()"
+#endif
 }
 
 void

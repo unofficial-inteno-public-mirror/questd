@@ -34,7 +34,10 @@
 
 #include "questd.h"
 #include "tools.h"
+
+#if IOPSYS_BROADCOM
 #include "broadcom.h" // WILL NOT BE NEEDED LATER
+#endif
 
 #define DEFAULT_SLEEP	5000000
 
@@ -44,14 +47,21 @@ static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
 static const char *ubus_path;
 
+#if IOPSYS_BROADCOM
 static Radio radio[MAX_RADIO];
+#endif
 static Wireless wireless[MAX_VIF];
 static Network network[MAX_NETWORK];
+#if IOPSYS_BROADCOM
 static StaInfo stainfo[MAX_CLIENT], stainfo6[MAX_CLIENT];
+#endif
 static Client clients[MAX_CLIENT];
-static Client clients_old[MAX_CLIENT], clients_new[MAX_CLIENT];
+static Client clients_old[MAX_CLIENT];
+static Client clients_new[MAX_CLIENT];
 static Client6 clients6[MAX_CLIENT];
+#if IOPSYS_BROADCOM
 static Sta stas[MAX_CLIENT];
+#endif
 static Router router;
 static Memory memory;
 static Key keys;
@@ -276,6 +286,7 @@ load_networks()
 	}
 }
 
+#if IOPSYS_BROADCOM
 static void
 load_wireless()
 {
@@ -284,7 +295,6 @@ load_wireless()
 	const char *network = NULL;
 	const char *ssid = NULL;
 	char wdev[16];
-	int rno = 0;
 	int wno = 0;
 	int vif;
 	int vif0 = 0;
@@ -359,6 +369,7 @@ load_wireless()
 		}
 	}
 }
+#endif /* IOPSYS_BROADCOM */
 
 static void
 match_client_to_network(Network *lan, char *ipaddr, bool *local, char *net, char *dev)
@@ -403,6 +414,7 @@ handle_client(Client *clnt)
 	}
 }
 
+#if IOPSYS_BROADCOM
 static void
 wireless_assoclist()
 {
@@ -494,6 +506,7 @@ wireless_sta6(Client6 *clnt, StaInfo *sinfo)
 	return there;
 }
 
+#if 0 /* Unused */
 static int
 active_connections(char *ipaddr)
 {
@@ -518,6 +531,8 @@ active_connections(char *ipaddr)
 
 	return connum;
 }
+#endif
+#endif
 
 static void
 ipv4_clients()
@@ -546,11 +561,14 @@ ipv4_clients()
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
+			#if IOPSYS_BROADCOM
 				if((clients[cno].connected = wireless_sta(&clients[cno], &stainfo[cno]))) {
 					clients[cno].wireless = true;
 					wireless_stainfo(&clients[cno], &stainfo[cno]);
 				}
-				else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
+				else
+			#endif
+				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 					recalc_sleep_time(true, toms);
 
 /*				if (clients[cno].connected)*/
@@ -590,10 +608,13 @@ ipv4_clients()
 					if(clients[cno].local) {
 						clients[cno].exists = true;
 						clients[cno].dhcp = false;
+					#if IOPSYS_BROADCOM
 						if((clients[cno].connected = wireless_sta(&clients[cno], &stainfo[cno]))) {
 							clients[cno].wireless = true;
 							wireless_stainfo(&clients[cno], &stainfo[cno]);
-						} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
+						} else
+					#endif
+						if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 							recalc_sleep_time(true, toms);
 
 /*						if (clients[cno].connected)*/
@@ -666,10 +687,12 @@ ipv6_clients()
 				clear_macaddr();
 				if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
 					sprintf(clients6[cno].macaddr, get_macaddr());
+				#if IOPSYS_BROADCOM
 					if (wireless_sta6(&clients6[cno], &stainfo6[cno])) {
 						clients6[cno].wireless = true;
 						//wireless_stainfo(&clients6[cno], &stainfo6[cno]);
 					}
+				#endif
 				} else
 					recalc_sleep_time(true, toms);
 
@@ -684,7 +707,9 @@ static void
 populate_clients()
 {
 	if (popc) {
+	#if IOPSYS_BROADCOM
 		wireless_assoclist();
+	#endif
 		ipv4_clients();
 		ipv6_clients();
 		popc = false;
@@ -869,6 +894,7 @@ router_dump_clients(struct blob_buf *b)
 			blobmsg_add_u32(b, "active_cons", active_connections(clients[i].ipaddr));*/
 		if(clients[i].wireless) {
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
+#if IOPSYS_BROADCOM
 			blobmsg_add_u32(b, "idle", stainfo[i].idle);
 			blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 			blobmsg_add_string(b, "frequency", stainfo[i].frequency);
@@ -878,6 +904,7 @@ router_dump_clients(struct blob_buf *b)
 			blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 			blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 			blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+#endif
 		}
 		blobmsg_close_table(b, t);
 		num++;
@@ -909,6 +936,7 @@ router_dump_connected_clients(struct blob_buf *b)
 		//blobmsg_add_u32(b, "active_cons", stainfo[i].connum);
 		if(clients[i].wireless) {
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
+#if IOPSYS_BROADCOM
 			blobmsg_add_u32(b, "idle", stainfo[i].idle);
 			blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 			blobmsg_add_string(b, "frequency", stainfo[i].frequency);
@@ -918,6 +946,7 @@ router_dump_connected_clients(struct blob_buf *b)
 			blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 			blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 			blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+#endif
 		}
 		blobmsg_close_table(b, t);
 		num++;
@@ -951,6 +980,7 @@ router_dump_network_clients(struct blob_buf *b, char *net)
 			blobmsg_add_u32(b, "active_cons", stainfo[i].connum);*/
 		if(clients[i].wireless) {
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
+		#if IOPSYS_BROADCOM
 			blobmsg_add_u32(b, "idle", stainfo[i].idle);
 			blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 			blobmsg_add_string(b, "frequency", stainfo[i].frequency);
@@ -960,6 +990,7 @@ router_dump_network_clients(struct blob_buf *b, char *net)
 			blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 			blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 			blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+		#endif
 		}
 		blobmsg_close_table(b, t);
 		num++;
@@ -1046,6 +1077,7 @@ router_dump_stas(struct blob_buf *b)
 		if(strstr(clients[i].device, "br-"))
 			blobmsg_add_string(b, "bridge", clients[i].device);
 		blobmsg_add_string(b, "wdev", clients[i].wdev);
+#if IOPSYS_BROADCOM
 		//blobmsg_add_u32(b, "active_cons", stainfo[i].connum);
 		blobmsg_add_u32(b, "idle", stainfo[i].idle);
 		blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
@@ -1056,6 +1088,7 @@ router_dump_stas(struct blob_buf *b)
 		blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 		blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 		blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+#endif
 		blobmsg_close_table(b, t);
 		num++;
 	}
@@ -1096,6 +1129,7 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 			blobmsg_add_string(b, "bridge", clients[i].device);
 		if(!vif)
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
+#if IOPSYS_BROADCOM
 		//blobmsg_add_u32(b, "active_cons", stainfo[i].connum);
 		blobmsg_add_u32(b, "idle", stainfo[i].idle);
 		blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
@@ -1106,6 +1140,7 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 		blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 		blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+#endif
 		blobmsg_close_table(b, t);
 		num++;
 	}
@@ -1263,12 +1298,14 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 					blobmsg_add_u32(b, "active_cons", stainfo[i].connum);*/
 				if(clients[i].wireless) {
 					blobmsg_add_string(b, "wdev", clients[i].wdev);
+#if IOPSYS_BROADCOM
 					blobmsg_add_u32(b, "idle", stainfo[i].idle);
 					blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 					blobmsg_add_u64(b, "tx_bytes", stainfo[i].tx_bytes);
 					blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 					blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 					blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+#endif
 				}
 				break;
 			}
@@ -1286,12 +1323,14 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 					blobmsg_add_u32(b, "active_cons", stainfo[i].connum);*/
 				if(clients[i].wireless) {
 					blobmsg_add_string(b, "wdev", clients[i].wdev);
+#if IOPSYS_BROADCOM
 					blobmsg_add_u32(b, "idle", stainfo[i].idle);
 					blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 					blobmsg_add_u64(b, "tx_bytes", stainfo[i].tx_bytes);
 					blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 					blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 					blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
+#endif
 				}
 				break;
 			}
@@ -1507,6 +1546,7 @@ quest_router_network_clients(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+#if IOPSYS_BROADCOM
 static int
 quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -1570,6 +1610,7 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
+#endif
 
 static int
 quest_router_connected_clients6(struct ubus_context *ctx, struct ubus_object *obj,
@@ -1818,6 +1859,7 @@ quest_host_status(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+#if IOPSYS_BROADCOM
 static int
 quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -1876,6 +1918,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
+#endif
 
 static int
 quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
@@ -1885,7 +1928,9 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 	pthread_mutex_lock(&lock);
 	dump_hostname(&router);
 	load_networks();
+#if IOPSYS_BROADCOM
 	load_wireless();
+#endif
 	pthread_mutex_unlock(&lock);
 	return 0;
 }
@@ -1896,7 +1941,9 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("quest", quest_router_specific, quest_policy),
 	UBUS_METHOD_NOARG("logs", quest_router_logread),
 	UBUS_METHOD_NOARG("networks", quest_router_networks),
+#if IOPSYS_BROADCOM
 	UBUS_METHOD("wl", quest_router_wl, wl_policy),
+#endif
 	UBUS_METHOD_NOARG("dslstats", dslstats_rpc), 
 	UBUS_METHOD("client", quest_router_network_clients, network_policy),
 	UBUS_METHOD_NOARG("clients", quest_router_clients),
@@ -1910,7 +1957,9 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("leases", quest_network_leases, network_policy),
 	UBUS_METHOD("host", quest_host_status, host_policy),
 	UBUS_METHOD_NOARG("usb", quest_router_usbs),
+#if IOPSYS_BROADCOM
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
+#endif
 	UBUS_METHOD_NOARG("reload", quest_reload),
 };
 
@@ -1925,8 +1974,8 @@ static struct ubus_object router_object = {
 };
 /* END OF ROUTER OBJECT */
 
+#if IOPSYS_BROADCOM
 /* WPS OBJECT */
-
 static int
 wps_status(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -2136,6 +2185,7 @@ static struct ubus_object wps_object = {
 };
 
 /* END OF WPS OBJECT */
+#endif /* IOPSYS_BROADCOM */
 
 static void
 quest_ubus_add_fd(void)
@@ -2194,7 +2244,9 @@ quest_ubus_init(const char *path)
 	quest_ubus_add_fd();
 
 	quest_add_object(&router_object);
+#if IOPSYS_BROADCOM
 	quest_add_object(&wps_object);
+#endif
 
 	return 0;
 }
@@ -2207,7 +2259,9 @@ void *dump_router_info(void *arg)
 	
 	init_db_hw_config();
 	load_networks();
+#if IOPSYS_BROADCOM
 	load_wireless();
+#endif
 	dump_keys(&keys);
 	dump_specs(&spec);
 	dump_static_router_info(&router);
