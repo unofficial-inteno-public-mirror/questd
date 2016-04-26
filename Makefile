@@ -1,6 +1,6 @@
 CC		= gcc
 CFLAGS		= -g -Wall
-LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json
+LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
 LOCLIBS		= 
 OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o broadcom.o uboot_env.o
 SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c broadcom.c uboot_env.c
