@@ -295,6 +295,7 @@ load_wireless()
 	const char *network = NULL;
 	const char *ssid = NULL;
 	char wdev[16];
+	int rno = 0;
 	int wno = 0;
 	int vif;
 	int vif0 = 0;
