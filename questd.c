@@ -1492,7 +1492,8 @@ quest_password_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 		if(strcmp(hash, sp->sp_pwdp))
 			return UBUS_STATUS_PERMISSION_DENIED;
-	}
+	} else
+		return UBUS_STATUS_PERMISSION_DENIED;
 
 	if (stat("/usr/bin/passwd", &s))
 		return UBUS_STATUS_NOT_FOUND;
