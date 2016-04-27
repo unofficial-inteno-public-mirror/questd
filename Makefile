@@ -1,5 +1,5 @@
 CC		= gcc
-CFLAGS		= -g -Wall
+CFLAGS		= -g -Wall $(QUESTD_CLFAGS)
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
 LOCLIBS		= 
 OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o broadcom.o uboot_env.o
