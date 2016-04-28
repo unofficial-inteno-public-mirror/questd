@@ -568,8 +568,12 @@ ipv4_clients()
 				}
 				else
 			#endif
+			#if IOPSYS_LANTIQ /* TEMPORARY HACK */
+				clients[cno].connected = true;
+			#else
 				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 					recalc_sleep_time(true, toms);
+			#endif
 
 /*				if (clients[cno].connected)*/
 /*					stainfo[cno].connum = active_connections(clients[cno].ipaddr);*/
@@ -614,8 +618,12 @@ ipv4_clients()
 							wireless_stainfo(&clients[cno], &stainfo[cno]);
 						} else
 					#endif
+			#if IOPSYS_LANTIQ /* TEMPORARY HACK */
+				clients[cno].connected = true;
+			#else
 						if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 							recalc_sleep_time(true, toms);
+			#endif
 
 /*						if (clients[cno].connected)*/
 /*							stainfo[cno].connum = active_connections(clients[cno].ipaddr);*/
