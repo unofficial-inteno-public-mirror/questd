@@ -47,6 +47,75 @@
 #define	ETHER_ADDR_LEN		6
 #define WLC_IOCTL_MEDLEN	1536    /* "med" length ioctl buffer required */
 
+#define WL_STA_AID(a)		((a) &~ 0xc000)
+
+/* Flags for sta_info_t indicating properties of STA */
+#define WL_STA_BRCM		0x00000001	/* Running a Broadcom driver */
+#define WL_STA_WME		0x00000002	/* WMM association */
+#define WL_STA_NONERP		0x00000004	/* No ERP */
+#define WL_STA_AUTHE		0x00000008	/* Authenticated */
+#define WL_STA_ASSOC		0x00000010	/* Associated */
+#define WL_STA_AUTHO		0x00000020	/* Authorized */
+#define WL_STA_WDS		0x00000040	/* Wireless Distribution System */
+#define WL_STA_WDS_LINKUP	0x00000080	/* WDS traffic/probes flowing properly */
+#define WL_STA_PS		0x00000100	/* STA is in power save mode from AP's viewpoint */
+#define WL_STA_APSD_BE		0x00000200	/* APSD delv/trigger for AC_BE is default enabled */
+#define WL_STA_APSD_BK		0x00000400	/* APSD delv/trigger for AC_BK is default enabled */
+#define WL_STA_APSD_VI		0x00000800	/* APSD delv/trigger for AC_VI is default enabled */
+#define WL_STA_APSD_VO		0x00001000	/* APSD delv/trigger for AC_VO is default enabled */
+#define WL_STA_N_CAP		0x00002000	/* STA 802.11n capable */
+#define WL_STA_SCBSTATS		0x00004000	/* Per STA debug stats */
+#define WL_STA_AMPDU_CAP	0x00008000	/* STA AMPDU capable */
+#define WL_STA_AMSDU_CAP	0x00010000	/* STA AMSDU capable */
+#define WL_STA_MIMO_PS		0x00020000	/* mimo ps mode is enabled */
+#define WL_STA_MIMO_RTS		0x00040000	/* send rts in mimo ps mode */
+#define WL_STA_RIFS_CAP		0x00080000	/* rifs enabled */
+#define WL_STA_VHT_CAP		0x00100000	/* STA VHT(11ac) capable */
+#define WL_STA_WPS		0x00200000	/* WPS state */
+#define WL_STA_DWDS_CAP		0x01000000	/* DWDS CAP */
+#define WL_STA_DWDS		0x02000000	/* DWDS active */
+
+#define WL_WDS_LINKUP		WL_STA_WDS_LINKUP	/* deprecated */
+
+/* STA HT cap fields */
+#define WL_STA_CAP_LDPC_CODING		0x0001	/* Support for rx of LDPC coded pkts */
+#define WL_STA_CAP_40MHZ		0x0002  /* FALSE:20Mhz, TRUE:20/40MHZ supported */
+#define WL_STA_CAP_MIMO_PS_MASK		0x000C  /* Mimo PS mask */
+#define WL_STA_CAP_MIMO_PS_SHIFT	0x0002	/* Mimo PS shift */
+#define WL_STA_CAP_MIMO_PS_OFF		0x0003	/* Mimo PS, no restriction */
+#define WL_STA_CAP_MIMO_PS_RTS		0x0001	/* Mimo PS, send RTS/CTS around MIMO frames */
+#define WL_STA_CAP_MIMO_PS_ON		0x0000	/* Mimo PS, MIMO disallowed */
+#define WL_STA_CAP_GF			0x0010	/* Greenfield preamble support */
+#define WL_STA_CAP_SHORT_GI_20		0x0020	/* 20MHZ short guard interval support */
+#define WL_STA_CAP_SHORT_GI_40		0x0040	/* 40Mhz short guard interval support */
+#define WL_STA_CAP_TX_STBC		0x0080	/* Tx STBC support */
+#define WL_STA_CAP_RX_STBC_MASK		0x0300	/* Rx STBC mask */
+#define WL_STA_CAP_RX_STBC_SHIFT	8	/* Rx STBC shift */
+#define WL_STA_CAP_DELAYED_BA		0x0400	/* delayed BA support */
+#define WL_STA_CAP_MAX_AMSDU		0x0800	/* Max AMSDU size in bytes , 0=3839, 1=7935 */
+#define WL_STA_CAP_DSSS_CCK		0x1000	/* DSSS/CCK supported by the BSS */
+#define WL_STA_CAP_PSMP			0x2000	/* Power Save Multi Poll support */
+#define WL_STA_CAP_40MHZ_INTOLERANT	0x4000	/* 40MHz Intolerant */
+#define WL_STA_CAP_LSIG_TXOP		0x8000	/* L-SIG TXOP protection support */
+
+#define WL_STA_CAP_RX_STBC_NO		0x0	/* no rx STBC support */
+#define WL_STA_CAP_RX_STBC_ONE_STREAM	0x1	/* rx STBC support of 1 spatial stream */
+#define WL_STA_CAP_RX_STBC_TWO_STREAM	0x2	/* rx STBC support of 1-2 spatial streams */
+#define WL_STA_CAP_RX_STBC_THREE_STREAM	0x3	/* rx STBC support of 1-3 spatial streams */
+
+/* scb vht flags */
+#define WL_STA_VHT_LDPCCAP	0x0001
+#define WL_STA_SGI80		0x0002
+#define WL_STA_SGI160		0x0004
+#define WL_STA_VHT_TX_STBCCAP	0x0008
+#define WL_STA_VHT_RX_STBCCAP	0x0010
+#define WL_STA_SU_BEAMFORMER	0x0020
+#define WL_STA_SU_BEAMFORMEE	0x0040
+#define WL_STA_MU_BEAMFORMER	0x0080
+#define WL_STA_MU_BEAMFORMEE	0x0100
+#define WL_STA_VHT_TXOP_PS	0x0200
+#define WL_STA_HTC_VHT_CAP	0x0400
+
 #include "typedefs.h"
 #include "bcmwifi_channels.h"
 
@@ -594,7 +663,7 @@ int wl_get_chanlist(const char *ifname, int *buf);
 int wl_get_deviceid(const char *ifname, int *buf);
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
-int wl_get_stas_info(const char *ifname, char *bssid, unsigned long *buf);
+int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
 

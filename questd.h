@@ -23,6 +23,10 @@
 
 #include "dslstats.h"
 
+#if IOPSYS_BROADCOM
+#include "broadcom.h" // WILL NOT BE NEEDED LATER
+#endif
+
 #define MAX_RADIO	4
 #define MAX_VIF		8
 #define MAX_NETWORK	16
@@ -50,20 +54,55 @@ typedef struct {
 } Radio;
 
 typedef struct {
-	unsigned int connum;
-	unsigned int idle;
-	unsigned int in_network;
-	unsigned long tx_bytes;
-	unsigned long rx_bytes;
-	unsigned int tx_rate;
-	unsigned int rx_rate;
-	int snr;
-	int rssi;
-	char frequency[8];
-} StaInfo;
+	bool brcm;
+	bool wme;
+	bool ps;
+	bool nonerp;
+	bool apsd_be;
+	bool apsd_bk;
+	bool apsd_vi;
+	bool apsd_vo;
+	bool n_cap;
+	bool vht_cap;
+	bool ampdu_cap;
+	bool amsdu_cap;
+	bool mimo_ps;
+	bool mimo_rts;
+	bool rifs_cap;
+	bool dwds_cap;
+	bool dwds_active;
+	bool scbstats;
+} Flags;
+
+typedef struct {
+	bool ldpc;
+	bool bw40;
+	bool gf;
+	bool sgi20;
+	bool sgi40;
+	bool tx_stbc;
+	bool rx_stbc;
+	bool delayed_ba;
+	bool intl40;
+} HTCaps;
+
+typedef struct {
+	bool ldpc;
+	bool sgi80;
+	bool sgi160;
+	bool tx_stbc;
+	bool rx_stbc;
+	bool su_bfr;
+	bool su_bfe;
+	bool mu_bfr;
+	bool mu_bfe;
+	bool txopps;
+	bool htc_vht_cap;
+} VHTCaps;
 
 typedef struct {
 	bool exists;
+	bool connected;
 	bool local;
 	bool dhcp;
 	char leaseno[24];
@@ -74,19 +113,17 @@ typedef struct {
 	char device[32];
 	bool wireless;
 	char wdev[8];
-	bool connected;
 } Client;
 
 typedef struct {
 	bool exists;
 	char macaddr[24];
 	char wdev[8];
-	int snr;
-	int rssi;
 } Sta;
 
 typedef struct {
 	bool exists;
+	bool connected;
 	char ip6addr[128];
 	char macaddr[24];
 	char hostname[64];
@@ -94,7 +131,6 @@ typedef struct {
 	char device[32];
 	bool wireless;
 	char wdev[8];
-	bool connected;
 } Client6;
 
 typedef struct {
