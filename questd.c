@@ -997,6 +997,10 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u32(b, "snr", snr);
 		blobmsg_add_u32(b, "idle", sta_info.idle);
 		blobmsg_add_u32(b, "in_network", sta_info.in);
+		blobmsg_add_u64(b, "tx_bytes", sta_info.tx_tot_bytes);
+		blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
+		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
+		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
 		f = blobmsg_open_table(b, "flags");
 		blobmsg_add_u8(b, "brcm", (sta_info.flags & WL_STA_BRCM) ? true : false);
 		blobmsg_add_u8(b, "wme", (sta_info.flags & WL_STA_WME) ? true : false);
