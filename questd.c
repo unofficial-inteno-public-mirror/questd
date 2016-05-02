@@ -397,6 +397,17 @@ load_wireless()
 					if (radio[rno].is_ac)
 						radio[rno].hwmodes[2] = "11ac";
 				}
+				#ifndef IOPSYS_BROADCOM
+				else
+				{
+					radio[rno].hwmodes[0] = "11b";
+					radio[rno].hwmodes[1] = "11g";
+					radio[rno].hwmodes[2] = "11bg";
+					radio[rno].hwmodes[3] = "11n";
+					radio[rno].bwcaps[0] = 20;
+					radio[rno].bwcaps[1] = 40;
+					radio[rno].bwcaps[2] = '\0';
+				}
 
 				#if IOPSYS_BROADCOM
 				wl_get_chanlist(radio[rno].name, radio[rno].channels);
@@ -574,7 +585,6 @@ active_connections(char *ipaddr)
 
 	return connum;
 }
-#endif
 #endif
 
 static void
