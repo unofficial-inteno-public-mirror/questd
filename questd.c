@@ -28,6 +28,8 @@
 
 #include <libubus.h>
 
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
@@ -1671,7 +1673,6 @@ quest_router_network_clients(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-#if IOPSYS_BROADCOM
 static int
 quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -1705,6 +1706,7 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(nthere))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+#if IOPSYS_BROADCOM
 	int isup;
 	wl_get_isup(wldev, &isup);
 
@@ -1730,12 +1732,22 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
 	blobmsg_add_u32(&bb, "noise", noise);
 	blobmsg_add_u32(&bb, "rate", rate);
+#else
+	blob_buf_init(&bb, 0);
+	blobmsg_add_string(&bb, "wldev", "");
+	blobmsg_add_u32(&bb, "radio", 0);
+	blobmsg_add_string(&bb, "bssid", "");
+	blobmsg_add_u32(&bb, "frequency", 5);
+	blobmsg_add_u32(&bb, "channel", 0);
+	blobmsg_add_u32(&bb, "bandwidth", 0);
+	blobmsg_add_u32(&bb, "noise", 0);
+	blobmsg_add_u32(&bb, "rate", 0);
+#endif
 
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
 }
-#endif
 
 static int
 quest_router_connected_clients6(struct ubus_context *ctx, struct ubus_object *obj,
@@ -2019,6 +2031,9 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	sprintf(frequency, "5 GHz");
 	sprintf(bandwidth, "0 Mbps");
 	sprintf(bandwidth, "0 MHz");
+	isup = 0;
+	channel = 0;
+	noise = 0;
 #endif
 
 		t = blobmsg_open_table(&bb, radio[i].name);
