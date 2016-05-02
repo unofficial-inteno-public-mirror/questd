@@ -2004,7 +2004,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		if (!radio[i].name)
 			break;
 
-
+#if IOPSYS_BROADCOM
 		wl_get_isup(radio[i].name, &isup);
 
 		wl_get_band(radio[i].name, &band);
@@ -2015,6 +2015,11 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
+#else
+	sprintf(frequency, "5 GHz");
+	sprintf(bandwidth, "0 Mbps");
+	sprintf(bandwidth, "0 MHz");
+#endif
 
 		t = blobmsg_open_table(&bb, radio[i].name);
 		blobmsg_add_u8(&bb, "isup", isup);
