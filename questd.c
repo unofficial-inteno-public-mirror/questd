@@ -56,16 +56,12 @@ static const char *ubus_path;
 static Radio radio[MAX_RADIO];
 static Wireless wireless[MAX_VIF];
 static Network network[MAX_NETWORK];
-#if IOPSYS_BROADCOM
 static StaInfo stainfo[MAX_CLIENT], stainfo6[MAX_CLIENT];
-#endif
 static Client clients[MAX_CLIENT];
 static Client clients_old[MAX_CLIENT];
 static Client clients_new[MAX_CLIENT];
 static Client6 clients6[MAX_CLIENT];
-#if IOPSYS_BROADCOM
 static Sta stas[MAX_CLIENT];
-#endif
 static Router router;
 static Memory memory;
 static Key keys;
@@ -455,7 +451,6 @@ handle_client(Client *clnt)
 	}
 }
 
-#if IOPSYS_BROADCOM
 static void
 wireless_assoclist()
 {
@@ -465,6 +460,7 @@ wireless_assoclist()
 
 	memset(stas, '\0', sizeof(stas));
 
+#if IOPSYS_BROADCOM
 	for (i = 0; wireless[i].device; i++) {
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
@@ -482,6 +478,7 @@ wireless_assoclist()
 			free(macs);
 		}
 	}
+#endif
 }
 
 static void
@@ -489,6 +486,7 @@ wireless_stainfo(Client *clnt, StaInfo *sinfo)
 {
 	unsigned long stainfo[6] = { 0 };
 
+#if IOPSYS_BROADCOM
 	wl_get_stas_info(clnt->wdev, clnt->macaddr, stainfo);
 
 	sinfo->idle = (uint)(stainfo[0]);
@@ -508,6 +506,10 @@ wireless_stainfo(Client *clnt, StaInfo *sinfo)
 
 	sinfo->rssi = rssi;
 	sinfo->snr = rssi - noise;
+#else
+	sinfo->rssi = 0;
+	sinfo->snr = 0;
+#endif
 }
 
 static bool
@@ -602,13 +604,11 @@ ipv4_clients()
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
-			#if IOPSYS_BROADCOM
 				if((clients[cno].connected = wireless_sta(&clients[cno], &stainfo[cno]))) {
 					clients[cno].wireless = true;
 					wireless_stainfo(&clients[cno], &stainfo[cno]);
 				}
 				else
-			#endif
 				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 					recalc_sleep_time(true, toms);
 
@@ -649,12 +649,10 @@ ipv4_clients()
 					if(clients[cno].local) {
 						clients[cno].exists = true;
 						clients[cno].dhcp = false;
-					#if IOPSYS_BROADCOM
 						if((clients[cno].connected = wireless_sta(&clients[cno], &stainfo[cno]))) {
 							clients[cno].wireless = true;
 							wireless_stainfo(&clients[cno], &stainfo[cno]);
 						} else
-					#endif
 						if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 							recalc_sleep_time(true, toms);
 
@@ -728,12 +726,10 @@ ipv6_clients()
 				clear_macaddr();
 				if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
 					sprintf(clients6[cno].macaddr, get_macaddr());
-				#if IOPSYS_BROADCOM
 					if (wireless_sta6(&clients6[cno], &stainfo6[cno])) {
 						clients6[cno].wireless = true;
 						//wireless_stainfo(&clients6[cno], &stainfo6[cno]);
 					}
-				#endif
 				} else
 					recalc_sleep_time(true, toms);
 
@@ -748,9 +744,7 @@ static void
 populate_clients()
 {
 	if (popc) {
-	#if IOPSYS_BROADCOM
 		wireless_assoclist();
-	#endif
 		ipv4_clients();
 		ipv6_clients();
 		popc = false;
@@ -935,7 +929,6 @@ router_dump_clients(struct blob_buf *b)
 			blobmsg_add_u32(b, "active_cons", active_connections(clients[i].ipaddr));*/
 		if(clients[i].wireless) {
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
-#if IOPSYS_BROADCOM
 			blobmsg_add_u32(b, "idle", stainfo[i].idle);
 			blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 			blobmsg_add_string(b, "frequency", stainfo[i].frequency);
@@ -945,7 +938,6 @@ router_dump_clients(struct blob_buf *b)
 			blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 			blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 			blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-#endif
 		}
 		blobmsg_close_table(b, t);
 		num++;
@@ -977,7 +969,6 @@ router_dump_connected_clients(struct blob_buf *b)
 		//blobmsg_add_u32(b, "active_cons", stainfo[i].connum);
 		if(clients[i].wireless) {
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
-#if IOPSYS_BROADCOM
 			blobmsg_add_u32(b, "idle", stainfo[i].idle);
 			blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 			blobmsg_add_string(b, "frequency", stainfo[i].frequency);
@@ -987,7 +978,6 @@ router_dump_connected_clients(struct blob_buf *b)
 			blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 			blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 			blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-#endif
 		}
 		blobmsg_close_table(b, t);
 		num++;
@@ -1021,7 +1011,6 @@ router_dump_network_clients(struct blob_buf *b, char *net)
 			blobmsg_add_u32(b, "active_cons", stainfo[i].connum);*/
 		if(clients[i].wireless) {
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
-		#if IOPSYS_BROADCOM
 			blobmsg_add_u32(b, "idle", stainfo[i].idle);
 			blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 			blobmsg_add_string(b, "frequency", stainfo[i].frequency);
@@ -1031,7 +1020,6 @@ router_dump_network_clients(struct blob_buf *b, char *net)
 			blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 			blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 			blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-		#endif
 		}
 		blobmsg_close_table(b, t);
 		num++;
@@ -1118,7 +1106,6 @@ router_dump_stas(struct blob_buf *b)
 		if(strstr(clients[i].device, "br-"))
 			blobmsg_add_string(b, "bridge", clients[i].device);
 		blobmsg_add_string(b, "wdev", clients[i].wdev);
-#if IOPSYS_BROADCOM
 		//blobmsg_add_u32(b, "active_cons", stainfo[i].connum);
 		blobmsg_add_u32(b, "idle", stainfo[i].idle);
 		blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
@@ -1129,7 +1116,6 @@ router_dump_stas(struct blob_buf *b)
 		blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 		blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 		blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-#endif
 		blobmsg_close_table(b, t);
 		num++;
 	}
@@ -1170,7 +1156,6 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 			blobmsg_add_string(b, "bridge", clients[i].device);
 		if(!vif)
 			blobmsg_add_string(b, "wdev", clients[i].wdev);
-#if IOPSYS_BROADCOM
 		//blobmsg_add_u32(b, "active_cons", stainfo[i].connum);
 		blobmsg_add_u32(b, "idle", stainfo[i].idle);
 		blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
@@ -1181,7 +1166,6 @@ router_dump_wireless_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 		blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 		blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-#endif
 		blobmsg_close_table(b, t);
 		num++;
 	}
@@ -1339,14 +1323,12 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 					blobmsg_add_u32(b, "active_cons", stainfo[i].connum);*/
 				if(clients[i].wireless) {
 					blobmsg_add_string(b, "wdev", clients[i].wdev);
-#if IOPSYS_BROADCOM
 					blobmsg_add_u32(b, "idle", stainfo[i].idle);
 					blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 					blobmsg_add_u64(b, "tx_bytes", stainfo[i].tx_bytes);
 					blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 					blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 					blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-#endif
 				}
 				break;
 			}
@@ -1364,14 +1346,12 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 					blobmsg_add_u32(b, "active_cons", stainfo[i].connum);*/
 				if(clients[i].wireless) {
 					blobmsg_add_string(b, "wdev", clients[i].wdev);
-#if IOPSYS_BROADCOM
 					blobmsg_add_u32(b, "idle", stainfo[i].idle);
 					blobmsg_add_u32(b, "in_network", stainfo[i].in_network);
 					blobmsg_add_u64(b, "tx_bytes", stainfo[i].tx_bytes);
 					blobmsg_add_u64(b, "rx_bytes", stainfo[i].rx_bytes);
 					blobmsg_add_u32(b, "tx_rate", stainfo[i].tx_rate);
 					blobmsg_add_u32(b, "rx_rate", stainfo[i].rx_rate);
-#endif
 				}
 				break;
 			}
@@ -2029,7 +2009,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		sprintf(bandwidth, "%dMHz", bw);
 #else
 	sprintf(frequency, "5 GHz");
-	sprintf(bandwidth, "0 Mbps");
+	sprintf(bitrate, "0 Mbps");
 	sprintf(bandwidth, "0 MHz");
 	isup = 0;
 	channel = 0;
@@ -2401,9 +2381,8 @@ void *dump_router_info(void *arg)
 	
 	init_db_hw_config();
 	load_networks();
-#if IOPSYS_BROADCOM
 	load_wireless();
-#endif
+
 	dump_keys(&keys);
 	dump_specs(&spec);
 	dump_static_router_info(&router);
