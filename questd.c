@@ -51,9 +51,7 @@ static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
 static const char *ubus_path;
 
-#if IOPSYS_BROADCOM
 static Radio radio[MAX_RADIO];
-#endif
 static Wireless wireless[MAX_VIF];
 static Network network[MAX_NETWORK];
 #if IOPSYS_BROADCOM
@@ -324,7 +322,6 @@ load_networks()
 	}
 }
 
-#if IOPSYS_BROADCOM
 static void
 load_wireless()
 {
@@ -375,7 +372,9 @@ load_wireless()
 				if(!(radio[rno].band = uci_lookup_option_string(uci_ctx, s, "band")))
 					radio[rno].band = "b";
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
+				#if IOPSYS_BROADCOM
 				wl_get_deviceid(radio[rno].name, &(radio[rno].deviceid));
+				#endif /* IOPSYS_BROADCOM */
 				radio[rno].is_ac = false;
 				if (radio[rno].deviceid && atoi(chrCmd("db -q get hw.%x.is_ac", radio[rno].deviceid)) == 1)
 					radio[rno].is_ac = true;
@@ -401,14 +400,15 @@ load_wireless()
 						radio[rno].hwmodes[2] = "11ac";
 				}
 
+				#if IOPSYS_BROADCOM
 				wl_get_chanlist(radio[rno].name, radio[rno].channels);
+				#endif /* IOPSYS_BROADCOM */
 
 				rno++;
 			}
 		}
 	}
 }
-#endif /* IOPSYS_BROADCOM */
 
 static void
 match_client_to_network(Network *lan, char *ipaddr, bool *local, char *net, char *dev)
@@ -1986,7 +1986,6 @@ quest_host_status(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-#if IOPSYS_BROADCOM
 static int
 quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -2004,6 +2003,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	for (i = 0; i < MAX_RADIO; i++) {
 		if (!radio[i].name)
 			break;
+
 
 		wl_get_isup(radio[i].name, &isup);
 
@@ -2045,7 +2045,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
-#endif
+
 
 static int
 quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
@@ -2055,9 +2055,7 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 	pthread_mutex_lock(&lock);
 	dump_hostname(&router);
 	load_networks();
-#if IOPSYS_BROADCOM
 	load_wireless();
-#endif
 	pthread_mutex_unlock(&lock);
 	return 0;
 }
@@ -2068,9 +2066,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("quest", quest_router_specific, quest_policy),
 	UBUS_METHOD_NOARG("logs", quest_router_logread),
 	UBUS_METHOD_NOARG("networks", quest_router_networks),
-#if IOPSYS_BROADCOM
 	UBUS_METHOD("wl", quest_router_wl, wl_policy),
-#endif
 	UBUS_METHOD_NOARG("dslstats", dslstats_rpc), 
 	UBUS_METHOD("client", quest_router_network_clients, network_policy),
 	UBUS_METHOD_NOARG("clients", quest_router_clients),
@@ -2084,9 +2080,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("leases", quest_network_leases, network_policy),
 	UBUS_METHOD("host", quest_host_status, host_policy),
 	UBUS_METHOD_NOARG("usb", quest_router_usbs),
-#if IOPSYS_BROADCOM
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
-#endif
 	UBUS_METHOD("password_set", quest_password_set, password_policy),
 	UBUS_METHOD_NOARG("reload", quest_reload),
 };
