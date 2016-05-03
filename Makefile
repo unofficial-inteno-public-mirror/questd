@@ -7,7 +7,7 @@ SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c broad
 LIBSRCS		= 
 ISRCS		= questd.h tools.h broadcom.h
 
-all: questd ueventd uscriptd
+all: questd ueventd uscriptd wificontrol
 
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
@@ -24,6 +24,12 @@ SSRCS		= scriptd.c tools.c
 uscriptd: ${SOBJS}
 	${CC} ${LDFLAGS} -o uscriptd ${SOBJS} ${LIBS}
 
+WOBJS		= wificontrol.o
+WSRCS		= wificontrol.c
+
+wificontrol: ${WOBJS}
+	${CC} ${LDFLAGS} -o wificontrol ${WOBJS}
+
 clean:
-	rm -f questd ueventd uscriptd *.o
+	rm -f questd ueventd uscriptd wificontrol *.o
 
