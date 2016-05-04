@@ -166,15 +166,18 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 }  
 
 int wificlient(void) {
-	FILE *leases;
+	FILE *leases, *arpt;
 	char line[256];
 	char leaseno[256];
 	char macaddr[256];
 	char ipaddr[256];
 	char hostname[256];
 	char mask[256];
+	char device[256];
 	char ssid[256];
 	char key[256];
+	char ripaddr[1000];
+	int hw, flag;
 
 	strcpy(ssid, chrCmd("uci -q get wireless.@wifi-iface[-1].ssid"));
 	strcpy(key, chrCmd("uci -q get wireless.@wifi-iface[-1].key"));
@@ -184,11 +187,30 @@ int wificlient(void) {
 		{
 			removeNewline(line);
 			if (sscanf(line, "%s %s %s %s %s", leaseno, macaddr, ipaddr, hostname, mask) == 5) {
-				if(strstr(macaddr, "00:22:07"))
+				if(strstr(macaddr, "00:22:07")) {
 					connectAndRunCmd(ipaddr, ssid, key);
+					strcat(ripaddr, ipaddr);
+					strcat(ripaddr, " ");
+				}
 			}
 		}
 		fclose(leases);
+	}
+
+	memset(macaddr, '\0', sizeof(macaddr));
+	memset(ipaddr, '\0', sizeof(ipaddr));
+
+	if ((arpt = fopen("/proc/net/arp", "r"))) {
+		while(fgets(line, sizeof(line), arpt) != NULL)
+		{
+			removeNewline(line);
+			if (sscanf(line, "%s 0x%d 0x%d %s %s %s", ipaddr, &hw, &flag, macaddr, mask, device) == 6) {
+				if(strstr(macaddr, "00:22:07") && !strstr(ripaddr, ipaddr)) {
+					connectAndRunCmd(ipaddr, ssid, key);
+				}
+			}
+		}
+		fclose(arpt);
 	}
 
 	return 0;
