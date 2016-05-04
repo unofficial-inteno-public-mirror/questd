@@ -1064,8 +1064,8 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 			blobmsg_add_u64(b, "rx_data_bytes", sta_info.rx_tot_bytes);
 			blobmsg_add_u32(b, "rx_ucast_pkts", sta_info.rx_ucast_pkts);
 			blobmsg_add_u64(b, "rx_ucast_bytes", sta_info.rx_ucast_bytes);
-			blobmsg_add_u32(b, "rx_mcast_bcast pkts", sta_info.rx_mcast_pkts);
-			blobmsg_add_u64(b, "rx_mcast_bcast bytes", sta_info.rx_mcast_bytes);
+			blobmsg_add_u32(b, "rx_mcast_bcast_pkts", sta_info.rx_mcast_pkts);
+			blobmsg_add_u64(b, "rx_mcast_bcast_bytes", sta_info.rx_mcast_bytes);
 			blobmsg_add_u32(b, "rate_of_last_tx_pkt", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 			blobmsg_add_u32(b, "rate_of_last_rx_pkt", sta_info.rx_rate);
 			blobmsg_add_u32(b, "rx_decrypt_succeeds", sta_info.rx_decrypt_succeeds);
