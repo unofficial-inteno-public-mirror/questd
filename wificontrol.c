@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h>
@@ -12,6 +13,8 @@
 #define PORT 9876
 #define BUF_SIZE 2000
 #define CLADDR_LEN 100
+
+pthread_t tid;
 
 static void 
 removeNewline(char *buf)
@@ -41,6 +44,28 @@ chrCmd(char *cmd)
 	}
 }
 
+
+void *ping_uplink(void *arg)
+{
+	const char *ipaddr;
+	unsigned long sleep = 5;
+
+	while (1) {
+		usleep(sleep*1000000);
+		ipaddr = chrCmd("ip r | grep default | awk '{print$3}'");
+		if(strlen(ipaddr) < 7)
+			continue;
+		if(!arping(ipaddr, "br-wan", 2000)) {
+			system("ifup wan &");
+			sleep = 30;
+		} else {
+			sleep = 5;
+		}
+	}
+
+	return NULL;
+}
+
 int wifiserver(void) {
 	struct sockaddr_in addr, cl_addr;
 	int sockfd, len, ret, newsockfd;
@@ -48,6 +73,12 @@ int wifiserver(void) {
 	pid_t childpid;
 	char clientAddr[CLADDR_LEN];
 	int status;
+	int pt;
+
+	if ((pt = pthread_create(&tid, NULL, &ping_uplink, NULL) != 0)) {
+		fprintf(stderr, "Failed to create thread\n");
+		return 1;
+	}
  
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
