@@ -14,7 +14,8 @@
 #define BUF_SIZE 2000
 #define CLADDR_LEN 100
 
-pthread_t tid;
+static int client_connected = 0;
+static pthread_t tid;
 
 static void 
 removeNewline(char *buf)
@@ -44,6 +45,23 @@ chrCmd(char *cmd)
 	}
 }
 
+static int arp_ping(char *ipaddr, char *device, int tmo, int retry)
+{
+	int ret = 0;
+	int i;
+
+	for(i = 0; i < retry; i++) {
+		usleep(100000);
+		if (client_connected == 1)
+			continue;
+		if(arping(ipaddr, device, tmo)) {
+			ret = 1;
+			break;
+		}
+	}
+
+	return ret;
+}
 
 void *ping_uplink(void *arg)
 {
@@ -52,10 +70,12 @@ void *ping_uplink(void *arg)
 
 	while (1) {
 		usleep(sleep*1000000);
+		if (client_connected == 1)
+			continue;
 		ipaddr = chrCmd("ip r | grep default | awk '{print$3}'");
 		if(strlen(ipaddr) < 7)
 			continue;
-		if(!arping(ipaddr, "br-wan", 2000)) {
+		if(arp_ping(ipaddr, "br-wan", 2000, 5) == 0 && client_connected == 0) {
 			system("ifup wan &");
 			sleep = 30;
 		} else {
@@ -104,12 +124,15 @@ int wifiserver(void) {
 	listen(sockfd, 5);
 
 	for (;;) {
+		client_connected = 0;
 		len = sizeof(cl_addr);
 		newsockfd = accept(sockfd, (struct sockaddr *) &cl_addr, &len);
 		if (newsockfd < 0) {
 			printf("Error accepting connection!\n");
 			return -1;
 		}
+
+		client_connected = 1;
 		//printf("Connection accepted...\n");
 
 		inet_ntop(AF_INET, &(cl_addr.sin_addr), clientAddr, CLADDR_LEN);
