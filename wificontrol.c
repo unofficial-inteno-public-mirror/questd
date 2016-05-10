@@ -1,4 +1,4 @@
- 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -22,7 +22,7 @@ removeNewline(char *buf)
 {
 	int len;
 	len = strlen(buf) - 1;
-	if (buf[len] == '\n') 
+	if (buf[len] == '\n')
 		buf[len] = 0;
 }
 
@@ -54,7 +54,7 @@ static int arp_ping(char *ipaddr, char *device, int tmo, int retry)
 		usleep(100000);
 		if (client_connected == 1)
 			continue;
-		if(arping(ipaddr, device, tmo)) {
+		if (arping(ipaddr, device, tmo)) {
 			ret = 1;
 			break;
 		}
@@ -63,7 +63,7 @@ static int arp_ping(char *ipaddr, char *device, int tmo, int retry)
 	return ret;
 }
 
-void *ping_uplink(void *arg)
+static void *ping_uplink(void *arg)
 {
 	const char *ipaddr;
 	unsigned long sleep = 5;
@@ -73,9 +73,9 @@ void *ping_uplink(void *arg)
 		if (client_connected == 1)
 			continue;
 		ipaddr = chrCmd("ip r | grep default | awk '{print$3}'");
-		if(strlen(ipaddr) < 7)
+		if (strlen(ipaddr) < 7)
 			continue;
-		if(arp_ping(ipaddr, "br-wan", 2000, 5) == 0 && client_connected == 0) {
+		if (arp_ping(ipaddr, "br-wan", 2000, 5) == 0 && client_connected == 0) {
 			system("ifup wan &");
 			sleep = 30;
 		} else {
@@ -86,7 +86,7 @@ void *ping_uplink(void *arg)
 	return NULL;
 }
 
-int wifiserver(void) {
+static int wifiserver(void) {
 	struct sockaddr_in addr, cl_addr;
 	int sockfd, len, ret, newsockfd;
 	char buffer[BUF_SIZE];
@@ -99,19 +99,19 @@ int wifiserver(void) {
 		fprintf(stderr, "Failed to create thread\n");
 		return 1;
 	}
- 
+
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		printf("Error creating socket!\n");
 		return -1;
 	}
 	//printf("Socket created...\n");
- 
+
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	addr.sin_port = htons(PORT);
- 
+
 	ret = bind(sockfd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
 		printf("Error binding!\n");
@@ -139,14 +139,14 @@ int wifiserver(void) {
 		if ((childpid = fork()) == 0) {
 			close(sockfd);
 			for (;;) {
-		    		memset(buffer, 0, BUF_SIZE);
-		   		ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
-				if(ret < 0) {
+				memset(buffer, 0, BUF_SIZE);
+				ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+				if (ret < 0) {
 					printf("Error receiving data!\n");
 					exit(1);
 				}
 				//printf("Received data from %s: %s\n", clientAddr, buffer);
-		
+
 				if (strncmp(buffer, "wifi import", 11))
 					strcpy(buffer, "echo Invalid call to wificontrol");
 
@@ -154,7 +154,7 @@ int wifiserver(void) {
 				if (ret < 0) {
 					//printf("Error sending data!\n");
 					exit(1);
-				}  
+				}
 				//printf("Sent data to %s: %s\n", clientAddr, chrCmd(buffer));
 			}
 		} else if (childpid > 0) {
@@ -162,11 +162,11 @@ int wifiserver(void) {
 		}
 
 		close(newsockfd);
- 	}
+	}
 	return 0;
 }
 
-int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
+static int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 	struct sockaddr_in addr;
 	int sockfd, ret;
 	char buffer[BUF_SIZE];
@@ -177,7 +177,7 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 	if (sockfd < 0) {
 		printf("Error creating socket!\n");
 		return -1;
-	}  
+	}
 	//printf("Socket created...\n");
 
 	memset(&addr, 0, sizeof(addr));
@@ -214,12 +214,12 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 		}*/
 	}
 
- 	close(sockfd);
+	close(sockfd);
 
 	return 0;
-}  
+}
 
-int wificlient(void) {
+static int wificlient(void) {
 	FILE *leases, *arpt;
 	char line[256];
 	char leaseno[256];
@@ -237,11 +237,11 @@ int wificlient(void) {
 	strcpy(key, chrCmd("uci -q get wireless.@wifi-iface[-1].key"));
 
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
-		while(fgets(line, sizeof(line), leases) != NULL)
+		while (fgets(line, sizeof(line), leases) != NULL)
 		{
 			removeNewline(line);
 			if (sscanf(line, "%s %s %s %s %s", leaseno, macaddr, ipaddr, hostname, mask) == 5) {
-				if(strstr(macaddr, "00:22:07")) {
+				if (strstr(macaddr, "00:22:07")) {
 					connectAndRunCmd(ipaddr, ssid, key);
 					strcat(ripaddr, ipaddr);
 					strcat(ripaddr, " ");
@@ -255,11 +255,11 @@ int wificlient(void) {
 	memset(ipaddr, '\0', sizeof(ipaddr));
 
 	if ((arpt = fopen("/proc/net/arp", "r"))) {
-		while(fgets(line, sizeof(line), arpt) != NULL)
+		while (fgets(line, sizeof(line), arpt) != NULL)
 		{
 			removeNewline(line);
 			if (sscanf(line, "%s 0x%d 0x%d %s %s %s", ipaddr, &hw, &flag, macaddr, mask, device) == 6) {
-				if(strstr(macaddr, "00:22:07") && !strstr(ripaddr, ipaddr)) {
+				if (strstr(macaddr, "00:22:07") && !strstr(ripaddr, ipaddr)) {
 					connectAndRunCmd(ipaddr, ssid, key);
 				}
 			}
@@ -270,7 +270,7 @@ int wificlient(void) {
 	return 0;
 }
 
-void usage(void){
+static void usage(void){
 	printf("wificontrol -s\n");
 	printf("\trun in server mode and wait for client to push configuration\n\n");
 	printf("wificontrol -c\n");
@@ -284,12 +284,12 @@ int main(int argc, char**argv) {
 	int client_mode = 0;
 	int server_mode = 0;
 	int opt;
+	int rc;
 
 	if (argc < 2)
 		usage();
 
 	while ((opt = getopt(argc, argv, "cs")) != -1) {
-
 		switch (opt) {
 			case 'c':
 				client_mode = 1;
@@ -304,14 +304,15 @@ int main(int argc, char**argv) {
 	argc -= optind;
 	argv += optind;
 
-	if(client_mode)
-		wificlient();
-	else if(server_mode)
-		wifiserver();
-	else if(argv[1] && argv[2])
-		connectAndRunCmd(argv[0], argv[1], argv[2]);
+	if (client_mode)
+		rc = wificlient();
+	else if (server_mode)
+		rc = wifiserver();
+	else if (argv[1] && argv[2])
+		rc = connectAndRunCmd(argv[0], argv[1], argv[2]);
 	else
 		usage();
 
-	return 0;	
+	return (rc != 0);
 }
+
