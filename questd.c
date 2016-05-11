@@ -38,6 +38,41 @@
 
 #include "questd.h"
 #include "tools.h"
+#include "port.h"
+#include "ndisc.h"
+
+
+typedef struct { /* Used by: questd.c */
+	const char *vif;
+	const char *device;
+	const char *ssid;
+	const char *network;
+} Wireless;
+
+typedef struct { /* Used by: questd.c */
+	const char *name;
+	const char *band;
+	int frequency;
+	const char *hwmodes[6];
+	int channels[64];
+	int deviceid;
+	int bwcaps[4];
+	bool is_ac;
+} Radio;
+
+typedef struct { /* Used by: questd.c */
+	bool exists;
+	bool connected;
+	char ip6addr[128];
+	char macaddr[24];
+	char hostname[64];
+	char duid[64];
+	char device[32];
+	bool wireless;
+	char wdev[8];
+} Client6;
+
+
 
 #define DEFAULT_SLEEP	5000000
 

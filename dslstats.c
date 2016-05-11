@@ -20,6 +20,7 @@
  * 02110-1301 USA
  */
 
+#include "dslstats.h"
 #include "questd.h"
 #include "tools.h"
 
@@ -337,15 +338,16 @@ int dslstats_rpc(struct ubus_context *ctx, struct ubus_object *obj,
 	static struct blob_buf bb;
 	static struct dsl_stats dslstats;
 	
-	dslstats_init(&dslstats); 
-	blob_buf_init(&bb, 0); 
+	dslstats_init(&dslstats);
+	blob_buf_init(&bb, 0);
 	
 	dslstats_load(&dslstats);
-	dslstats_to_blob_buffer(&dslstats, &bb); 
+	dslstats_to_blob_buffer(&dslstats, &bb);
 	
-	ubus_send_reply(ctx, req, bb.head); 
+	ubus_send_reply(ctx, req, bb.head);
 	
-	dslstats_free(&dslstats); 
+	dslstats_free(&dslstats);
 	
 	return 0; 	
 }
+

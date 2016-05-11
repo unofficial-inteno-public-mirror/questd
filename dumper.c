@@ -22,6 +22,7 @@
 
 #include "questd.h"
 #include "tools.h"
+#include "port.h"
 #include "uboot_env.h"
 
 struct uci_context *db_ctx;

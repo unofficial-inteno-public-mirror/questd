@@ -22,12 +22,13 @@
 #include <libubus.h>
 
 #include "dslstats.h"
-#include "ndisc.h"
-#include "port.h"
 
 #if IOPSYS_BROADCOM
 #include "broadcom.h" // WILL NOT BE NEEDED LATER
 #endif
+
+#ifndef QUESTD_H
+#define QUESTD_H 1
 
 #define MAX_RADIO	4
 #define MAX_VIF		8
@@ -37,24 +38,7 @@
 #define MAX_USB		18
 #define MAX_IGMP_ENTRY	128
 
-typedef struct {
-	const char *vif;
-	const char *device;
-	const char *ssid;
-	const char *network;
-} Wireless;
-
-typedef struct {
-	const char *name;
-	const char *band;
-	int frequency;
-	const char *hwmodes[6];
-	int channels[64];
-	int deviceid;
-	int bwcaps[4];
-	bool is_ac;
-} Radio;
-
+#if 0 /* UNUSED */
 typedef struct {
 	bool brcm;
 	bool wme;
@@ -75,7 +59,9 @@ typedef struct {
 	bool dwds_active;
 	bool scbstats;
 } Flags;
+#endif
 
+#if 0 /* UNUSED */
 typedef struct {
 	bool ldpc;
 	bool bw40;
@@ -87,7 +73,9 @@ typedef struct {
 	bool delayed_ba;
 	bool intl40;
 } HTCaps;
+#endif
 
+#if 0 /* UNUSED */
 typedef struct {
 	bool ldpc;
 	bool sgi80;
@@ -101,58 +89,17 @@ typedef struct {
 	bool txopps;
 	bool htc_vht_cap;
 } VHTCaps;
+#endif
 
-typedef struct {
-	bool exists;
-	bool connected;
-	bool local;
-	bool dhcp;
-	char leaseno[24];
-	char macaddr[24];
-	char ipaddr[24];
-	char hostname[64];
-	char network[32];
-	char device[32];
-	bool wireless;
-	char wdev[8];
-} Client;
 
-typedef struct {
+typedef struct { /* Used by: questd.c, dslstats.c|h */
 	bool exists;
 	char macaddr[24];
 	char wdev[8];
 } Sta;
 
-typedef struct {
-	bool exists;
-	bool connected;
-	char ip6addr[128];
-	char macaddr[24];
-	char hostname[64];
-	char duid[64];
-	char device[32];
-	bool wireless;
-	char wdev[8];
-} Client6;
 
-typedef struct {
-	unsigned long rx_bytes;
-	unsigned long rx_packets;
-	unsigned long rx_errors;
-	unsigned long tx_bytes;
-	unsigned long tx_packets;
-	unsigned long tx_errors;
-} Statistic;
-
-typedef struct {
-	char name[16];
-	char ssid[32];
-	char device[32];
-	Statistic stat;
-	Client client[MAX_CLIENT];
-} Port;
-
-typedef struct {
+typedef struct { /* Used by: questd.c */
 	bool exists;
 	bool is_lan;
 	const char *name;
@@ -165,7 +112,7 @@ typedef struct {
 	bool ports_populated;
 } Network;
 
-typedef struct {
+typedef struct { /* Used by: questd.c, dumper.c, dumper.h */
 	char name[64];
 	char *hardware;
 	char *model;
@@ -186,7 +133,7 @@ typedef struct {
 	unsigned int cpu;
 } Router;
 
-typedef struct {
+typedef struct {  /* Used by: questd.c, dumper.c, dumper.h */
 	unsigned long total;
 	unsigned long used;
 	unsigned long free;
@@ -194,13 +141,13 @@ typedef struct {
 	unsigned long buffers;
 } Memory;
 
-typedef struct {
+typedef struct {  /* Used by: questd.c, dumper.c, dumper.h */
 	char *auth;
 	char *des;
 	char *wpa;
 } Key;
 
-typedef struct {
+typedef struct {  /* Used by: questd.c, dumper.c, dumper.h */
 	bool wifi;
 	bool adsl;
 	bool vdsl;
@@ -210,7 +157,7 @@ typedef struct {
 	int eports;
 } Spec;
 
-typedef struct {
+typedef struct {  /* Used by: questd.c, dumper.h, usb.c */
 	char mount[64];
 	char product[64];
 	char no[8];
@@ -225,7 +172,7 @@ typedef struct {
 	char idvendor[64];
 } USB;
 
-typedef struct {
+typedef struct {  /* Used by: questd.c */
 	bool exists;
 	char bridge[32];
 	char device[32];
@@ -241,24 +188,18 @@ typedef struct {
 	int timeout;
 	int Index;
 	int ExcludPt;
+} IGMPTable;
 
-}IGMPTable;
-
-typedef struct jiffy_counts_t {
+typedef struct jiffy_counts_t { /* Used by questd.c, questd.h, dumper.c, dumper.h */
 	unsigned long long usr, nic, sys, idle;
 	unsigned long long iowait, irq, softirq, steal;
 	unsigned long long total;
 	unsigned long long busy;
 } jiffy_counts_t;
 
-struct fdb_entry
-{
-	u_int8_t mac_addr[6];
-	u_int16_t port_no;
-	unsigned char is_local;
-};
-
 void recalc_sleep_time(bool calc, int toms);
 void init_db_hw_config(void);
 void get_jif_val(jiffy_counts_t *p_jif);
+
+#endif /* QUESTD */
 

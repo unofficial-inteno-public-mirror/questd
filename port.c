@@ -30,6 +30,13 @@
 
 #define CHUNK		128
 
+struct fdb_entry
+{
+	u_int8_t mac_addr[6];
+	u_int16_t port_no;
+	unsigned char is_local;
+};
+
 static long
 get_port_stat(char *dev, char *stat)
 {
@@ -193,3 +200,4 @@ get_clients_onport(char *bridge, int portno)
 
 	return tmpmac;
 }
+
