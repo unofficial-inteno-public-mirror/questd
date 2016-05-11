@@ -17,6 +17,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE /* mempcpy() */
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <net/if.h>
@@ -28,6 +30,7 @@
 #include <string.h>
 
 #include "questd.h"
+#include "arping.h"
 
 
 struct in_addr src;

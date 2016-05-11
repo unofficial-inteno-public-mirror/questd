@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #ifndef ARPING_H
 #define ARPING_H 1
 
