@@ -20,6 +20,15 @@
  * 02110-1301 USA
  */
 
+#include <uci.h>
+
+#include <libubox/blobmsg.h>
+#include <libubox/uloop.h>
+#include <libubox/ustream.h>
+#include <libubox/utils.h>
+
+#include <libubus.h>
+
 #ifndef Q_DSLSTATS_H
 #define Q_DSLSTATS_H 1
 

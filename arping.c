@@ -103,7 +103,7 @@ recv_pack(char *buf, int len, struct sockaddr_ll *FROM)
 
 
 bool
-arping(char *targetIP, char *device, int toms)
+arping(const char *targetIP, const char *device, int toms)
 {
 	struct sockaddr_in saddr;
 	struct ifreq ifr;

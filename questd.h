@@ -21,8 +21,6 @@
 
 #include <libubus.h>
 
-#include "dslstats.h"
-
 #if IOPSYS_BROADCOM
 #include "broadcom.h" // WILL NOT BE NEEDED LATER
 #endif

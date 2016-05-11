@@ -1,14 +1,21 @@
 
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <string.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <fcntl.h>
+
+#include "arping.h"
 
 #define PORT 9876
 #define BUF_SIZE 2000
@@ -45,7 +52,7 @@ chrCmd(char *cmd)
 	}
 }
 
-static int arp_ping(char *ipaddr, char *device, int tmo, int retry)
+static int arp_ping(const char *ipaddr, const char *device, int tmo, int retry)
 {
 	int ret = 0;
 	int i;
@@ -88,7 +95,8 @@ static void *ping_uplink(void *arg)
 
 static int wifiserver(void) {
 	struct sockaddr_in addr, cl_addr;
-	int sockfd, len, ret, newsockfd;
+	int sockfd, ret, newsockfd;
+	socklen_t len;
 	char buffer[BUF_SIZE];
 	pid_t childpid;
 	char clientAddr[CLADDR_LEN];
