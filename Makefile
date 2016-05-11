@@ -1,11 +1,11 @@
 CC		= gcc
-CFLAGS		= -g -Wall $(QUESTD_CLFAGS) -std=c99 -pedantic -Werror
+CFLAGS		= -g -Wall $(QUESTD_CLFAGS) -std=c99 -Wall -pedantic
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
 LOCLIBS		= 
 OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o broadcom.o uboot_env.o
 SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c broadcom.c uboot_env.c
 LIBSRCS		= 
-ISRCS		= questd.h port.h ndisc.h arping.h dumper.h tools.h broadcom.h
+ISRCS		= questd.h port.h ndisc.h arping.h dumper.h tools.h broadcom.h usb.h
 
 all: questd ueventd uscriptd wificontrol
 

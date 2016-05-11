@@ -90,12 +90,6 @@ typedef struct {
 #endif
 
 
-typedef struct { /* Used by: questd.c, dslstats.c|h */
-	bool exists;
-	char macaddr[24];
-	char wdev[8];
-} Sta;
-
 
 
 

@@ -20,6 +20,8 @@
  * 02110-1301 USA
  */
 
+#define _GNU_SOURCE /* crypt() */
+
 #include <libubox/blobmsg.h>
 #include <libubox/blobmsg_json.h>
 #include <libubox/uloop.h>
@@ -37,6 +39,7 @@
 #include <dirent.h>
 #include <shadow.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "questd.h"
 #include "tools.h"
@@ -45,6 +48,7 @@
 #include "dumper.h"
 #include "usb.h"
 #include "arping.h"
+#include "dslstats.h"
 
 
 typedef struct { /* Used by: questd.c */
@@ -108,6 +112,12 @@ typedef struct {  /* Used by: questd.c */
 	int Index;
 	int ExcludPt;
 } IGMPTable;
+
+typedef struct { /* Used by: questd.c, dslstats.c|h */
+	bool exists;
+	char macaddr[24];
+	char wdev[8];
+} Sta;
 
 
 
@@ -415,7 +425,8 @@ load_wireless()
 
 	if((uci_wireless = init_package("wireless"))) {
 		uci_foreach_element(&uci_wireless->sections, e) {
-			struct uci_section *s = uci_to_section(e);
+				#define ASDF __extension__(e) uci_to_section(e)
+			struct uci_section *s = ASDF(e);
 
 			if (!strcmp(s->type, "wifi-iface")) {
 				device = uci_lookup_option_string(uci_ctx, s, "device");
@@ -752,7 +763,9 @@ ipv6_clients()
 			clients6[cno].exists = false;
 			clients6[cno].wireless = false;
 			memset(clients6[cno].hostname, '\0', sizeof(clients[cno].hostname));
-			if (sscanf(line, "# %s %s %x %s %d %x %d %s", clients6[cno].device, clients6[cno].duid, &iaid, clients6[cno].hostname, &ts, &id, &length, clients6[cno].ip6addr)) {
+			if (sscanf(line, "# %s %s %x %s %d %x %d %s", clients6[cno].device, clients6[cno].duid,
+					(unsigned int *) &iaid, clients6[cno].hostname, 
+					&ts, (unsigned int *) &id, &length, clients6[cno].ip6addr)) {
 				clients6[cno].exists = true;
 				clear_macaddr();
 				if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
@@ -1708,9 +1721,10 @@ quest_router_igmp_table(struct ubus_context *ctx, struct ubus_object *obj,
 			remove_newline(line);
 			table[idx].exists = false;
 			if(sscanf(single_space(line),"%s %s %s %s %x %x %s %s %s %s %s %d %x %d",
-					table[idx].bridge, table[idx].device, table[idx].srcdev, table[idx].tags, &(table[idx].lantci), &(table[idx].wantci),
+					table[idx].bridge, table[idx].device, table[idx].srcdev, table[idx].tags,
+					(unsigned int *) &(table[idx].lantci), (unsigned int *) &(table[idx].wantci),
 					table[idx].group, table[idx].mode, table[idx].RxGroup, table[idx].source, table[idx].reporter,
-					&(table[idx].timeout), &(table[idx].Index), &(table[idx].ExcludPt)) == 14)
+					&(table[idx].timeout), (unsigned int *) &(table[idx].Index), &(table[idx].ExcludPt)) == 14)
 			{
 				table[idx].exists = true;
 				idx++;
