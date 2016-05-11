@@ -1,3 +1,6 @@
+#ifndef TYPEDEFS_H
+#define TYPEDEFS_H 1
+
 typedef unsigned char	uchar;
 typedef unsigned short	ushort;
 typedef unsigned int	uint;
@@ -14,5 +17,5 @@ typedef signed long long int64;
 typedef float		float32;
 typedef double		float64;
 
-
+#endif /* TYPEDEFS */
 

@@ -22,6 +22,8 @@
 #include <libubus.h>
 
 #include "dslstats.h"
+#include "ndisc.h"
+#include "port.h"
 
 #if IOPSYS_BROADCOM
 #include "broadcom.h" // WILL NOT BE NEEDED LATER
@@ -134,12 +136,12 @@ typedef struct {
 } Client6;
 
 typedef struct {
-        unsigned long rx_bytes;
-        unsigned long rx_packets;
-        unsigned long rx_errors;
-        unsigned long tx_bytes;
-        unsigned long tx_packets;
-        unsigned long tx_errors;
+	unsigned long rx_bytes;
+	unsigned long rx_packets;
+	unsigned long rx_errors;
+	unsigned long tx_bytes;
+	unsigned long tx_packets;
+	unsigned long tx_errors;
 } Statistic;
 
 typedef struct {
@@ -201,10 +203,10 @@ typedef struct {
 typedef struct {
 	bool wifi;
 	bool adsl;
-        bool vdsl;
-        bool voice;
-        bool dect;
-        int vports;
+	bool vdsl;
+	bool voice;
+	bool dect;
+	int vports;
 	int eports;
 } Spec;
 
@@ -258,19 +260,5 @@ struct fdb_entry
 
 void recalc_sleep_time(bool calc, int toms);
 void init_db_hw_config(void);
-bool arping(char *target, char *device, int toms);
 void get_jif_val(jiffy_counts_t *p_jif);
-void dump_keys(Key *keys);
-void dump_specs(Spec *spec);
-void dump_static_router_info(Router *router);
-void dump_hostname(Router *router);
-void dump_sysinfo(Router *router, Memory *memory);
-void dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_jif);
-void get_port_name(Port *port);
-void get_port_stats(Port *port);
-void get_bridge_ports(char *network, char **ifname);
-char *get_clients_onport(char *bridge, int portno);
-void dump_usb_info(USB *usb, char *usbno);
-void clear_macaddr(void);
-char *get_macaddr(void);
-bool ndisc (const char *name, const char *ifname, unsigned flags, unsigned retry, unsigned wait_ms);
+
