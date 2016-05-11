@@ -28,6 +28,8 @@
 
 #include <libubus.h>
 
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
@@ -42,6 +44,7 @@
 #include "ndisc.h"
 #include "dumper.h"
 #include "usb.h"
+#include "arping.h"
 
 
 typedef struct { /* Used by: questd.c */

@@ -19,8 +19,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA
  */
- 
-#pragma once
+
+#ifndef Q_DSLSTATS_H
+#define Q_DSLSTATS_H 1
 
 enum {
 	DSLSTATS_BEARER_0 = 0, 
@@ -78,4 +79,7 @@ void dslstats_load(struct dsl_stats *self);
 void dslstats_to_blob_buffer(struct dsl_stats *self, struct blob_buf *b); 
 int dslstats_rpc(struct ubus_context *ctx, struct ubus_object *obj, 
 	struct ubus_request_data *req, const char *method, 
-	struct blob_attr *msg); 
+	struct blob_attr *msg);
+
+#endif /* Q_DSLSTATS_H */
+
