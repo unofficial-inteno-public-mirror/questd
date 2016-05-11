@@ -40,6 +40,8 @@
 #include "tools.h"
 #include "port.h"
 #include "ndisc.h"
+#include "dumper.h"
+#include "usb.h"
 
 
 typedef struct { /* Used by: questd.c */
@@ -71,6 +73,44 @@ typedef struct { /* Used by: questd.c */
 	bool wireless;
 	char wdev[8];
 } Client6;
+
+typedef struct { /* Used by: questd.c */
+	bool exists;
+	bool is_lan;
+	const char *name;
+	const char *type;
+	const char *proto;
+	const char *ipaddr;
+	const char *netmask;
+	char ifname[128];
+	Port port[MAX_PORT];
+	bool ports_populated;
+} Network;
+
+
+typedef struct {  /* Used by: questd.c */
+	bool exists;
+	char bridge[32];
+	char device[32];
+	char srcdev[32];
+	char tags[32];
+	int lantci;
+	int wantci;
+	char group[16];
+	char mode[32];
+	char RxGroup[16];
+	char source[16];
+	char reporter[16];
+	int timeout;
+	int Index;
+	int ExcludPt;
+} IGMPTable;
+
+
+
+
+
+
 
 
 
@@ -2158,7 +2198,7 @@ wps_showpin(struct ubus_context *ctx, struct ubus_object *obj,
 	char pin[9] = { '\0' };
 
 	sprintf(cmnd, "nvram get wps_device_pin");
-	if ((showpin = popen(cmnd, "r"))) {
+	if ((showpin = popen(cmnd, "r")) != 0) {
 		fgets(pin, sizeof(pin), showpin);
 		remove_newline(pin);
 		pclose(showpin);

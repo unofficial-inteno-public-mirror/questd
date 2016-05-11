@@ -99,81 +99,8 @@ typedef struct { /* Used by: questd.c, dslstats.c|h */
 } Sta;
 
 
-typedef struct { /* Used by: questd.c */
-	bool exists;
-	bool is_lan;
-	const char *name;
-	const char *type;
-	const char *proto;
-	const char *ipaddr;
-	const char *netmask;
-	char ifname[128];
-	Port port[MAX_PORT];
-	bool ports_populated;
-} Network;
 
-typedef struct { /* Used by: questd.c, dumper.c, dumper.h */
-	char name[64];
-	char *hardware;
-	char *model;
-	char *boardid;
-	char *firmware;
-	char *brcmver;
-	char *filesystem;
-	char *socmod;
-	char *socrev;
-	char *cfever;
-	char *kernel;
-	char *basemac;
-	char *serialno;
-	char date[64];
-	char uptime[64];
-	unsigned int localtime;
-	unsigned int procs;
-	unsigned int cpu;
-} Router;
 
-typedef struct {  /* Used by: questd.c, dumper.c, dumper.h */
-	unsigned long total;
-	unsigned long used;
-	unsigned long free;
-	unsigned long shared;
-	unsigned long buffers;
-} Memory;
-
-typedef struct {  /* Used by: questd.c, dumper.c, dumper.h */
-	char *auth;
-	char *des;
-	char *wpa;
-} Key;
-
-typedef struct {  /* Used by: questd.c, dumper.c, dumper.h */
-	bool wifi;
-	bool adsl;
-	bool vdsl;
-	bool voice;
-	bool dect;
-	int vports;
-	int eports;
-} Spec;
-
-typedef struct {  /* Used by: questd.c */
-	bool exists;
-	char bridge[32];
-	char device[32];
-	char srcdev[32];
-	char tags[32];
-	int lantci;
-	int wantci;
-	char group[16];
-	char mode[32];
-	char RxGroup[16];
-	char source[16];
-	char reporter[16];
-	int timeout;
-	int Index;
-	int ExcludPt;
-} IGMPTable;
 
 typedef struct jiffy_counts_t { /* Used by questd.c, questd.h, dumper.c, dumper.h */
 	unsigned long long usr, nic, sys, idle;

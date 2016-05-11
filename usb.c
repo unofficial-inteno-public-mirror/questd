@@ -24,8 +24,9 @@
 
 #include "questd.h"
 #include "tools.h"
+#include "usb.h"
 
-#if 0
+#if 1
 static char *
 get_usb_infos(char *usbno, char *info) {
 	FILE *in;
@@ -41,8 +42,7 @@ get_usb_infos(char *usbno, char *info) {
 	}
 	return result;
 }
-#endif
-
+#else
 static char *
 get_usb_infos(char *buf, size_t len, char *usbno, char *info) {
 	FILE *in;
@@ -58,8 +58,9 @@ get_usb_infos(char *buf, size_t len, char *usbno, char *info) {
 	}
 	return result;
 }
+#endif
 
-#if 0
+#if 1
 static char *
 get_usb_device(char *mount) {
 	FILE *mounts;
@@ -82,8 +83,7 @@ get_usb_device(char *mount) {
 	}
 	return dev;
 }
-#endif
-
+#else
 static char *
 get_usb_device(const char *mount, char *dev, size_t dlen) {
 	FILE *fp;
@@ -106,6 +106,7 @@ get_usb_device(const char *mount, char *dev, size_t dlen) {
 	}
 	return 0;
 }
+#endif
 
 static long
 get_usb_size(char *device) {
@@ -130,7 +131,7 @@ dump_usb_info(USB *usb, char *usbno)
 {
 	char file[64];
 	char result[32];
-	char dev[16];
+	/*char dev[16];*/
 	FILE *in;
 
 	sprintf(file, "/sys/bus/usb/devices/%s/product", usbno);
@@ -156,7 +157,7 @@ dump_usb_info(USB *usb, char *usbno)
 			sprintf(usb->mount, "%s%s", usb->product, usb->serial);
 			remove_space(usb->mount);
 		}
-		strncpy(usb->device, get_usb_device(usb->mount, dev), 64);
+		strncpy(usb->device, get_usb_device(usb->mount), 64);
 		usb->size = get_usb_size(usb->device);
 	}
 }

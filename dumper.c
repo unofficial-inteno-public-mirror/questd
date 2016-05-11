@@ -24,6 +24,7 @@
 #include "tools.h"
 #include "port.h"
 #include "uboot_env.h"
+#include "dumper.h"
 
 struct uci_context *db_ctx;
 static bool dbLoaded = false;

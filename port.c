@@ -27,6 +27,7 @@
 
 #include "questd.h"
 #include "tools.h"
+#include "port.h"
 
 #define CHUNK		128
 
