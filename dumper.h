@@ -7,7 +7,6 @@ void dump_static_router_info(Router *router);
 void dump_hostname(Router *router);
 void dump_sysinfo(Router *router, Memory *memory);
 void dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_jif);
-void dump_usb_info(USB *usb, char *usbno);
 
 #endif /* DUMPER_H */
 

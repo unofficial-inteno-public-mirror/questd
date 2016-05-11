@@ -25,11 +25,29 @@
 #include "questd.h"
 #include "tools.h"
 
-char*
+#if 0
+static char *
 get_usb_infos(char *usbno, char *info) {
 	FILE *in;
 	char file[64];
-	static char result[32];
+	/*static char result[32];*/
+
+	memset(result, '\0', sizeof(result));
+	sprintf(file, "/sys/bus/usb/devices/%s/%s", usbno, info);
+	if ((in = fopen(file, "r"))) {
+		fgets(result, sizeof(result), in);
+		remove_newline(result);
+		fclose(in);
+	}
+	return result;
+}
+#endif
+
+static char *
+get_usb_infos(char *buf, size_t len, char *usbno, char *info) {
+	FILE *in;
+	char file[64];
+	/*static char result[32];*/
 
 	memset(result, '\0', sizeof(result));
 	sprintf(file, "/sys/bus/usb/devices/%s/%s", usbno, info);
@@ -41,11 +59,12 @@ get_usb_infos(char *usbno, char *info) {
 	return result;
 }
 
-char*
+#if 0
+static char *
 get_usb_device(char *mount) {
 	FILE *mounts;
 	char line[128];
-	static char dev[16];
+	/*static char dev[16];*/
 	char mnt[64];
 
 	if ((mounts = fopen("/var/usbmounts", "r"))) {
@@ -63,8 +82,32 @@ get_usb_device(char *mount) {
 	}
 	return dev;
 }
+#endif
 
-long
+static char *
+get_usb_device(const char *mount, char *dev, size_t dlen) {
+	FILE *fp;
+	char line[128];
+	/*static char dev[16];*/
+	char mnt[64];
+
+	if ((fp = fopen("/var/usbmounts", "r"))) {
+		while (fgets(line, sizeof(line), fp) != NULL)
+		{
+			remove_newline(line);
+			if (sscanf(line, "/dev/%s /mnt/%s", dev, mnt) == 2) {
+				if (!strcmp(mnt, mount) || strstr(mount, mnt)) {
+					fclose(fp)
+					return dev;
+				}
+			}
+		}
+		fclose(fp);
+	}
+	return 0;
+}
+
+static long
 get_usb_size(char *device) {
 	FILE *in;
 	char file[64];
@@ -85,9 +128,10 @@ get_usb_size(char *device) {
 void
 dump_usb_info(USB *usb, char *usbno)
 {
-	FILE *in;
 	char file[64];
 	char result[32];
+	char dev[16];
+	FILE *in;
 
 	sprintf(file, "/sys/bus/usb/devices/%s/product", usbno);
 	if ((in = fopen(file, "r"))) {
@@ -112,7 +156,8 @@ dump_usb_info(USB *usb, char *usbno)
 			sprintf(usb->mount, "%s%s", usb->product, usb->serial);
 			remove_space(usb->mount);
 		}
-		strncpy(usb->device, get_usb_device(usb->mount), 64);
+		strncpy(usb->device, get_usb_device(usb->mount, dev), 64);
 		usb->size = get_usb_size(usb->device);
 	}
 }
+

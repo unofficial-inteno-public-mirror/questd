@@ -17,12 +17,12 @@
 static int client_connected = 0;
 static pthread_t tid;
 
-static void 
-removeNewline(char *buf)
+void 
+remove_newline(char *buf)
 {
 	int len;
 	len = strlen(buf) - 1;
-	if (buf[len] == '\n')
+	if (buf[len] == '\n') 
 		buf[len] = 0;
 }
 
@@ -35,7 +35,7 @@ chrCmd(char *cmd)
 		fgets(buffer, sizeof(buffer), pipe);
 		pclose(pipe);
 
-		removeNewline(buffer);
+		remove_newline(buffer);
 		if (strlen(buffer))
 			return (const char*)buffer;
 		else
@@ -239,7 +239,7 @@ static int wificlient(void) {
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
 		while (fgets(line, sizeof(line), leases) != NULL)
 		{
-			removeNewline(line);
+			remove_newline(line);
 			if (sscanf(line, "%s %s %s %s %s", leaseno, macaddr, ipaddr, hostname, mask) == 5) {
 				if (strstr(macaddr, "00:22:07")) {
 					connectAndRunCmd(ipaddr, ssid, key);
@@ -257,7 +257,7 @@ static int wificlient(void) {
 	if ((arpt = fopen("/proc/net/arp", "r"))) {
 		while (fgets(line, sizeof(line), arpt) != NULL)
 		{
-			removeNewline(line);
+			remove_newline(line);
 			if (sscanf(line, "%s 0x%d 0x%d %s %s %s", ipaddr, &hw, &flag, macaddr, mask, device) == 6) {
 				if (strstr(macaddr, "00:22:07") && !strstr(ripaddr, ipaddr)) {
 					connectAndRunCmd(ipaddr, ssid, key);
