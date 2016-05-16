@@ -180,6 +180,26 @@ int wl_get_bssid(const char *ifname, char *buf)
 	return ret;
 }
 
+int wl_get_wpa_auth(const char *ifname, char *wpa)
+{
+	unsigned int wpa_auth;
+	int ret = 0;
+
+	if ((ret = wl_ioctl(ifname, WLC_GET_WPA_AUTH, &wpa_auth, sizeof(wpa_auth))) < 0)
+		return ret;
+
+	if (wpa_auth == WPA_AUTH_DISABLED)
+		strcpy(wpa, "Disabled");
+	else if ((wpa_auth & WPA_AUTH_PSK) && (wpa_auth & WPA2_AUTH_PSK))
+		strcpy(wpa, "WPA/WPA2 PSK");
+	else if (wpa_auth & WPA2_AUTH_PSK)
+		strcpy(wpa, "WPA2 PSK");
+	else if (wpa_auth & WPA_AUTH_PSK)
+		strcpy(wpa, "WPA PSK");
+
+	return ret;
+}
+
 int wl_get_noise(const char *ifname, int *buf)
 {
 	unsigned int noise;

@@ -49,6 +49,21 @@
 
 #define WL_STA_AID(a)		((a) &~ 0xc000)
 
+/* WPA authentication mode bitvec */
+#define WPA_AUTH_DISABLED	0x0000	/* Legacy (i.e., non-WPA) */
+#define WPA_AUTH_NONE		0x0001	/* none (IBSS) */
+#define WPA_AUTH_UNSPECIFIED	0x0002	/* over 802.1x */
+#define WPA_AUTH_PSK		0x0004	/* Pre-shared key */
+/* #define WPA_AUTH_8021X 0x0020 */	/* 802.1x, reserved */
+#define WPA2_AUTH_UNSPECIFIED	0x0040	/* over 802.1x */
+#define WPA2_AUTH_PSK		0x0080	/* Pre-shared key */
+#define BRCM_AUTH_PSK           0x0100  /* BRCM specific PSK */
+#define BRCM_AUTH_DPT		0x0200	/* DPT PSK without group keys */
+#define WPA2_AUTH_1X_SHA256	0x1000  /* 1X with SHA256 key derivation */
+#define WPA2_AUTH_TPK		0x2000	/* TDLS Peer Key */
+#define WPA2_AUTH_FT		0x4000	/* Fast Transition. */
+#define WPA2_AUTH_PSK_SHA256	0x8000	/* PSK with SHA256 key derivation */
+
 /* Flags for sta_info_t indicating properties of STA */
 #define WL_STA_BRCM		0x00000001	/* Running a Broadcom driver */
 #define WL_STA_WME		0x00000002	/* WMM association */

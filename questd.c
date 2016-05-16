@@ -1574,17 +1574,24 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	char bssid[24];
 	wl_get_bssid(wldev, bssid);
 
+	char ssid[64];
+	wl_get_ssid(wldev, ssid);
+
+	char wpa_auth[64];
+	wl_get_wpa_auth(wldev, wpa_auth);
+
 	int rate;
 	wl_get_bitrate(wldev, &rate);
 
 	int bandwidth, channel, noise;
 	wl_get_bssinfo(wldev, &bandwidth, &channel, &noise);
 
-
 	blob_buf_init(&bb, 0);
 	blobmsg_add_string(&bb, "wldev", wldev);
 	blobmsg_add_u32(&bb, "radio", isup);
+	blobmsg_add_string(&bb, "ssid", ssid);
 	blobmsg_add_string(&bb, "bssid", bssid);
+	blobmsg_add_string(&bb, "encryption", wpa_auth);
 	blobmsg_add_u32(&bb, "frequency", (band==1)?5:2);
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
