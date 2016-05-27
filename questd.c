@@ -868,6 +868,13 @@ router_dump_clients(struct blob_buf *b, bool connected)
 	int num = 1;
 	int i;
 
+	const char *brindex;
+	const char *port;
+	const char *portspeed;
+	char linkspeed[64];
+	char duplex[16];
+	int speed;
+
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr;
 	int htcaps;
@@ -910,6 +917,22 @@ router_dump_clients(struct blob_buf *b, bool connected)
 			blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
 			blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 			blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
+		} else if(clients[i].connected) {
+			brindex = chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[i].device, clients[i].macaddr);
+			port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$1}'", clients[i].device, atoi(brindex) + 1);
+
+			blobmsg_add_string(b, "ethport", port);
+
+			portspeed = chrCmd("ethctl %s media-type | sed -n '2p'", port);
+
+			if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
+				sprintf(linkspeed, "Auto-negotiated %d Mbps Full Duplex", speed);
+			else if (sscanf(portspeed, "The autonegotiated media type is %dbaseTx-%s.", &speed, duplex))
+				sprintf(linkspeed, "Auto-negotiated %d Mbps Full Duplex", speed);
+			else if (sscanf(portspeed, "Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
+				sprintf(linkspeed, "Fixed %d Mbps Full Duplex", speed);
+
+			blobmsg_add_string(b, "linkspeed", linkspeed);
 		}
 #endif
 		blobmsg_close_table(b, t);
