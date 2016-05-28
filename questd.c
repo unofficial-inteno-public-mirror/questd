@@ -871,9 +871,10 @@ router_dump_clients(struct blob_buf *b, bool connected)
 	const char *brindex;
 	const char *port;
 	const char *portspeed;
-	char linkspeed[64];
-	char duplex[16];
+	static char linkspeed[64];
+	static char duplex[16];
 	int speed;
+	int fixed = 0;
 
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr;
@@ -929,12 +930,18 @@ router_dump_clients(struct blob_buf *b, bool connected)
 			}
 
 			if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
-				sprintf(linkspeed, "Auto-negotiated %d Mbps Full Duplex", speed);
-			else if (sscanf(portspeed, "The autonegotiated media type is %dbaseTx-%s.", &speed, duplex))
-				sprintf(linkspeed, "Auto-negotiated %d Mbps Full Duplex", speed);
+				fixed = 0;
+			else if (sscanf(portspeed, "The autonegotiated media type is %dbase%s.", &speed, duplex))
+				fixed = 0;
 			else if (sscanf(portspeed, " Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
-				sprintf(linkspeed, "Fixed %d Mbps Full Duplex", speed);
+				fixed = 1;
 
+			if (strstr(duplex, "ull") || strstr(portspeed, "FD"))
+				strcpy(duplex, "Full");
+			else
+				strcpy(duplex, "Half");
+
+			sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
 			blobmsg_add_string(b, "linkspeed", linkspeed);
 		}
 #endif
