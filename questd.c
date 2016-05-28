@@ -919,7 +919,7 @@ router_dump_clients(struct blob_buf *b, bool connected)
 			blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
 		} else if(clients[i].connected) {
 			brindex = chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[i].device, clients[i].macaddr);
-			port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$1}'", clients[i].device, atoi(brindex) + 1);
+			port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[i].device, atoi(brindex) + 1);
 
 			blobmsg_add_string(b, "ethport", port);
 
