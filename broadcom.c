@@ -161,7 +161,7 @@ int wl_get_ssid(const char *ifname, char *buf)
 	wlc_ssid_t ssid;
 
 	if (!(ret = wl_ioctl(ifname, WLC_GET_SSID, &ssid, sizeof(ssid))))
-		memcpy(buf, ssid.ssid, ssid.ssid_len);
+		memcpy(buf, ssid.ssid, 64);
 
 	return ret;
 }

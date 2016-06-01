@@ -1629,7 +1629,7 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
 	blobmsg_add_u32(&bb, "noise", noise);
-	blobmsg_add_u32(&bb, "rate", rate);
+	blobmsg_add_u32(&bb, "rate", (rate/2));
 
 	ubus_send_reply(ctx, req, bb.head);
 
