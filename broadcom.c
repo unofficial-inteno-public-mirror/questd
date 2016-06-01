@@ -185,8 +185,12 @@ int wl_get_wpa_auth(const char *ifname, char *wpa)
 	unsigned int wpa_auth;
 	int ret = 0;
 
+	wl_endianness_check(ifname);
+
 	if ((ret = wl_ioctl(ifname, WLC_GET_WPA_AUTH, &wpa_auth, sizeof(wpa_auth))) < 0)
 		return ret;
+
+	wpa_auth = eswap32(wpa_auth);
 
 	if (wpa_auth == WPA_AUTH_DISABLED)
 		strcpy(wpa, "Disabled");
