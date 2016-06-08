@@ -1207,11 +1207,11 @@ router_dump_ports(struct blob_buf *b, char *interface)
 		for (i = 1; strlen(port[i].name) > 2; i++) {
 			if(strcmp(port[i].name, ports[pno]))
 				continue;
+			t = blobmsg_open_table(b, port[i].device);
 			if(!strncmp(port[i].device, "wl", 2) && strlen(port[i].ssid) > 2)
-				t = blobmsg_open_table(b, port[i].ssid);
+				blobmsg_add_string(b, "ssid", port[i].ssid);
 			else
-				t = blobmsg_open_table(b, port[i].name);
-			blobmsg_add_string(b, "device", port[i].device);
+				blobmsg_add_string(b, "name", port[i].name);
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; port[i].client[j].exists; j++) {
 				h = blobmsg_open_table(b, "NULL");
