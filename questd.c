@@ -732,6 +732,8 @@ populate_ports(Network *network)
 	{
 		strcpy(port[i].device, prt);
 		get_port_name(&port[i]);
+		if(strstr(port[i].device, "eth"))
+			get_port_speed(port[i].linkspeed, port[i].device);
 		prt = strtok (NULL, " ");
 		i++;
 	}
@@ -860,25 +862,76 @@ router_dump_networks(struct blob_buf *b)
 	}
 }
 
+static void dump_client(struct blob_buf *b, Client client)
+{	
+	const char *brindex;
+	static char linkspeed[64];
+	const char *port;
+	struct wl_sta_info sta_info;
+	int bandwidth, channel, noise, rssi, snr, htcaps;
+
+	blobmsg_add_string(b, "hostname", client.hostname);
+	blobmsg_add_string(b, "ipaddr", client.ipaddr);
+	blobmsg_add_string(b, "macaddr", client.macaddr);
+	blobmsg_add_string(b, "network", client.network);
+	blobmsg_add_string(b, "device", client.device);
+	blobmsg_add_u8(b, "dhcp", client.dhcp);
+	blobmsg_add_u8(b, "connected", client.connected);
+	blobmsg_add_u8(b, "wireless", client.wireless);
+#if IOPSYS_BROADCOM
+	if(client.wireless) {
+		wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps);
+		wl_get_bssinfo(client.wdev, &bandwidth, &channel, &noise);
+		wl_get_rssi(client.wdev, client.macaddr, &rssi);
+		snr = rssi - noise;
+
+		blobmsg_add_string(b, "wdev", client.wdev);
+		blobmsg_add_string(b, "frequency", (channel >= 36) ? "5GHz" : "2.4GHz");
+		blobmsg_add_u32(b, "rssi", rssi);
+		blobmsg_add_u32(b, "snr", snr);
+		blobmsg_add_u32(b, "idle", sta_info.idle);
+		blobmsg_add_u32(b, "in_network", sta_info.in);
+		blobmsg_add_u8(b, "wme", (sta_info.flags & WL_STA_WME) ? true : false);
+		blobmsg_add_u8(b, "ps", (sta_info.flags & WL_STA_PS) ? true : false);
+		blobmsg_add_u8(b, "n_cap", (sta_info.flags & WL_STA_N_CAP) ? true : false);
+		blobmsg_add_u8(b, "vht_cap", (sta_info.flags & WL_STA_VHT_CAP) ? true : false);
+		blobmsg_add_u64(b, "tx_bytes", sta_info.tx_tot_bytes);
+		blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
+		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
+		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
+	} else if(client.connected) {
+		if(strstr(client.device, "br-")) {
+			brindex = chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", client.device, client.macaddr);
+			port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", client.device, atoi(brindex) + 1);
+			blobmsg_add_string(b, "ethport", port);
+			get_port_speed(linkspeed, port);
+		} else {
+			blobmsg_add_string(b, "ethport", client.device);
+			get_port_speed(linkspeed, client.device);
+		}
+		blobmsg_add_string(b, "linkspeed", linkspeed);
+	}
+#endif
+}
+
 static void
-router_dump_clients(struct blob_buf *b, bool connected)
+router_dump_clients(struct blob_buf *b, bool connected, const char *mac)
 {
 	void *t;
 	char clientnum[10];
 	int num = 1;
 	int i;
 
-	const char *brindex;
-	const char *port;
-	const char *portspeed;
-	static char linkspeed[64];
-	static char duplex[16];
-	int speed;
-	int fixed = 0;
-
-	struct wl_sta_info sta_info;
-	int bandwidth, channel, noise, rssi, snr;
-	int htcaps;
+	if(mac){
+		for(i = 0; i < MAX_CLIENT; i++){
+			if(!clients[i].exists)
+				return;
+			if(strcmp(clients[i].macaddr, mac) == 0){
+				dump_client(b, clients[i]);
+				return;
+			}
+		}
+	}
 
 	for (i = 0; i < MAX_CLIENT; i++) {
 		if (!clients[i].exists)
@@ -889,62 +942,7 @@ router_dump_clients(struct blob_buf *b, bool connected)
 
 		sprintf(clientnum, "client-%d", num);
 		t = blobmsg_open_table(b, clientnum);
-		blobmsg_add_string(b, "hostname", clients[i].hostname);
-		blobmsg_add_string(b, "ipaddr", clients[i].ipaddr);
-		blobmsg_add_string(b, "macaddr", clients[i].macaddr);
-		blobmsg_add_string(b, "network", clients[i].network);
-		blobmsg_add_string(b, "device", clients[i].device);
-		blobmsg_add_u8(b, "dhcp", clients[i].dhcp);
-		blobmsg_add_u8(b, "connected", clients[i].connected);
-		blobmsg_add_u8(b, "wireless", clients[i].wireless);
-#if IOPSYS_BROADCOM
-		if(clients[i].wireless) {
-			wl_get_stas_info(clients[i].wdev, clients[i].macaddr, &sta_info, &htcaps);
-			wl_get_bssinfo(clients[i].wdev, &bandwidth, &channel, &noise);
-			wl_get_rssi(clients[i].wdev, clients[i].macaddr, &rssi);
-			snr = rssi - noise;
-
-			blobmsg_add_string(b, "wdev", clients[i].wdev);
-			blobmsg_add_string(b, "frequency", (channel >= 36) ? "5GHz" : "2.4GHz");
-			blobmsg_add_u32(b, "rssi", rssi);
-			blobmsg_add_u32(b, "snr", snr);
-			blobmsg_add_u32(b, "idle", sta_info.idle);
-			blobmsg_add_u32(b, "in_network", sta_info.in);
-			blobmsg_add_u8(b, "wme", (sta_info.flags & WL_STA_WME) ? true : false);
-			blobmsg_add_u8(b, "ps", (sta_info.flags & WL_STA_PS) ? true : false);
-			blobmsg_add_u8(b, "n_cap", (sta_info.flags & WL_STA_N_CAP) ? true : false);
-			blobmsg_add_u8(b, "vht_cap", (sta_info.flags & WL_STA_VHT_CAP) ? true : false);
-			blobmsg_add_u64(b, "tx_bytes", sta_info.tx_tot_bytes);
-			blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
-			blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
-			blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
-		} else if(clients[i].connected) {
-			if(strstr(clients[i].device, "br-")) {
-				brindex = chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[i].device, clients[i].macaddr);
-				port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[i].device, atoi(brindex) + 1);
-				blobmsg_add_string(b, "ethport", port);
-				portspeed = chrCmd("ethctl %s media-type | sed -n '2p'", port);
-			} else {
-				blobmsg_add_string(b, "ethport", clients[i].device);
-				portspeed = chrCmd("ethctl %s media-type | sed -n '2p'", clients[i].device);
-			}
-
-			if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
-				fixed = 0;
-			else if (sscanf(portspeed, "The autonegotiated media type is %dbase%s.", &speed, duplex))
-				fixed = 0;
-			else if (sscanf(portspeed, " Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
-				fixed = 1;
-
-			if (strstr(duplex, "ull") || strstr(portspeed, "FD"))
-				strcpy(duplex, "Full");
-			else
-				strcpy(duplex, "Half");
-
-			sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
-			blobmsg_add_string(b, "linkspeed", linkspeed);
-		}
-#endif
+		dump_client(b, clients[i]);
 		blobmsg_close_table(b, t);
 		num++;
 	}
@@ -1210,14 +1208,14 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			t = blobmsg_open_table(b, port[i].device);
 			if(!strncmp(port[i].device, "wl", 2) && strlen(port[i].ssid) > 2)
 				blobmsg_add_string(b, "ssid", port[i].ssid);
-			else
+			else {
 				blobmsg_add_string(b, "name", port[i].name);
+				blobmsg_add_string(b, "linkspeed", port[i].linkspeed);
+			}
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; port[i].client[j].exists; j++) {
 				h = blobmsg_open_table(b, "NULL");
-				blobmsg_add_string(b, "hostname", port[i].client[j].hostname);
-				blobmsg_add_string(b, "ipaddr", port[i].client[j].ipaddr);
-				blobmsg_add_string(b, "macaddr", port[i].client[j].macaddr);
+				router_dump_clients(b, true, port[i].client[j].macaddr);
 				blobmsg_close_table(b, h);
 			}
 			blobmsg_close_array(b, c);
@@ -1266,34 +1264,14 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 	if(byIP) {
 		for (i=0; clients[i].exists; i++)
 			if(!strcmp(clients[i].ipaddr, addr)) {
-				blobmsg_add_string(b, "hostname", clients[i].hostname);
-				blobmsg_add_string(b, "macaddr", clients[i].macaddr);
-				blobmsg_add_string(b, "network", clients[i].network);
-				blobmsg_add_string(b, "device", clients[i].device);
-				blobmsg_add_u8(b, "connected", clients[i].connected);
-				blobmsg_add_u8(b, "wireless", clients[i].wireless);
-				/*if(clients[i].connected)
-					blobmsg_add_u32(b, "active_cons", sta_info.connum);*/
-				if(clients[i].wireless) {
-					blobmsg_add_string(b, "wdev", clients[i].wdev);
-				}
+				router_dump_clients(b, false, clients[i].macaddr);
 				break;
 			}
 	}
 	else {
 		for (i=0; clients[i].exists; i++)
 			if(!strcasecmp(clients[i].macaddr, addr)) {
-				blobmsg_add_string(b, "hostname", clients[i].hostname);
-				blobmsg_add_string(b, "ipaddr", clients[i].ipaddr);
-				blobmsg_add_string(b, "network", clients[i].network);
-				blobmsg_add_string(b, "device", clients[i].device);
-				blobmsg_add_u8(b, "connected", clients[i].connected);
-				blobmsg_add_u8(b, "wireless", clients[i].wireless);
-				/*if(clients[i].connected)
-					blobmsg_add_u32(b, "active_cons", sta_info.connum);*/
-				if(clients[i].wireless) {
-					blobmsg_add_string(b, "wdev", clients[i].wdev);
-				}
+				router_dump_clients(b, false, addr);
 				break;
 			}
 	}
@@ -1542,7 +1520,7 @@ quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
 
 	blob_buf_init(&bb, 0);
-	router_dump_clients(&bb, false);
+	router_dump_clients(&bb, false, NULL);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
@@ -1558,7 +1536,7 @@ quest_router_connected_clients(struct ubus_context *ctx, struct ubus_object *obj
 	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
 
 	blob_buf_init(&bb, 0);
-	router_dump_clients(&bb, true);
+	router_dump_clients(&bb, true, NULL);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;

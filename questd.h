@@ -146,6 +146,7 @@ typedef struct {
 	char name[16];
 	char ssid[32];
 	char device[32];
+	char linkspeed[64];
 	Statistic stat;
 	Client client[MAX_CLIENT];
 } Port;
@@ -267,6 +268,7 @@ void dump_hostname(Router *router);
 void dump_sysinfo(Router *router, Memory *memory);
 void dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_jif);
 void get_port_name(Port *port);
+void get_port_speed(char *port, const char *device);
 void get_port_stats(Port *port);
 void get_bridge_ports(char *network, char **ifname);
 char *get_clients_onport(char *bridge, int portno);
