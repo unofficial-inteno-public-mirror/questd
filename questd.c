@@ -120,6 +120,15 @@ static const struct blobmsg_policy password_policy[__P_MAX] = {
 };
 
 enum {
+	L_INTERFACE,
+	__L_MAX
+};
+
+static const struct blobmsg_policy linkspeed_policy[__L_MAX] = {
+	[L_INTERFACE] =	{ .name = "interface",	.type = BLOBMSG_TYPE_STRING }
+};
+
+enum {
 	PIN,
 	__PIN_MAX,
 };
@@ -1940,6 +1949,28 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+static int
+quest_linkspeed(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+	char linkspeed[64] = {0};
+	struct blob_attr *tb[__L_MAX];
+
+	blobmsg_parse(linkspeed_policy, __L_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!tb[L_INTERFACE])
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	if(get_port_speed(linkspeed, (char*)blobmsg_data(tb[L_INTERFACE])) == 0){
+		blob_buf_init(&bb, 0);
+		blobmsg_add_string(&bb, "linkspeed", linkspeed);
+		ubus_send_reply(ctx, req, bb.head);
+		return 0;
+	}
+	return UBUS_STATUS_INVALID_ARGUMENT;
+}
+
 static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("info", quest_router_info),
 	UBUS_METHOD_NOARG("filesystem", quest_router_filesystem),
@@ -1966,6 +1997,7 @@ static struct ubus_method router_object_methods[] = {
 #endif
 	UBUS_METHOD("password_set", quest_password_set, password_policy),
 	UBUS_METHOD_NOARG("reload", quest_reload),
+	UBUS_METHOD("linkspeed", quest_linkspeed, linkspeed_policy),
 };
 
 static struct ubus_object_type router_object_type =
