@@ -1486,7 +1486,7 @@ quest_router_logread(struct ubus_context *ctx, struct ubus_object *obj,
 	char dayofweek[8];
 	char month[8];
 	int dayofmonth;
-	char hour[8];
+	char hour[16];
 	int year;
 	char id[32];
 	char source[32];
