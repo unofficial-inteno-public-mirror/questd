@@ -642,6 +642,8 @@ ipv4_clients()
 			if(!clients_new[j].connected) continue;
 			if(!strcmp(clients_old[i].macaddr, clients_new[j].macaddr)) {
 				still_there = true;
+				if(clients_old[i].wireless && clients_new[j].wireless && strcmp(clients_old[i].wdev, clients_new[j].wdev) != 0)
+					runCmd("ubus send client '{\"action\":\"move\",\"from\":\"%s\",\"to\":\"%s\"}'", clients_old[i].wdev, clients_new[j].wdev);
 				break;
 			}
 		}
