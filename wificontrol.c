@@ -233,8 +233,8 @@ int wificlient(void) {
 	char ripaddr[1000];
 	int hw, flag;
 
-	strcpy(ssid, chrCmd("uci -q get wireless.@wifi-iface[-1].ssid"));
-	strcpy(key, chrCmd("uci -q get wireless.@wifi-iface[-1].key"));
+	strcpy(ssid, chrCmd("uci -q get wireless.@wifi-iface[0].ssid"));
+	strcpy(key, chrCmd("uci -q get wireless.@wifi-iface[0].key"));
 
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
 		while(fgets(line, sizeof(line), leases) != NULL)
