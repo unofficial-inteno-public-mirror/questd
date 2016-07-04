@@ -1481,24 +1481,46 @@ quest_router_logread(struct ubus_context *ctx, struct ubus_object *obj,
 	char source[32];
 	char time[64];
 
+	struct stat s;
+
 	blob_buf_init(&bb, 0);
 	a = blobmsg_open_array(&bb, "logs");
-	if ((log = popen("logread -l 400", "r"))) {
-		while(fgets(line, sizeof(line), log) != NULL)
-		{
-			remove_newline(line);
-			if (sscanf(line, "%s %s %d %s %d %s %s:", dayofweek, month, &dayofmonth, hour, &year, id, source)) {
-				sprintf(time, "%s %s %d %s %d", dayofweek, month, dayofmonth, hour, year);
-				source[strlen(source)-1] = '\0';
-				t = blobmsg_open_table(&bb, "");
-				blobmsg_add_string(&bb, "time", time);
-				blobmsg_add_string(&bb, "id", id);
-				blobmsg_add_string(&bb, "source", source);
-				blobmsg_add_string(&bb, "message", line+(int)(strstr(line,source)-&line[0])+strlen(source)+2);
-				blobmsg_close_table(&bb, t);
+	if (!stat("/log/messages", &s)) {
+		if ((log = popen("tail -n 400 /log/messages 2>/dev/null", "r"))) {
+			while(fgets(line, sizeof(line), log) != NULL)
+			{
+				remove_newline(line);
+				if (sscanf(line, "%s %d %s %s %s:", month, &dayofmonth, hour, id, source)) {
+					sprintf(time, "%s %d %s", month, dayofmonth, hour);
+					source[strlen(source)-1] = '\0';
+					t = blobmsg_open_table(&bb, "");
+					blobmsg_add_string(&bb, "time", time);
+					blobmsg_add_string(&bb, "id", id);
+					blobmsg_add_string(&bb, "source", source);
+					blobmsg_add_string(&bb, "message", line+(int)(strstr(line,source)-&line[0])+strlen(source)+2);
+					blobmsg_close_table(&bb, t);
+				}
 			}
+			pclose(log);
 		}
-		pclose(log);
+	} else {
+		if ((log = popen("logread -l 400", "r"))) {
+			while(fgets(line, sizeof(line), log) != NULL)
+			{
+				remove_newline(line);
+				if (sscanf(line, "%s %s %d %s %d %s %s:", dayofweek, month, &dayofmonth, hour, &year, id, source)) {
+					sprintf(time, "%s %s %d %s %d", dayofweek, month, dayofmonth, hour, year);
+					source[strlen(source)-1] = '\0';
+					t = blobmsg_open_table(&bb, "");
+					blobmsg_add_string(&bb, "time", time);
+					blobmsg_add_string(&bb, "id", id);
+					blobmsg_add_string(&bb, "source", source);
+					blobmsg_add_string(&bb, "message", line+(int)(strstr(line,source)-&line[0])+strlen(source)+2);
+					blobmsg_close_table(&bb, t);
+				}
+			}
+			pclose(log);
+		}
 	}
 	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
