@@ -222,6 +222,7 @@ typedef struct {
 	char maxchild[64];
 	char idproduct[64];
 	char idvendor[64];
+	char netdevice[32];
 } USB;
 
 typedef struct {

@@ -1171,6 +1171,8 @@ router_dump_usbs(struct blob_buf *b)
 					blobmsg_add_string(b, "mntdir", usb[uno].mount);
 				}
 			}
+			if(strlen(usb[uno].netdevice) > 2)
+				blobmsg_add_string(b, "netdevice", usb[uno].netdevice);
 			blobmsg_close_table(b, t);
 			uno++;
 		}

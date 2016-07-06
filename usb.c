@@ -112,6 +112,7 @@ dump_usb_info(USB *usb, char *usbno)
 			sprintf(usb->mount, "%s%s", usb->product, usb->serial);
 			remove_space(usb->mount);
 		}
+		strncpy(usb->netdevice, chrCmd("ls /sys/devices/platform/ehci-platform.*/*/driver/%s*/*/net/", usbno), 32);
 		strncpy(usb->device, get_usb_device(usb->mount), 64);
 		usb->size = get_usb_size(usb->device);
 	}
