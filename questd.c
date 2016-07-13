@@ -292,6 +292,7 @@ load_networks()
 		uci_foreach_element(&uci_network->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 
+			if(nno >= MAX_NETWORK) return;
 			network[nno].exists = false;
 			network[nno].ports_populated = false;
 			if (!strcmp(s->type, "interface")) {
@@ -352,7 +353,7 @@ load_wireless()
 				device = uci_lookup_option_string(uci_ctx, s, "device");
 				network = uci_lookup_option_string(uci_ctx, s, "network");
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
-				if (device) {
+				if (device && wno < MAX_VIF) {
 					wireless[wno].device = device;
 					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
 					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
@@ -445,7 +446,7 @@ handle_client(Client *clnt)
 
 	clnt->local = false;
 	if (sscanf(clnt->ipaddr, "%d.%d.%d.%d", &ip[0], &ip[1], &ip[2], &ip[3]) == 4) {
-		for (netno=0; network[netno].exists; netno++) {
+		for (netno=0; netno < MAX_NETWORK && network[netno].exists; netno++) {
 			if (network[netno].is_lan) {
 				match_client_to_network(&network[netno], clnt->ipaddr, &clnt->local, clnt->network, clnt->device);
 				if (clnt->local)
@@ -465,10 +466,10 @@ wireless_assoclist()
 
 	memset(stas, '\0', sizeof(stas));
 
-	for (i = 0; wireless[i].device; i++) {
+	for (i = 0; i < MAX_VIF && wireless[i].device; i++) {
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
-			for (j = 0; j < macs->count; j++)
+			for (j = 0; j < MAX_CLIENT && j < macs->count; j++)
 			{
 				stas[sno].exists = true;
 				sprintf(stas[sno].macaddr, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -489,7 +490,7 @@ wireless_sta(Client *clnt)
 {
 	bool there = false;
 	int i = 0;
-	while(stas[i].exists) {
+	while(i < MAX_CLIENT && stas[i].exists) {
 		if (!strcasecmp(stas[i].macaddr, clnt->macaddr)) {
 			there = true;
 			strncpy(clnt->wdev, stas[i].wdev, sizeof(clnt->wdev));
@@ -506,7 +507,7 @@ wireless_sta6(Client6 *clnt)
 	bool there = false;
 	int i = 0;
 
-	while(stas[i].exists) {
+	while(i < MAX_CLIENT && stas[i].exists) {
 		if (!strcasecmp(stas[i].macaddr, clnt->macaddr)) {
 			there = true;
 			strncpy(clnt->wdev, stas[i].wdev, sizeof(clnt->wdev));
@@ -564,6 +565,7 @@ ipv4_clients()
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
 		while(fgets(line, sizeof(line), leases) != NULL)
 		{
+			if(cno >= MAX_CLIENT) break;
 			remove_newline(line);
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
@@ -590,6 +592,7 @@ ipv4_clients()
 	if ((arpt = fopen("/proc/net/arp", "r"))) {
 		while(fgets(line, sizeof(line), arpt) != NULL)
 		{
+			if(cno >= MAX_CLIENT) break;
 			remove_newline(line);
 			there = false;
 			clients[cno].exists = false;
@@ -635,10 +638,10 @@ ipv4_clients()
 	memcpy(&clients_new, &clients, sizeof(clients));
 
 	bool still_there;
-	for(i=0; clients_old[i].exists; i++) {
+	for(i=0; i < MAX_CLIENT && clients_old[i].exists; i++) {
 		still_there = false;
 		if(!clients_old[i].connected) continue;
-		for(j=0; clients_new[j].exists; j++) {
+		for(j=0; j < MAX_CLIENT && clients_new[j].exists; j++) {
 			if(!clients_new[j].connected) continue;
 			if(!strcmp(clients_old[i].macaddr, clients_new[j].macaddr)) {
 				still_there = true;
@@ -652,7 +655,7 @@ ipv4_clients()
 	}
 
 	bool was_there;
-	for(i=0; clients_new[i].exists; i++) {
+	for(i=0; i < MAX_CLIENT && clients_new[i].exists; i++) {
 		was_there = false;
 		if(!clients_new[i].connected) continue;
 		for(j=0; clients_old[j].exists; j++) {
@@ -681,6 +684,7 @@ ipv6_clients()
 	if ((hosts6 = fopen("/tmp/hosts/odhcpd", "r"))) {
 		while(fgets(line, sizeof(line), hosts6) != NULL)
 		{
+			if(cno >= MAX_CLIENT) break;
 			remove_newline(line);
 			clients6[cno].exists = false;
 			clients6[cno].wireless = false;
@@ -764,7 +768,7 @@ get_clients:
 
 		l = 0;
 		if(network->is_lan) {
-			for (k=0; clients[k].exists; k++) {
+			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 				if (strstr(macaddr, clients[k].macaddr) && clients[k].connected) {
 					port[i].client[l] = clients[k];
 					l++;
@@ -857,9 +861,7 @@ router_dump_networks(struct blob_buf *b)
 	void *t;
 	int i;
 
-	for (i = 0; i < MAX_NETWORK; i++) {
-		if (!network[i].exists)
-			break;
+	for (i = 0; i < MAX_NETWORK && network[i].exists; i++) {
 		t = blobmsg_open_table(b, network[i].name);
 		blobmsg_add_u8(b, "is_lan", network[i].is_lan);
 		blobmsg_add_string(b, "type", network[i].type);
@@ -944,10 +946,7 @@ router_dump_clients(struct blob_buf *b, bool connected, const char *mac)
 		}
 	}
 
-	for (i = 0; i < MAX_CLIENT; i++) {
-		if (!clients[i].exists)
-			break;
-
+	for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 		if (connected && !(clients[i].connected))
 			continue;
 
@@ -967,10 +966,7 @@ router_dump_clients6(struct blob_buf *b, bool connected)
 	int num = 1;
 	int i;
 
-	for (i = 0; i < MAX_CLIENT; i++) {
-		if (!clients6[i].exists)
-			break;
-
+	for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
 		if (connected && !(clients6[i].connected))
 			continue;
 
@@ -1004,9 +1000,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 	int bandwidth, channel, noise, rssi, snr;
 	int htcaps;
 
-	for (i = 0; i < MAX_CLIENT; i++) {
-		if (!clients[i].exists)
-			break;
+	for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 		if (!(clients[i].wireless))
 			continue;
 
@@ -1144,6 +1138,7 @@ router_dump_usbs(struct blob_buf *b)
 	memset(usb, '\0', sizeof(usb));
 	if ((dir = opendir ("/sys/bus/usb/devices")) != NULL) {
 		while ((ent = readdir (dir)) != NULL) {
+			if(uno >= MAX_USB) break;
 			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
 				continue;
 			if(strchr(ent->d_name, ':') || strstr(ent->d_name, "usb"))
@@ -1254,9 +1249,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet)
 	char leasenum[16];
 	int i;
 
-	for (i = 0; i < MAX_CLIENT; i++) {
-		if (!clients[i].exists)
-			break;
+	for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 		if (clients[i].dhcp && !strcmp(clients[i].network, leasenet)) {
 			sprintf(leasenum, "lease-%d", i + 1);
 			t = blobmsg_open_table(b, leasenum);
@@ -1277,14 +1270,14 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 	int i;
 
 	if(byIP) {
-		for (i=0; clients[i].exists; i++)
+		for (i=0; i < MAX_CLIENT && clients[i].exists; i++)
 			if(!strcmp(clients[i].ipaddr, addr)) {
 				router_dump_clients(b, false, clients[i].macaddr);
 				break;
 			}
 	}
 	else {
-		for (i=0; clients[i].exists; i++)
+		for (i=0; i < MAX_CLIENT && clients[i].exists; i++)
 			if(!strcasecmp(clients[i].macaddr, addr)) {
 				router_dump_clients(b, false, addr);
 				break;
@@ -1604,7 +1597,7 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	else
 		strcpy(wldev, blobmsg_data(tb[RADIO_NAME]));
 
-	for (i=0; wireless[i].device; i++)
+	for (i=0; i < MAX_VIF && wireless[i].device; i++)
 		if(!strcmp(wireless[i].vif, wldev)) {
 			nthere = true;
 			break;
@@ -1781,7 +1774,7 @@ quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
 	else
 		strcpy(lookup, blobmsg_data(tb[RADIO_NAME]));
 
-	for (i=0; wireless[i].device; i++)
+	for (i=0; i < MAX_VIF && wireless[i].device; i++)
 		if(!strcmp(wireless[i].vif, lookup)) {
 			nthere = true;
 			break;
@@ -1831,7 +1824,7 @@ quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[NETWORK_NAME]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	for (i=0; network[i].is_lan; i++)
+	for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
 		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
 			nthere = true;
 
@@ -1859,7 +1852,7 @@ quest_router_ports(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[NETWORK_NAME]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 		
-	for (i=0; network[i].exists; i++) {
+	for (i=0; i < MAX_NETWORK && network[i].exists; i++) {
 		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
 			if(!strcmp(network[i].type, "bridge")) {
 			nthere = true;
