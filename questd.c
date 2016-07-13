@@ -756,7 +756,7 @@ populate_ports(Network *network)
 	network->ports_populated = true;
 		
 get_clients:	
-	for(i=1; strlen(port[i].device)>2; i++)
+	for(i=1; i < MAX_PORT && strlen(port[i].device)>2; i++)
 	{				
 		memset(&port[i].stat, '\0', sizeof(Statistic));
 		for (j=0; port[i].client[j].exists; j++) {
@@ -778,6 +778,7 @@ get_clients:
 			mac = strtok(macaddr, " ");
 			while (mac != NULL)
 			{
+				if(i < MAX_CLIENT) break;
 				port[i].client[l].exists = true;
 				strcpy(port[i].client[l].macaddr, mac);
 				mac = strtok (NULL, " ");
@@ -1212,7 +1213,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 		return;
 
 	for (pno=0; pno<=7; pno++) {
-		for (i = 1; strlen(port[i].name) > 2; i++) {
+		for (i = 1; i < MAX_PORT && strlen(port[i].name) > 2; i++) {
 			if(strcmp(port[i].name, ports[pno]))
 				continue;
 			t = blobmsg_open_table(b, port[i].device);
@@ -1223,9 +1224,9 @@ router_dump_ports(struct blob_buf *b, char *interface)
 				blobmsg_add_string(b, "linkspeed", port[i].linkspeed);
 			}
 			c = blobmsg_open_array(b, "hosts");
-			for(j=0; port[i].client[j].exists; j++) {
+			for(j=0; j < MAX_CLIENT && port[i].client[j].exists; j++) {
 				h = blobmsg_open_table(b, "NULL");
-				router_dump_clients(b, true, port[i].client[j].macaddr);
+				dump_client(b, port[i].client[j]);
 				blobmsg_close_table(b, h);
 			}
 			blobmsg_close_array(b, c);
