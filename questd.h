@@ -28,10 +28,10 @@
 #endif
 
 #define MAX_RADIO	4
-#define MAX_VIF		8
+#define MAX_VIF		16
 #define MAX_NETWORK	16
 #define MAX_CLIENT	128
-#define MAX_PORT	8
+#define MAX_PORT	16
 #define MAX_USB		18
 #define MAX_IGMP_ENTRY	128
 
