@@ -154,6 +154,7 @@ typedef struct {
 typedef struct {
 	bool exists;
 	bool is_lan;
+	bool defaultroute;
 	const char *name;
 	const char *type;
 	const char *proto;

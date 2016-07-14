@@ -279,6 +279,7 @@ load_networks()
 	struct uci_element *e;
 	const char *is_lan = NULL;
 	const char *type = NULL;
+	const char *defaultroute = NULL;
 	const char *proto = NULL;
 	const char *ipaddr = NULL;
 	const char *netmask = NULL;
@@ -297,6 +298,7 @@ load_networks()
 			network[nno].ports_populated = false;
 			if (!strcmp(s->type, "interface")) {
 				is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
+				defaultroute = uci_lookup_option_string(uci_ctx, s, "defaultroute");
 				type = uci_lookup_option_string(uci_ctx, s, "type");
 				proto = uci_lookup_option_string(uci_ctx, s, "proto");
 				ipaddr = uci_lookup_option_string(uci_ctx, s, "ipaddr");
@@ -310,6 +312,10 @@ load_networks()
 					if(is_lan && !strcmp(is_lan, "1"))
 						network[nno].is_lan = true;
 					network[nno].name = s->e.name;
+					if(defaultroute && !strcmp(defaultroute, "0"))
+						network[nno].defaultroute = false;
+					else
+						network[nno].defaultroute = true;
 					(type) ? (network[nno].type = type) : (network[nno].type = "");
 					(proto) ? (network[nno].proto = proto) : (network[nno].proto = "");
 					if(proto && !strcmp(network[nno].proto, "static")) {
@@ -866,6 +872,7 @@ router_dump_networks(struct blob_buf *b)
 		t = blobmsg_open_table(b, network[i].name);
 		blobmsg_add_u8(b, "is_lan", network[i].is_lan);
 		blobmsg_add_string(b, "type", network[i].type);
+		blobmsg_add_u8(b, "defaultroute", network[i].defaultroute);
 		blobmsg_add_string(b, "proto", network[i].proto);
 		if (!strcmp(network[i].proto, "static")) {
 			blobmsg_add_string(b, "ipaddr", network[i].ipaddr);
