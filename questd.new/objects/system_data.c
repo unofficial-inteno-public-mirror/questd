@@ -10,6 +10,7 @@
 static void system_info_uptime(long seconds, char *buf);
 static void system_info_hardware(void);
 static void get_hardware(char *option, char *buf);
+static void system_info_cpu(unsigned int *cpu);
 
 
 void system_data_init(void)
@@ -117,6 +118,8 @@ void system_info_update(void)
 	/* procs */
 	system_info_data.procs = info.procs;
 
+	system_info_cpu(&system_info_data.cpu);
+
 	pthread_mutex_unlock(&system_info_lock);
 }
 
@@ -220,4 +223,58 @@ static void get_hardware(char *option, char *buf)
 		return;
 
 	snprintf(buf, STRLENMAX, "%s", ptr.o->v.string);
+}
+
+
+static void system_info_cpu(unsigned int *usage)
+{
+	int rv;
+	unsigned int i;
+	unsigned long long jiffies[16];
+	unsigned long long idle, total = 0, idle_delta, total_delta;
+	static unsigned long long idle_prev, total_prev;
+	char line[1024], *ptr;
+	FILE *file;
+
+	file = fopen("/proc/stat", "r");
+	if (!file)
+		return;
+
+	while (fgets(line, 1024, file))
+		if (strstr(line, "cpu ") == line)
+			break;
+	fclose(file);
+
+	trim(line);
+	ptr = line + strlen("cpu ");
+	memset(jiffies, 0, ARRAY_SIZE(jiffies) * sizeof(*jiffies));
+	rv = sscanf(ptr,
+	"%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu%llu",
+		&jiffies[0], &jiffies[1], &jiffies[2], &jiffies[3],
+		&jiffies[4], &jiffies[5], &jiffies[6], &jiffies[7],
+		&jiffies[8], &jiffies[9], &jiffies[10], &jiffies[11],
+		&jiffies[12], &jiffies[13], &jiffies[14], &jiffies[15]);
+
+	if (rv < 4)
+		return;
+
+	idle = jiffies[3];
+	for (i = 0; i < ARRAY_SIZE(jiffies); i++)
+		total += jiffies[i];
+
+	if (!idle_prev || !total_prev) {
+		idle_prev = idle;
+		total_prev = total;
+		return;
+	}
+
+	idle_delta = idle - idle_prev;
+	total_delta = total - total_prev;
+	if (idle < idle_prev || total <= total_prev || total_delta < idle_delta)
+		return;
+
+	idle_prev = idle;
+	total_prev = total;
+
+	*usage = 100 - idle_delta * 100 / total_delta;
 }

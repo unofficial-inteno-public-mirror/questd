@@ -22,4 +22,4 @@ run:
 	./questd && echo SUCCESS || echo FAILED
 
 clean:
-	rm -frv questd *.o
+	rm -frv questd *.o lib*.so
