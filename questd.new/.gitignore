@@ -1,0 +1,3 @@
+*.o
+questd
+lib*.so
