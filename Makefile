@@ -8,6 +8,7 @@ LIBSRCS		=
 ISRCS		= questd.h tools.h broadcom.h
 
 all: questd ueventd uscriptd wificontrol
+	make -wC questd.new
 
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
