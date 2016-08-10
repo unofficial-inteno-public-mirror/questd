@@ -7,6 +7,7 @@
 #include <linux/limits.h>
 
 #include <libubus.h>
+#include <libubox/list.h>
 
 /* ISO C 99 does not have typeof */
 #if __STDC_VERSION__ <= 199901L

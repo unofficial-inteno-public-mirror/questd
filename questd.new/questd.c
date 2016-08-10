@@ -79,6 +79,7 @@ static void done_uloop(void)
 static void add_objects(void)
 {
 	add_system_objects(&conn.ctx);
+	add_os_objects(&conn.ctx);
 }
 
 

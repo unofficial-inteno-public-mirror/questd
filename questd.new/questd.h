@@ -17,5 +17,6 @@
 	} while (0)
 
 extern void add_system_objects(struct ubus_context *ctx);
+extern void add_os_objects(struct ubus_context *ctx);
 
 #endif /* QUESTD_H */
