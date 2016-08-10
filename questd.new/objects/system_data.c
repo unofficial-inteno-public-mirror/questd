@@ -6,7 +6,7 @@
 #include "system_data.h"
 
 
-
+/* static functions declarations */
 static void system_info_uptime(long seconds, char *buf);
 static void system_info_hardware(void);
 static void get_hardware(char *option, char *buf);
@@ -20,13 +20,14 @@ void system_data_init(void)
 	system_keys_init();
 	system_specs_init();
 
+	/* register update functions to worker thread */
 	add_worker_job(&system_info_update);
 	add_worker_job(&system_memory_update);
 	add_worker_job(&system_keys_update);
 	add_worker_job(&system_specs_update);
 }
 
-/* init functions (called once) */
+/* init functions */
 void system_info_init(void)
 {
 	struct utsname info;
@@ -97,7 +98,7 @@ void system_specs_init(void)
 }
 
 
-/* update functions (called repeatedly by the worker) */
+/* update functions */
 void system_info_update(void)
 {
 	struct sysinfo info;
@@ -118,6 +119,7 @@ void system_info_update(void)
 	/* procs */
 	system_info_data.procs = info.procs;
 
+	/* cpu */
 	system_info_cpu(&system_info_data.cpu);
 
 	pthread_mutex_unlock(&system_info_lock);
@@ -129,6 +131,7 @@ void system_memory_update(void)
 
 	sysinfo(&info);
 
+	/* memory in kilobytes */
 	system_memory_data.total = info.totalram >> 10;
 	system_memory_data.free = info.freeram >> 10;
 	system_memory_data.shared = info.sharedram >> 10;
@@ -147,9 +150,7 @@ void system_specs_update(void)
 }
 
 
-
-
-
+/* static functions definitions */
 static void system_info_uptime(long seconds, char *buf)
 {
 	struct tm *uptime;
@@ -204,6 +205,7 @@ static void get_hardware(char *option, char *buf)
 	struct uci_ptr ptr;
 
 	if (!uci_ctx) {
+		/* connect to uci */
 		uci_ctx = uci_alloc_context();
 		if (!uci_ctx)
 			return;
@@ -217,6 +219,7 @@ static void get_hardware(char *option, char *buf)
 		.option = option
 	};
 
+	/* query uci */
 	rv = uci_lookup_ptr(uci_ctx, &ptr, NULL, true);
 	if (rv != UCI_OK || !(ptr.flags & UCI_LOOKUP_COMPLETE)
 		|| !ptr.o || !ptr.o->v.string)
@@ -240,6 +243,7 @@ static void system_info_cpu(unsigned int *usage)
 	if (!file)
 		return;
 
+	/* get the cpu aggregate statistics line */
 	while (fgets(line, 1024, file))
 		if (strstr(line, "cpu ") == line)
 			break;
@@ -258,6 +262,7 @@ static void system_info_cpu(unsigned int *usage)
 	if (rv < 4)
 		return;
 
+	/* idle is the 4th column */
 	idle = jiffies[3];
 	for (i = 0; i < ARRAY_SIZE(jiffies); i++)
 		total += jiffies[i];
@@ -268,13 +273,16 @@ static void system_info_cpu(unsigned int *usage)
 		return;
 	}
 
+	/* calculate the delta values */
 	idle_delta = idle - idle_prev;
 	total_delta = total - total_prev;
 	if (idle < idle_prev || total <= total_prev || total_delta < idle_delta)
 		return;
 
+	/* save idle and total current measurements as previous measurements */
 	idle_prev = idle;
 	total_prev = total;
 
+	/* compute the usage as percentage */
 	*usage = 100 - idle_delta * 100 / total_delta;
 }

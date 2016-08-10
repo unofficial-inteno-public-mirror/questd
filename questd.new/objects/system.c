@@ -13,7 +13,6 @@ struct ubus_method system_specs_m[] = {
 	UBUS_METHOD_NOARG("show", system_specs_show)
 };
 
-
 struct ubus_object system_info = QUESTD_UBUS_OBJECT(UBUS_NAME_SYSTEM_INFO,
 							system_info_m);
 struct ubus_object system_memory = QUESTD_UBUS_OBJECT(UBUS_NAME_SYSTEM_MEMORY,
@@ -31,6 +30,13 @@ struct ubus_object *system_objects[] = {
 };
 
 
+/* static functions declarations */
+static void system_info_data_to_blob(struct blob_buf *buf);
+static void system_memory_data_to_blob(struct blob_buf *buf);
+static void system_keys_data_to_blob(struct blob_buf *buf);
+static void system_specs_data_to_blob(struct blob_buf *buf);
+
+
 void add_system_objects(struct ubus_context *ctx)
 {
 	/* populate the objects containig the actual data */
@@ -39,7 +45,6 @@ void add_system_objects(struct ubus_context *ctx)
 	/* register objects to ubus */
 	add_objects_generic(ctx, system_objects, ARRAY_SIZE(system_objects));
 }
-
 
 
 int system_info_show(struct ubus_context *ctx, struct ubus_object *obj,
@@ -127,8 +132,8 @@ int system_specs_show(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 
-
-void system_info_data_to_blob(struct blob_buf *buf)
+/* static functions definitions */
+static void system_info_data_to_blob(struct blob_buf *buf)
 {
 	/* struct system_info_data *data = &system_info_data; */
 
@@ -166,7 +171,7 @@ void system_info_data_to_blob(struct blob_buf *buf)
 	pthread_mutex_unlock(&system_info_lock);
 }
 
-void system_memory_data_to_blob(struct blob_buf *buf)
+static void system_memory_data_to_blob(struct blob_buf *buf)
 {
 	UNUSED(buf);
 	pthread_mutex_lock(&system_memory_lock);
@@ -180,7 +185,7 @@ void system_memory_data_to_blob(struct blob_buf *buf)
 	pthread_mutex_unlock(&system_memory_lock);
 }
 
-void system_keys_data_to_blob(struct blob_buf *buf)
+static void system_keys_data_to_blob(struct blob_buf *buf)
 {
 	UNUSED(buf);
 	pthread_mutex_lock(&system_keys_lock);
@@ -192,7 +197,7 @@ void system_keys_data_to_blob(struct blob_buf *buf)
 	pthread_mutex_unlock(&system_keys_lock);
 }
 
-void system_specs_data_to_blob(struct blob_buf *buf)
+static void system_specs_data_to_blob(struct blob_buf *buf)
 {
 	UNUSED(buf);
 	pthread_mutex_lock(&system_specs_lock);

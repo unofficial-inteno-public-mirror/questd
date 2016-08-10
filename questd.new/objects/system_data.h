@@ -10,11 +10,13 @@
 #define UCI_HW_DB_NAME "hw"
 #define UCI_HW_DB_SECTION "board"
 
+/* data structures declarations */
 struct system_info_data;
 struct system_memory_data;
 struct system_keys_data;
 struct system_specs_data;
 
+/* data structures definitions */
 struct system_info_data {
 	/* invariable members */
 	char name[NAME_MAX]; /* Inteno */
@@ -76,30 +78,35 @@ struct system_specs_data {
 	int eports;
 };
 
+/* data objects */
 extern struct system_info_data system_info_data;
 extern struct system_memory_data system_memory_data;
 extern struct system_keys_data system_keys_data;
 extern struct system_specs_data system_specs_data;
 
+/* data objects locks */
 extern pthread_mutex_t system_info_lock;
 extern pthread_mutex_t system_memory_lock;
 extern pthread_mutex_t system_keys_lock;
 extern pthread_mutex_t system_specs_lock;
 /* use system_*_data only with system_*_data_lock taken*/
 
-
+/* initialize all data objects */
 void system_data_init(void);
 
+/* initialize data object (called once) */
 void system_info_init(void);
 void system_memory_init(void);
 void system_keys_init(void);
 void system_specs_init(void);
 
+/* update data objects (called repeatedly by the worker thread) */
 void system_info_update(void);
 void system_memory_update(void);
 void system_keys_update(void);
 void system_specs_update(void);
 
+/* register update functions to worker thread */
 extern void add_worker_job(void (*function)(void));
 
 #endif /* QUESTD_SYSTEM_DATA_H */

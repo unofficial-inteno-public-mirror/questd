@@ -15,26 +15,20 @@
 		} \
 	} while (0)
 
-
 struct worker_job {
 	void (*function)();
 	struct list_head list;
 };
+
+/* list of jobs to be executed by worker */
 struct list_head jobs = LIST_HEAD_INIT(jobs);
 pthread_mutex_t jobs_lock = PTHREAD_MUTEX_INITIALIZER;
 /* use jobs only with jobs_lock taken */
 
-
-/*
-* functions headers
-*/
 void start_worker(void);
-void *work(void *arg);
-void run_jobs(void);
 
+/* register update functions to the worker thread */
 /* void add_worker_job(worker_job_function function); */
 void add_worker_job(void (*function) (void));
-
-
 
 #endif /* QUESTD_WORKER_H */

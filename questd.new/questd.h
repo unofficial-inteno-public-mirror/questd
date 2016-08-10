@@ -2,7 +2,7 @@
 #define QUESTD_H
 
 #include <stdio.h>
-#include <fcntl.h> /* fcntl */
+#include <fcntl.h>
 
 #include <libubus.h>
 
@@ -15,20 +15,6 @@
 			; \
 		} \
 	} while (0)
-
-/*
-* functions headers
-*/
-void add_objects(void);
-
-
-void parse_args(int argc, char *argv[]);
-void init_ubus(void);
-
-void ubus_connect_cb(struct ubus_context *ctx);
-
-void done_ubus(void);
-void done_uloop(void);
 
 extern void add_system_objects(struct ubus_context *ctx);
 

@@ -1,7 +1,11 @@
 #include "questd-worker.h"
 
 
+/* static functions declarations */
+static void *work(void *arg);
+static void run_jobs(void);
 
+/* start the worker thread */
 void start_worker(void)
 {
 	pthread_t tid;
@@ -14,7 +18,8 @@ void start_worker(void)
 		printf("pthread_create failed\n");
 }
 
-void *work(void *arg)
+/* starting function for the worker thread */
+static void *work(void *arg)
 {
 	printf("work()\n");
 	while (1) {
@@ -23,7 +28,8 @@ void *work(void *arg)
 	}
 }
 
-void run_jobs(void)
+/* run all jobs in the list */
+static void run_jobs(void)
 {
 	struct list_head *ptr;
 	struct worker_job *job;
@@ -40,6 +46,7 @@ void run_jobs(void)
 }
 
 
+/* add job to jobs list */
 void add_worker_job(void (*function)(void))
 {
 	struct worker_job *job = calloc(1, sizeof(struct worker_job));

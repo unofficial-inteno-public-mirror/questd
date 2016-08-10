@@ -2,10 +2,20 @@
 
 struct ubus_auto_conn conn;
 
+
+/* static functions declarations */
+static void parse_args(int argc, char *argv[]);
+static void init_ubus(void);
+static void ubus_connect_cb(struct ubus_context *ctx);
+static void done_ubus(void);
+static void done_uloop(void);
+static void add_objects(void);
+
+
 /*
 * init functions
 */
-void parse_args(int argc, char *argv[])
+static void parse_args(int argc, char *argv[])
 {
 	if (argc != 1 || argv[1]) {
 		printf("Parameters not supported.\n");
@@ -16,16 +26,19 @@ void parse_args(int argc, char *argv[])
 	/* TODO add usage function */
 }
 
-void init_ubus(void)
+
+/*
+* ubus (re)connect functions
+*/
+/* connect to ubus */
+static void init_ubus(void)
 {
 	conn.cb = ubus_connect_cb;
 	ubus_auto_connect(&conn);
 }
 
-/*
-* (re)connect function(s)
-*/
-void ubus_connect_cb(struct ubus_context *ctx)
+/* (re)connect callback */
+static void ubus_connect_cb(struct ubus_context *ctx)
 {
 	int fd;
 
@@ -40,7 +53,8 @@ void ubus_connect_cb(struct ubus_context *ctx)
 /*
 * done/ending functions
 */
-void done_ubus(void)
+/* disconnect from ubus */
+static void done_ubus(void)
 {
 	/* if the re/connection to ubus is ongoing, there is nothing to clean */
 	if (conn.timer.pending)
@@ -53,14 +67,16 @@ void done_ubus(void)
 	ubus_shutdown(&conn.ctx);
 }
 
-void done_uloop(void)
+/* stop uloop */
+static void done_uloop(void)
 {
 	uloop_end(); /* this might trigger a segmentation fault in libubus */
 	uloop_done();
 }
 
+
 /* register objects to ubus */
-void add_objects(void)
+static void add_objects(void)
 {
 	add_system_objects(&conn.ctx);
 }
