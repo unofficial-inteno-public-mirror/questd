@@ -17,34 +17,34 @@ struct system_specs_data;
 
 struct system_info_data {
 	/* invariable members */
-	char name[STRLENMAX]; /* Inteno */
+	char name[NAME_MAX]; /* Inteno */
 
-	char hardware[STRLENMAX]; /* EG300 */
-	char model[STRLENMAX]; /* EG300-WU21UDAC */
-	char boardid[STRLENMAX]; /* EG300R0 */
+	char hardware[NAME_MAX]; /* EG300 */
+	char model[NAME_MAX]; /* EG300-WU21UDAC */
+	char boardid[NAME_MAX]; /* EG300R0 */
 
-	char serialno[STRLENMAX]; /* E3AC24H154052013 */
-	char basemac[STRLENMAX]; /* 00:22:07:4B:9B:9A */
+	char serialno[NAME_MAX]; /* E3AC24H154052013 */
+	char basemac[NAME_MAX]; /* 00:22:07:4B:9B:9A */
 
-	char cfever[STRLENMAX]; /* 1.0.38-118.3-INT1.3 */
-	char socmod[STRLENMAX]; /* 63268 */
-	char socrev[STRLENMAX]; /* d0 */
+	char cfever[NAME_MAX]; /* 1.0.38-118.3-INT1.3 */
+	char socmod[NAME_MAX]; /* 63268 */
+	char socrev[NAME_MAX]; /* d0 */
 
-	char firmware[STRLENMAX]; /* EG300-WU21U_INT3.8.0RC0-160725_0352 */
-	char brcmver[STRLENMAX]; /* 4.16L.05 */
-	char filesystem[STRLENMAX]; /* UBIFS */
+	char firmware[NAME_MAX]; /* EG300-WU21U_INT3.8.0RC0-160725_0352 */
+	char brcmver[NAME_MAX]; /* 4.16L.05 */
+	char filesystem[NAME_MAX]; /* UBIFS */
 
-	char kernel_name[STRLENMAX]; /* Linux */
+	char kernel_name[NAME_MAX]; /* Linux */
 	union {
-		char kernel_release[STRLENMAX]; /* 3.4.11-rt19 */
-		char kernel[STRLENMAX]; /* two names for the same data */
+		char kernel_release[NAME_MAX]; /* 3.4.11-rt19 */
+		char kernel[NAME_MAX]; /* two names for the same data */
 	};
-	char kernel_version[STRLENMAX];
+	char kernel_version[NAME_MAX];
 		/* #1 SMP PREEMPT Mon Jul 25 03:33:12 CEST 2016 */
 
 	/* changeable members */
-	char date[STRLENMAX];
-	char uptime[STRLENMAX];
+	char date[NAME_MAX];
+	char uptime[NAME_MAX];
 	long localtime;
 
 	unsigned int procs;
@@ -61,9 +61,9 @@ struct system_memory_data {
 };
 
 struct system_keys_data {
-	char auth[STRLENMAX];
-	char des[STRLENMAX];
-	char wpa[STRLENMAX];
+	char auth[NAME_MAX];
+	char des[NAME_MAX];
+	char wpa[NAME_MAX];
 };
 
 struct system_specs_data {

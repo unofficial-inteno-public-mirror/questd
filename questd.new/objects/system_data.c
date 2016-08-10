@@ -34,10 +34,10 @@ void system_info_init(void)
 	uname(&info);
 
 	pthread_mutex_lock(&system_info_lock);
-	strncpy(system_info_data.name, info.nodename, STRLENMAX);
-	strncpy(system_info_data.kernel_name, info.sysname, STRLENMAX);
-	strncpy(system_info_data.kernel_release, info.release, STRLENMAX);
-	strncpy(system_info_data.kernel_version, info.version, STRLENMAX);
+	strncpy(system_info_data.name, info.nodename, NAME_MAX);
+	strncpy(system_info_data.kernel_name, info.sysname, NAME_MAX);
+	strncpy(system_info_data.kernel_release, info.release, NAME_MAX);
+	strncpy(system_info_data.kernel_version, info.version, NAME_MAX);
 
 	system_info_hardware();
 
@@ -63,7 +63,7 @@ void system_keys_init(void)
 
 void system_specs_init(void)
 {
-	char buf[STRLENMAX];
+	char buf[NAME_MAX];
 
 	get_hardware("hasWifi", buf);
 	if (buf[0] == '1')
@@ -111,7 +111,7 @@ void system_info_update(void)
 	/* localtime */
 	time(&system_info_data.localtime);
 	/* date */
-	snprintf(system_info_data.date, STRLENMAX,
+	snprintf(system_info_data.date, NAME_MAX,
 		ctime(&system_info_data.localtime));
 	trim(system_info_data.date);
 
@@ -162,20 +162,20 @@ static void system_info_uptime(long seconds, char *buf)
 		uptime->tm_year = 0;
 
 	if (uptime->tm_year)
-		snprintf(buf, STRLENMAX, "%dy %dd %dh %dm %ds",
+		snprintf(buf, NAME_MAX, "%dy %dd %dh %dm %ds",
 			uptime->tm_year, uptime->tm_yday,
 			uptime->tm_hour, uptime->tm_min, uptime->tm_sec);
 	else if (uptime->tm_yday)
-		snprintf(buf, STRLENMAX, "%dd %dh %dm %ds", uptime->tm_yday,
+		snprintf(buf, NAME_MAX, "%dd %dh %dm %ds", uptime->tm_yday,
 			uptime->tm_hour, uptime->tm_min, uptime->tm_sec);
 	else if (uptime->tm_hour)
-		snprintf(buf, STRLENMAX, "%dh %dm %ds",
+		snprintf(buf, NAME_MAX, "%dh %dm %ds",
 			uptime->tm_hour, uptime->tm_min, uptime->tm_sec);
 	else if (uptime->tm_min)
-		snprintf(buf, STRLENMAX, "%dm %ds",
+		snprintf(buf, NAME_MAX, "%dm %ds",
 			uptime->tm_min, uptime->tm_sec);
 	else
-		snprintf(buf, STRLENMAX, "%ds", uptime->tm_sec);
+		snprintf(buf, NAME_MAX, "%ds", uptime->tm_sec);
 }
 
 static void system_info_hardware(void)
@@ -222,7 +222,7 @@ static void get_hardware(char *option, char *buf)
 		|| !ptr.o || !ptr.o->v.string)
 		return;
 
-	snprintf(buf, STRLENMAX, "%s", ptr.o->v.string);
+	snprintf(buf, NAME_MAX, "%s", ptr.o->v.string);
 }
 
 

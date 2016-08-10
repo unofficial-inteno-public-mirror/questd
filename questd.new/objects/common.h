@@ -2,8 +2,10 @@
 #define QUESTD_COMMON_H
 
 #include <stdio.h>
-#include <string.h> /* strlen, memmove */
-#include <ctype.h> /* isspace */
+#include <string.h>
+#include <ctype.h>
+#include <linux/limits.h>
+
 #include <libubus.h>
 
 #define UNUSED(x) \
@@ -25,13 +27,22 @@
 	}
 
 
-#define BLOBMSG_ADD_STRING_NO_NULL(_buf, _name, _data) \
-	blobmsg_add_string(_buf, #_name, _data._name ? _data._name : "")
+#define BLOBMSG_ADD_STRING(_buf, _name, _data) \
+	blobmsg_add_string(_buf, #_name, (_data)->_name ? (_data)->_name : "")
 
-#define STRLENMAX 64
 
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif /* NAME_MAX */
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif /* PATH_MAX */
+
+/* register count objects from objects array to ubus context ctx */
 void add_objects_generic(struct ubus_context *ctx,
 			struct ubus_object **objects, int count);
+
+/* remove white spaces from the start and end of string str */
 void trim(char *str);
 
 #endif /* QUESTD_COMMON_H */

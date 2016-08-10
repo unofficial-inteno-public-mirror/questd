@@ -134,30 +134,30 @@ void system_info_data_to_blob(struct blob_buf *buf)
 
 	pthread_mutex_lock(&system_info_lock);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, name, system_info_data);
+	BLOBMSG_ADD_STRING(buf, name, &system_info_data);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, hardware, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, model, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, boardid, system_info_data);
+	BLOBMSG_ADD_STRING(buf, hardware, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, model, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, boardid, &system_info_data);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, serialno, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, basemac, system_info_data);
+	BLOBMSG_ADD_STRING(buf, serialno, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, basemac, &system_info_data);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, cfever, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, socmod, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, socrev, system_info_data);
+	BLOBMSG_ADD_STRING(buf, cfever, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, socmod, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, socrev, &system_info_data);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, firmware, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, brcmver, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, filesystem, system_info_data);
+	BLOBMSG_ADD_STRING(buf, firmware, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, brcmver, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, filesystem, &system_info_data);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, kernel_name, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, kernel_release, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, kernel, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, kernel_version, system_info_data);
+	BLOBMSG_ADD_STRING(buf, kernel_name, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, kernel_release, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, kernel, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, kernel_version, &system_info_data);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, date, system_info_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, uptime, system_info_data);
+	BLOBMSG_ADD_STRING(buf, date, &system_info_data);
+	BLOBMSG_ADD_STRING(buf, uptime, &system_info_data);
 	blobmsg_add_u64(buf, "localtime", system_info_data.localtime);
 
 	blobmsg_add_u32(buf, "procs", system_info_data.procs);
@@ -185,9 +185,9 @@ void system_keys_data_to_blob(struct blob_buf *buf)
 	UNUSED(buf);
 	pthread_mutex_lock(&system_keys_lock);
 
-	BLOBMSG_ADD_STRING_NO_NULL(buf, auth, system_keys_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, des, system_keys_data);
-	BLOBMSG_ADD_STRING_NO_NULL(buf, wpa, system_keys_data);
+	BLOBMSG_ADD_STRING(buf, auth, &system_keys_data);
+	BLOBMSG_ADD_STRING(buf, des, &system_keys_data);
+	BLOBMSG_ADD_STRING(buf, wpa, &system_keys_data);
 
 	pthread_mutex_unlock(&system_keys_lock);
 }

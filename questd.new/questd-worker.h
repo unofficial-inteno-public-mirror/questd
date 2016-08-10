@@ -20,7 +20,7 @@ struct worker_job {
 	void (*function)();
 	struct list_head list;
 };
-LIST_HEAD(jobs);
+struct list_head jobs = LIST_HEAD_INIT(jobs);
 pthread_mutex_t jobs_lock = PTHREAD_MUTEX_INITIALIZER;
 /* use jobs only with jobs_lock taken */
 
