@@ -14,7 +14,7 @@ void start_worker(void)
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	if (!pthread_create(&tid, &attr, work, NULL))
+	if (pthread_create(&tid, &attr, work, NULL))
 		printf("pthread_create failed\n");
 }
 
@@ -31,14 +31,10 @@ static void *work(void *arg)
 /* run all jobs in the list */
 static void run_jobs(void)
 {
-	struct list_head *ptr;
 	struct worker_job *job;
 
-	printf("run_jobs()\n");
-
 	pthread_mutex_lock(&jobs_lock);
-	list_for_each(ptr, &jobs) {
-		job = list_entry(ptr, struct worker_job, list);
+	list_for_each_entry(job, &jobs, list) {
 		if (job && job->function)
 			job->function();
 	}

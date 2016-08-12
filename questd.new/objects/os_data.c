@@ -7,6 +7,7 @@
 
 /* static functions declarations */
 static void os_filesystem_get(struct list_head *head);
+static inline struct os_filesystem_data *parse_filesystem_line(char *line);
 
 
 void os_data_init(void)
@@ -47,8 +48,6 @@ void os_logs_init(void)
 /* update functions */
 void os_filesystem_update(void)
 {
-	pthread_mutex_lock(&os_filesystem_lock);
-	pthread_mutex_unlock(&os_filesystem_lock);
 }
 
 void os_password_update(void)
@@ -79,11 +78,12 @@ void os_filesystem_done(void)
 
 
 /* static functions definitions */
+
+/* store filesystem entries in the list */
 static void os_filesystem_get(struct list_head *head)
 {
-	int rv;
-	struct os_filesystem_data *filesystem = NULL;
-	char line[PATH_MAX], usage[8];
+	char line[PATH_MAX];
+	struct os_filesystem_data *filesystem;
 	FILE *file;
 
 	file = popen("df", "r");
@@ -98,29 +98,48 @@ static void os_filesystem_get(struct list_head *head)
 
 	while (fgets(line, PATH_MAX, file)) {
 
-		if (!filesystem)
-			filesystem = malloc(sizeof(*filesystem));
-		if (!filesystem)
-			goto exit;
+		filesystem = parse_filesystem_line(line);
 
-		trim(line);
-		rv = sscanf(line, "%s %ld %ld %ld %7s %s", filesystem->name,
-			&filesystem->blocks, &filesystem->used,
-			&filesystem->available, usage, filesystem->mountpoint);
-		if (rv != 6)
-			continue;
+		if (filesystem)
+			list_add_tail(&filesystem->list, head);
 
-		/* remove trailing % from usage, e.g. "42%" */
-		/* while (!isdigit(usage[strlen(usage) - 1])) */
-		while (usage[strlen(usage) - 1] == '%')
-			usage[strlen(usage) - 1] = 0;
-		filesystem->usage = atoi(usage);
-
-		/* add filesystem to list */
-		list_add_tail(&filesystem->list, head);
-		filesystem = NULL;
 	}
 
-exit:
 	pclose(file);
+}
+
+/* Filesystem           1K-blocks      Used Available Use% Mounted on */
+/* rootfs                   49084     32672     16412  67% /          */
+static inline struct os_filesystem_data *parse_filesystem_line(char *line)
+{
+	int rv;
+	struct os_filesystem_data *filesystem;
+	char usage[8];
+
+	filesystem = calloc(1, sizeof(*filesystem));
+	if (!filesystem)
+		goto out;
+
+	trim(line);
+
+	/* read name, blocks, used, available and mountpoint */
+	rv = sscanf(line, "%s %ld %ld %ld %7s %s", filesystem->name,
+			&filesystem->blocks, &filesystem->used,
+			&filesystem->available, usage, filesystem->mountpoint);
+	if (rv != 6)
+		goto out;
+
+	/* read usage */
+	/* remove trailing % from usage, e.g. "42%" */
+	/* while (!isdigit(usage[strlen(usage) - 1])) */
+	while (usage[strlen(usage) - 1] == '%')
+		usage[strlen(usage) - 1] = 0;
+	filesystem->usage = atoi(usage);
+
+	return filesystem;
+
+out:
+	if (filesystem)
+		free(filesystem);
+	return NULL;
 }
