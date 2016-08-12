@@ -26,6 +26,7 @@ struct ubus_object *os_objects[] = {
 
 /* static functions declarations */
 static void os_filesystem_data_to_blob(struct blob_buf *buf);
+static void os_logs_data_to_blob(struct blob_buf *buf);
 
 
 void add_os_objects(struct ubus_context *ctx)
@@ -82,11 +83,25 @@ int os_logs_show(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	UNUSED(ctx);
-	UNUSED(obj);
-	UNUSED(req);
-	UNUSED(method);
+	struct blob_buf buf = {};
+
 	UNUSED(msg);
+
+	printf("Executing: obj.name = %s method = %s\n",
+		obj->name, method);
+
+	/* gather data */
+	os_logs_init();
+
+	/* prepare the reply in buf */
+	blob_buf_init(&buf, 0);
+	os_logs_data_to_blob(&buf);
+
+	/* send the reply to ubus */
+	ubus_send_reply(ctx, req, buf.head);
+
+	/* clean buffers */
+	os_logs_done();
 
 	return 0;
 }
@@ -121,4 +136,31 @@ static void os_filesystem_data_to_blob(struct blob_buf *buf)
 	/* blobmsg_close_array(buf, array); */
 
 	pthread_mutex_unlock(&os_filesystem_lock);
+}
+
+static void os_logs_data_to_blob(struct blob_buf *buf)
+{
+	struct os_logs_data *log;
+	void *table;
+	/* void *array; */
+
+	pthread_mutex_lock(&os_logs_lock);
+
+	/* array = blobmsg_open_array(buf, "logs"); */
+
+	list_for_each_entry(log, &os_logs_list, list) {
+
+		table = blobmsg_open_table(buf, log->source ? log->source : "");
+
+		BLOBMSG_ADD_STRING(buf, time, log);
+		BLOBMSG_ADD_STRING(buf, priority, log);
+		BLOBMSG_ADD_STRING(buf, source, log);
+		BLOBMSG_ADD_STRING(buf, message, log);
+
+		blobmsg_close_table(buf, table);
+	}
+
+	/* blobmsg_close_array(buf, array); */
+
+	pthread_mutex_unlock(&os_logs_lock);
 }

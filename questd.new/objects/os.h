@@ -25,7 +25,7 @@ struct ubus_object *os_objects[];
 /* data objects */
 struct list_head os_filesystem_list = LIST_HEAD_INIT(os_filesystem_list);
 struct os_password_data os_password_data;
-struct os_logs_data os_logs_data;
+struct list_head os_logs_list = LIST_HEAD_INIT(os_logs_list);
 
 /* data objects locks */
 pthread_mutex_t os_filesystem_lock = PTHREAD_MUTEX_INITIALIZER;
