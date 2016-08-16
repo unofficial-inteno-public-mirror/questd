@@ -23,6 +23,9 @@ struct os_filesystem_data {
 };
 
 struct os_password_data {
+	char *user;
+	char *password;
+	char *newpassword;
 };
 
 struct os_logs_data {
@@ -48,7 +51,7 @@ void os_data_init(void);
 
 /* initialize data object (called once) */
 void os_filesystem_init(void);
-void os_password_init(void);
+int os_password_init(struct os_password_data *password);
 void os_logs_init(void);
 
 /* update data objects (called repeatedly by the worker thread) */

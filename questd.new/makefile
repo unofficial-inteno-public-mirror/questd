@@ -1,7 +1,7 @@
 CC		= gcc
 #UBUS_INCLUDE	= "/home/alex/git/iopsys/staging_dir/target-mips_mips32_uClibc-0.9.33.2/usr/include/"
 #UBUS_LIBS	= "/home/alex/git/iopsys/staging_dir/target-mips_mips32_uClibc-0.9.33.2/usr/lib/"
-LIBS 		= -lubus -lubox -luci -lpthread
+LIBS 		= -lubus -lubox -luci -lpthread -lcrypt
 CFLAGS		= -std=c99 -Wall -Wextra -Wno-missing-field-initializers -I$(UBUS_INCLUDE) -pedantic -Werror -g $(LIBS) #-Wunused
 
 LIBSOURCES		= $(wildcard objects/*.c)

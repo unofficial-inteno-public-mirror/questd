@@ -1,10 +1,22 @@
 #include "os.h"
 
+enum {
+	P_USER,
+	P_PASSWORD,
+	P_NEWPASSWORD
+};
+
+struct blobmsg_policy os_password_policy[] = {
+	[P_USER]	= { .name = "user", .type = BLOBMSG_TYPE_STRING },
+	[P_PASSWORD]	= { .name = "password", .type = BLOBMSG_TYPE_STRING },
+	[P_NEWPASSWORD]	= { .name = "newpassword", .type = BLOBMSG_TYPE_STRING }
+};
+
 struct ubus_method os_filesystem_m[] = {
 	UBUS_METHOD_NOARG("show", os_filesystem_show)
 };
 struct ubus_method os_password_m[] = {
-	UBUS_METHOD_NOARG("set", os_password_set)
+	UBUS_METHOD("set", os_password_set, os_password_policy)
 };
 struct ubus_method os_logs_m[] = {
 	UBUS_METHOD_NOARG("show", os_logs_show)
@@ -70,13 +82,40 @@ int os_password_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
+	struct os_password_data password;
+	struct blob_attr *tb[ARRAY_SIZE(os_password_policy)];
+
 	UNUSED(ctx);
 	UNUSED(obj);
 	UNUSED(req);
 	UNUSED(method);
-	UNUSED(msg);
 
-	return 0;
+	/* parse input msg, store result in tb */
+	if (blobmsg_parse(os_password_policy, ARRAY_SIZE(os_password_policy),
+		tb, blob_data(msg), blob_len(msg)) != 0)
+		goto invalid_argument;
+
+	/* check parameters */
+	if (!tb[P_USER] || !tb[P_NEWPASSWORD] ||
+		!blobmsg_get_string(tb[P_USER]) ||
+		!blobmsg_get_string(tb[P_NEWPASSWORD]) ||
+		!strlen(blobmsg_get_string(tb[P_USER])) ||
+		!strlen(blobmsg_get_string(tb[P_NEWPASSWORD])))
+		goto invalid_argument;
+	if (!tb[P_PASSWORD] || !blobmsg_get_string(tb[P_PASSWORD]) ||
+		!strlen(blobmsg_get_string(tb[P_PASSWORD])))
+		goto permission_denied;
+
+	password.user		= blobmsg_get_string(tb[P_USER]);
+	password.password	= blobmsg_get_string(tb[P_PASSWORD]);
+	password.newpassword	= blobmsg_get_string(tb[P_NEWPASSWORD]);
+
+	return os_password_init(&password);
+
+invalid_argument:
+		return UBUS_STATUS_INVALID_ARGUMENT;
+permission_denied:
+		return UBUS_STATUS_PERMISSION_DENIED;
 }
 
 int os_logs_show(struct ubus_context *ctx, struct ubus_object *obj,
