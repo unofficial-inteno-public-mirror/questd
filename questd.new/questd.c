@@ -70,7 +70,7 @@ static void done_ubus(void)
 /* stop uloop */
 static void done_uloop(void)
 {
-	uloop_end(); /* this might trigger a segmentation fault in libubus */
+	uloop_end();
 	uloop_done();
 }
 

@@ -7,8 +7,6 @@ void add_objects_generic(struct ubus_context *ctx,
 	int i;
 	struct ubus_object *obj;
 
-	printf("Number of objects = %d\n", count);
-
 	for (i = 0; i < count; i++) {
 		obj = objects[i];
 		if (ubus_add_object(ctx, obj) != 0)

@@ -30,5 +30,6 @@ void start_worker(void);
 /* register update functions to the worker thread */
 /* void add_worker_job(worker_job_function function); */
 void add_worker_job(void (*function) (void));
+void del_worker_job(void (*function) (void));
 
 #endif /* QUESTD_WORKER_H */

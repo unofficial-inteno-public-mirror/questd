@@ -21,7 +21,6 @@ void start_worker(void)
 /* starting function for the worker thread */
 static void *work(void *arg)
 {
-	printf("work()\n");
 	while (1) {
 		run_jobs();
 		sleep(5);
@@ -34,10 +33,10 @@ static void run_jobs(void)
 	struct worker_job *job;
 
 	pthread_mutex_lock(&jobs_lock);
-	list_for_each_entry(job, &jobs, list) {
+	list_for_each_entry(job, &jobs, list)
 		if (job && job->function)
 			job->function();
-	}
+
 	pthread_mutex_unlock(&jobs_lock);
 }
 
@@ -51,5 +50,19 @@ void add_worker_job(void (*function)(void))
 
 	pthread_mutex_lock(&jobs_lock);
 	list_add(&job->list, &jobs);
+	pthread_mutex_unlock(&jobs_lock);
+}
+
+/* delete job from jobs list */
+void del_worker_job(void (*function)(void))
+{
+	struct worker_job *job, *next;
+
+	pthread_mutex_lock(&jobs_lock);
+	list_for_each_entry_safe(job, next, &jobs, list)
+		if (job && job->function == function) {
+			list_del(job);
+			break;
+		}
 	pthread_mutex_unlock(&jobs_lock);
 }
