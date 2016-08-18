@@ -27,6 +27,8 @@ struct stats_traffic_data {
 };
 
 struct stats_connections_data {
+	int tcp_count;
+	int udp_count;
 };
 
 /* data objects */

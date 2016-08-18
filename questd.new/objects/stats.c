@@ -168,5 +168,8 @@ static void stats_connections_data_to_blob(struct blob_buf *buf)
 	UNUSED(buf);
 	pthread_mutex_lock(&stats_connections_lock);
 
+	blobmsg_add_u32(buf, "tcp_count", stats_connections_data.tcp_count);
+	blobmsg_add_u32(buf, "udp_count", stats_connections_data.udp_count);
+
 	pthread_mutex_unlock(&stats_connections_lock);
 }

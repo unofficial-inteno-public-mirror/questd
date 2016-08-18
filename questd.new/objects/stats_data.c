@@ -5,6 +5,10 @@
 #include "stats_data.h"
 
 
+/* static functions declarations */
+static void stats_connections_count(int *tcp_count, int *udp_count);
+
+
 void stats_data_init(void)
 {
 	stats_cpu_init();
@@ -70,4 +74,49 @@ void stats_traffic_update(void)
 
 void stats_connections_update(void)
 {
+	int tcp_count = 0;
+	int udp_count = 0;
+
+	stats_connections_count(&tcp_count, &udp_count);
+
+	pthread_mutex_lock(&stats_connections_lock);
+	stats_connections_data.tcp_count = tcp_count;
+	stats_connections_data.udp_count = udp_count;
+	pthread_mutex_unlock(&stats_connections_lock);
+}
+
+/* static functions */
+static void stats_connections_count(int *tcp_count, int *udp_count)
+{
+	FILE *file;
+	char line[512];
+	int rv;
+	char type[16], established[64], unreplied_udp[64], unreplied_tcp[64];
+
+	file = fopen("/proc/net/ip_conntrack", "r");
+
+	if (!file)
+		return;
+
+	while (fgets(line, sizeof(line), file)) {
+		trim(line);
+		/* tcp 6 86386 ESTABLISHED src=ip dst=ip sport=50209
+		 * dport=445 src=ip dst=ip sport=445 dport=50209 [ASSURED]
+		 * mark=0 use=2
+		 */
+		rv = sscanf(line, "%s %*s %*s %s %*s %*s %*s %s %s",
+			type, established, unreplied_udp, unreplied_tcp);
+
+		if (rv != 4)
+			continue;
+
+		if (strcmp(type, "udp") == 0 &&
+				strcmp(unreplied_udp, "[UNREPLIED]") != 0)
+			++(*udp_count);
+		else if (strcmp(type, "tcp") == 0 &&
+				strcmp(established, "ESTABLISHED") == 0 &&
+				strcmp(unreplied_tcp, "[UNREPLIED]") != 0)
+			++(*tcp_count);
+	}
+	fclose(file);
 }
