@@ -74,8 +74,7 @@ void stats_traffic_update(void)
 
 void stats_connections_update(void)
 {
-	int tcp_count = 0;
-	int udp_count = 0;
+	int tcp_count = 0, udp_count = 0;
 
 	stats_connections_count(&tcp_count, &udp_count);
 
@@ -88,10 +87,10 @@ void stats_connections_update(void)
 /* static functions */
 static void stats_connections_count(int *tcp_count, int *udp_count)
 {
-	FILE *file;
-	char line[512];
 	int rv;
+	char line[512];
 	char type[16], established[64], unreplied_udp[64], unreplied_tcp[64];
+	FILE *file;
 
 	file = fopen("/proc/net/ip_conntrack", "r");
 

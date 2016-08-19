@@ -80,8 +80,6 @@ void os_filesystem_done(void)
 {
 	struct os_filesystem_data *cursor, *next;
 
-	UNUSED(cursor);
-	UNUSED(next);
 	/* clear the filesystem list */
 	list_for_each_entry_safe(cursor, next, &os_filesystem_list, list) {
 		list_del(&cursor->list);

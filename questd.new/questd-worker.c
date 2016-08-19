@@ -61,7 +61,7 @@ void del_worker_job(void (*function)(void))
 	pthread_mutex_lock(&jobs_lock);
 	list_for_each_entry_safe(job, next, &jobs, list)
 		if (job && job->function == function) {
-			list_del(job);
+			list_del(&job->list);
 			break;
 		}
 	pthread_mutex_unlock(&jobs_lock);
