@@ -1,0 +1,12 @@
+0. features, functionality.
+
+1. cppcheck in makefile
+2. splint.
+3. memcheck
+4. valgrind memcheck callgrind cachegrind.
+5. worker as a lib? or move in libubox.
+6. debug prints, verbose.
+7. tests.
+8. no libobject.so? maybe build all together.
+9. fix h vs c files content.
+10. check/fix + tests for  memory leaks
