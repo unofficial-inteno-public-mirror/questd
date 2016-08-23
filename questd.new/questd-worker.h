@@ -6,6 +6,7 @@
 #include <pthread.h>
 
 #include <libubox/list.h>
+#include <libubox/uloop.h>
 
 #define UNUSED(x) \
 	do { \
@@ -18,6 +19,8 @@
 struct worker_job {
 	void (*function)();
 	struct list_head list;
+	int interval;
+	struct timeval/timespec time;
 };
 
 /* list of jobs to be executed by worker */
@@ -30,6 +33,7 @@ void start_worker(void);
 /* register update functions to the worker thread */
 /* void add_worker_job(worker_job_function function); */
 void add_worker_job(void (*function) (void));
+void add_worker_job_interval(void (*function) (void), int interval);
 void del_worker_job(void (*function) (void));
 
 #endif /* QUESTD_WORKER_H */

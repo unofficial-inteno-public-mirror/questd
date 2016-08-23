@@ -40,6 +40,19 @@ static void run_jobs(void)
 	pthread_mutex_unlock(&jobs_lock);
 }
 
+static void work_interval()
+{
+	while (1) {
+		NANOsleep/select/pthread_cond_timedwait;
+		first_job.time;
+
+		run all jobs from first_job to job.time< first_job.time + 200ms
+
+		job.time+=interval
+		insert job again in the queue in cronological order.
+	}
+}
+
 
 /* add job to jobs list */
 void add_worker_job(void (*function)(void))
@@ -50,6 +63,18 @@ void add_worker_job(void (*function)(void))
 
 	pthread_mutex_lock(&jobs_lock);
 	list_add(&job->list, &jobs);
+	pthread_mutex_unlock(&jobs_lock);
+}
+void add_worker_job_interval(void (*function)(void), int interval)
+{
+	struct worker_job *job = calloc(1, sizeof(struct worker_job));
+
+	job->function = function;
+	job->interval = interval;
+	job->time = now();
+
+	pthread_mutex_lock(&jobs_lock);
+	list_add(&job->list, &jobs); /* add in front of the queue */
 	pthread_mutex_unlock(&jobs_lock);
 }
 
