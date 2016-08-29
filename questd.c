@@ -2319,7 +2319,7 @@ quest_ubus_init(const char *path)
 
 void *dump_router_info(void *arg)
 {
-	int lpcnt = 0;
+	//int lpcnt = 0;
 
 	jiffy_counts_t cur_jif = {0}, prev_jif = {0};
 	
@@ -2342,11 +2342,13 @@ void *dump_router_info(void *arg)
 		recalc_sleep_time(false, 0);
 		get_jif_val(&cur_jif);
 		lpcnt++;
-		if (lpcnt == 20) {
-			lpcnt = 0;
-			memset(clients, '\0', sizeof(clients));
-			memset(clients6, '\0', sizeof(clients6));
-		}
+		// this caused the router prots command to sometimes not give any clients because
+		// the time between clearing clients and repopulating them (it takes around 2 sek)
+		//if (lpcnt == 20) {
+		//	lpcnt = 0;
+		//	memset(clients, '\0', sizeof(clients));
+		//	memset(clients6, '\0', sizeof(clients6));
+		//}
 	}
 
 	return NULL;
