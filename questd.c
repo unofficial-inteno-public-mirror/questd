@@ -2341,7 +2341,7 @@ void *dump_router_info(void *arg)
 		usleep(sleep_time);
 		recalc_sleep_time(false, 0);
 		get_jif_val(&cur_jif);
-		lpcnt++;
+		//lpcnt++;
 		// this caused the router prots command to sometimes not give any clients because
 		// the time between clearing clients and repopulating them (it takes around 2 sek)
 		//if (lpcnt == 20) {
