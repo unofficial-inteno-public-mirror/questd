@@ -30,7 +30,7 @@
 #define MAX_RADIO	4
 #define MAX_VIF		8
 #define MAX_NETWORK	16
-#define MAX_CLIENT	128
+#define MAX_CLIENT	96
 #define MAX_PORT	16
 #define MAX_USB		18
 #define MAX_IGMP_ENTRY	128
@@ -113,6 +113,7 @@ typedef struct {
 	char device[32];
 	bool wireless;
 	char wdev[8];
+	struct wl_ether_addr assoclist[32];
 } Client;
 
 typedef struct {

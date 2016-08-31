@@ -16,6 +16,7 @@
 
 static int client_connected = 0;
 static pthread_t tid;
+pthread_mutex_t lock;
 
 static void 
 removeNewline(char *buf)
@@ -147,7 +148,7 @@ int wifiserver(void) {
 				}
 				//printf("Received data from %s: %s\n", clientAddr, buffer);
 		
-				if (strncmp(buffer, "wifi import", 11))
+				if (strncmp(buffer, "wifi import", 11) && strncmp(buffer, "wlctl", 5))
 					strcpy(buffer, "echo Invalid call to wificontrol");
 
 				ret = sendto(newsockfd, chrCmd(buffer), BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
@@ -172,6 +173,8 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 	char buffer[BUF_SIZE];
 	fd_set fdset;
 	struct timeval tv;
+
+	pthread_mutex_lock(&lock);
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
@@ -215,6 +218,59 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 	}
 
  	close(sockfd);
+
+	pthread_mutex_unlock(&lock);
+
+	return 0;
+}
+
+int get_assoclist(char *serverAddr) {
+	struct sockaddr_in addr;
+	int sockfd, ret;
+	char buffer[BUF_SIZE];
+	fd_set fdset;
+	struct timeval tv;
+
+	pthread_mutex_lock(&lock);
+
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0) {
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(serverAddr);
+	addr.sin_port = htons(PORT);
+
+	FD_ZERO(&fdset);
+	FD_SET(sockfd, &fdset);
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+
+	if (select(sockfd+1, &fdset, NULL, NULL, &tv) > 0) {
+		ret = connect(sockfd, (struct sockaddr *) &addr, sizeof(addr));
+		if (ret < 0) {
+			close(sockfd);
+			return -1;
+		}
+
+		sprintf(buffer, "wlctl -i wl0 assoclist | awk '{print$2}' | tr '\n' ' '; wlctl -i wl1.1 assoclist | awk '{print$2}' | tr '\n' ' '");
+
+		ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));
+		if (ret < 0) {
+			return -1;
+		}
+		ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);
+		if (ret >= 0) {
+			if (strstr(buffer, ":"))
+				fputs(buffer, stdout);
+		}
+	}
+
+ 	close(sockfd);
+
+	pthread_mutex_unlock(&lock);
 
 	return 0;
 }  
@@ -281,6 +337,7 @@ void usage(void){
 }
 
 int main(int argc, char**argv) {
+	int assoclist = 0;
 	int client_mode = 0;
 	int server_mode = 0;
 	int opt;
@@ -288,9 +345,12 @@ int main(int argc, char**argv) {
 	if (argc < 2)
 		usage();
 
-	while ((opt = getopt(argc, argv, "cs")) != -1) {
+	while ((opt = getopt(argc, argv, "acs")) != -1) {
 
 		switch (opt) {
+			case 'a':
+				assoclist = 1;
+				break;
 			case 'c':
 				client_mode = 1;
 				break;
@@ -304,7 +364,9 @@ int main(int argc, char**argv) {
 	argc -= optind;
 	argv += optind;
 
-	if(client_mode)
+	if(assoclist)
+		get_assoclist(argv[0]);
+	else if(client_mode)
 		wificlient();
 	else if(server_mode)
 		wifiserver();

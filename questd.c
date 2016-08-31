@@ -557,6 +557,7 @@ ipv4_clients()
 {
 	FILE *leases, *arpt;
 	char line[256];
+	int ano = 0;
 	int cno = 0;
 	int lno = 0;
 	int hw;
@@ -565,6 +566,8 @@ ipv4_clients()
 	int i, j;
 	bool there;
 	int toms = 1000;
+	char assoclist[1280];
+	char *token;
 
 	memset(clients_new, '\0', sizeof(clients));
 
@@ -588,6 +591,20 @@ ipv4_clients()
 			#endif
 				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 					recalc_sleep_time(true, toms);
+
+				if(clients[cno].connected && strstr(clients[cno].macaddr, "00:22:07")) {
+					memset(clients[cno].assoclist, '\0', 128);
+					strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
+
+					ano = 0;
+					token = strtok(assoclist, " ");
+					while (token != NULL)
+					{
+						wl_ether_atoe(token, &(clients[cno].assoclist[ano]));
+						token = strtok (NULL, " ");
+						ano++;
+					}
+				}
 
 				cno++;
 			}
@@ -631,6 +648,20 @@ ipv4_clients()
 					#endif
 						if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 							recalc_sleep_time(true, toms);
+
+						if(clients[cno].connected && strstr(clients[cno].macaddr, "00:22:07")) {
+							memset(clients[cno].assoclist, '\0', 128);
+							strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
+
+							ano = 0;
+							token = strtok(assoclist, " ");
+							while (token != NULL)
+							{
+								wl_ether_atoe(token, &(clients[cno].assoclist[ano]));
+								token = strtok (NULL, " ");
+								ano++;
+							}
+						}
 
 						cno++;
 					}
@@ -932,6 +963,21 @@ static void dump_client(struct blob_buf *b, Client client)
 		}
 		blobmsg_add_string(b, "linkspeed", linkspeed);
 	}
+
+	if(strstr(client.macaddr, "00:22:07")) {
+		void *a;
+		int i = 0;
+
+		a = blobmsg_open_array(b, "assoclist");
+
+		while (client.assoclist[i].octet[1] != NULL)
+		{
+			blobmsg_add_string(b, "", wl_ether_etoa(&(client.assoclist[i])));
+			i++;
+		}
+
+		blobmsg_close_array(b, a);
+	}
 #endif
 }
 
@@ -992,6 +1038,41 @@ router_dump_clients6(struct blob_buf *b, bool connected)
 		}
 		blobmsg_close_table(b, t);
 		num++;
+	}
+}
+
+static void
+router_dump_wl_assoclist(struct blob_buf *b)
+{
+	void *t;
+	int i;
+
+	struct wl_sta_info sta_info;
+	int bandwidth, channel, noise, rssi, snr, htcaps;
+
+	for (i = 0; i < MAX_CLIENT && stas[i].exists; i++) {
+		wl_get_stas_info(stas[i].wdev, stas[i].macaddr, &sta_info, &htcaps);
+		wl_get_bssinfo(stas[i].wdev, &bandwidth, &channel, &noise);
+		wl_get_rssi(stas[i].wdev, stas[i].macaddr, &rssi);
+		snr = rssi - noise;
+
+		t = blobmsg_open_table(b, "");
+		blobmsg_add_string(b, "wdev", stas[i].wdev);
+		blobmsg_add_string(b, "macaddr", stas[i].macaddr);
+		blobmsg_add_string(b, "frequency", (channel >= 36) ? "5GHz" : "2.4GHz");
+		blobmsg_add_u32(b, "rssi", rssi);
+		blobmsg_add_u32(b, "snr", snr);
+		blobmsg_add_u32(b, "idle", sta_info.idle);
+		blobmsg_add_u32(b, "in_network", sta_info.in);
+		blobmsg_add_u8(b, "wme", (sta_info.flags & WL_STA_WME) ? true : false);
+		blobmsg_add_u8(b, "ps", (sta_info.flags & WL_STA_PS) ? true : false);
+		blobmsg_add_u8(b, "n_cap", (sta_info.flags & WL_STA_N_CAP) ? true : false);
+		blobmsg_add_u8(b, "vht_cap", (sta_info.flags & WL_STA_VHT_CAP) ? true : false);
+		blobmsg_add_u64(b, "tx_bytes", sta_info.tx_tot_bytes);
+		blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
+		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
+		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
+		blobmsg_close_table(b, t);
 	}
 }
 
@@ -1759,6 +1840,23 @@ quest_router_stas(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__QUEST_MAX];
+
+	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
+
+	blob_buf_init(&bb, 0);
+	router_dump_wl_assoclist(&bb);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+
+static int
 quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -2017,6 +2115,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("igmptable", quest_router_igmp_table),
 	UBUS_METHOD("sta", quest_router_wireless_stas, wl_policy),
 	UBUS_METHOD_NOARG("stas", quest_router_stas),
+	UBUS_METHOD_NOARG("wl_assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD("ports", quest_router_ports, network_policy),
 	UBUS_METHOD("leases", quest_network_leases, network_policy),
 	UBUS_METHOD("host", quest_host_status, host_policy),
