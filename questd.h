@@ -31,6 +31,7 @@
 #define MAX_VIF		8
 #define MAX_NETWORK	16
 #define MAX_CLIENT	96
+#define MAX_CLIENT_PER_PORT 64
 #define MAX_PORT	16
 #define MAX_USB		18
 #define MAX_IGMP_ENTRY	128
@@ -149,7 +150,7 @@ typedef struct {
 	char device[32];
 	char linkspeed[64];
 	Statistic stat;
-	Client client[MAX_CLIENT];
+	Client client[MAX_CLIENT_PER_PORT];
 } Port;
 
 typedef struct {

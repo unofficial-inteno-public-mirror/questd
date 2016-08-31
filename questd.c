@@ -1312,7 +1312,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 				blobmsg_add_string(b, "linkspeed", port[i].linkspeed);
 			}
 			c = blobmsg_open_array(b, "hosts");
-			for(j=0; j < MAX_CLIENT && port[i].client[j].exists; j++) {
+			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
 				h = blobmsg_open_table(b, "NULL");
 				dump_client(b, port[i].client[j]);
 				blobmsg_close_table(b, h);
