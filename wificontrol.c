@@ -61,6 +61,13 @@ static int arp_ping(char *ipaddr, char *device, int tmo, int retry)
 		}
 	}
 
+	if (ret) {
+		system("ubus -t 1 call led.internet set '{\"enable\":0}'");
+	} else {
+		system("ubus -t 1 call led.internet set '{\"enable\":1}'");
+		system("ubus -t 1 call led.internet set '{\"state\":\"error\"}'");
+	}
+
 	return ret;
 }
 
