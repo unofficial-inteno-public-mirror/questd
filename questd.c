@@ -580,6 +580,10 @@ ipv4_clients()
 			clients[cno].wireless = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leaseno, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
+
+				if(!strstr(clients[cno].macaddr, "00:22:07"))
+					continue;
+
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
@@ -592,7 +596,7 @@ ipv4_clients()
 				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 					recalc_sleep_time(true, toms);
 
-				if(clients[cno].connected && strstr(clients[cno].macaddr, "00:22:07")) {
+				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
 					strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
 
@@ -606,6 +610,48 @@ ipv4_clients()
 					}
 				}
 
+				cno++;
+			}
+		}
+		fclose(leases);
+	}
+
+	if ((leases = fopen("/var/dhcp.leases", "r"))) {
+		while(fgets(line, sizeof(line), leases) != NULL)
+		{
+			if(cno >= MAX_CLIENT) break;
+			remove_newline(line);
+			clients[cno].exists = false;
+			clients[cno].wireless = false;
+			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
+			if (sscanf(line, "%s %s %s %s %s", clients[cno].leaseno, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
+
+				if(strstr(clients[cno].macaddr, "00:22:07"))
+					continue;
+
+				clients[cno].exists = true;
+				clients[cno].dhcp = true;
+				handle_client(&clients[cno]);
+
+				for (i=0; i < cno; i++) {
+					for(j=0; j < 32 && clients[i].assoclist[j].octet[1] != NULL; j++) {
+						if (!strcasecmp(wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
+							clients[cno].connected = true;
+							goto inc;
+						}
+					}
+				}
+
+			#if IOPSYS_BROADCOM
+				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
+					clients[cno].wireless = true;
+				}
+				else
+			#endif
+				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
+					recalc_sleep_time(true, toms);
+
+inc:
 				cno++;
 			}
 		}
