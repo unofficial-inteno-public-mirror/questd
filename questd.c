@@ -955,24 +955,46 @@ static void dump_client(struct blob_buf *b, Client client)
 		if(strstr(client.device, "br-")) {
 			brindex = chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", client.device, client.macaddr);
 			port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", client.device, atoi(brindex) + 1);
-			blobmsg_add_string(b, "ethport", port);
-			get_port_speed(linkspeed, port);
+			if(!strncmp(port, "eth", 3)) {
+				blobmsg_add_string(b, "ethport", port);
+				get_port_speed(linkspeed, port);
+				blobmsg_add_string(b, "linkspeed", linkspeed);
+			} else {
+				blobmsg_add_u8(b, "repeated", true);
+			}
 		} else {
-			blobmsg_add_string(b, "ethport", client.device);
-			get_port_speed(linkspeed, client.device);
+			if(!strncmp(client.device, "eth", 3)) {
+				blobmsg_add_string(b, "ethport", client.device);
+				get_port_speed(linkspeed, client.device);
+				blobmsg_add_string(b, "linkspeed", linkspeed);
+			} else {
+				blobmsg_add_u8(b, "repeated", true);
+			}
 		}
-		blobmsg_add_string(b, "linkspeed", linkspeed);
 	}
 
 	if(strstr(client.macaddr, "00:22:07")) {
-		void *a;
+		void *a, *t;
 		int i = 0;
+		int j = 0;
+		char *stamac[24];
 
 		a = blobmsg_open_array(b, "assoclist");
 
 		while (client.assoclist[i].octet[1] != NULL)
 		{
-			blobmsg_add_string(b, "", wl_ether_etoa(&(client.assoclist[i])));
+			strncpy(stamac, wl_ether_etoa(&(client.assoclist[i])), 24);
+			t = blobmsg_open_table(b, "");
+			blobmsg_add_string(b, "macaddr", stamac);
+			for (j=0; j < MAX_CLIENT && clients[j].exists; j++) {
+				if(!strcasecmp(clients[j].macaddr, stamac)) {
+					blobmsg_add_string(b, "hostname", clients[j].hostname);
+					blobmsg_add_string(b, "ipaddr", clients[j].ipaddr);
+					break;
+				}
+			}
+			blobmsg_close_table(b, t);
+
 			i++;
 		}
 
@@ -1273,7 +1295,7 @@ static void
 router_dump_ports(struct blob_buf *b, char *interface)
 {
 	void *t, *c, *h, *s;
-	int pno, i, j;
+	int pno, i, j, k, l;
 	const char *ports[8];
 	bool found = false;
 
@@ -1313,6 +1335,16 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			}
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
+
+				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
+					if (strstr(clients[k].macaddr, "00:22:07")) {
+						for(l=0; l < 32 && clients[k].assoclist[l].octet[1] != NULL; l++) {
+							if (!strcasecmp(wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
+								continue;
+						}
+					}
+				}
+
 				h = blobmsg_open_table(b, "NULL");
 				dump_client(b, port[i].client[j]);
 				blobmsg_close_table(b, h);
