@@ -981,7 +981,7 @@ static void dump_client(struct blob_buf *b, Client client)
 
 		a = blobmsg_open_array(b, "assoclist");
 
-		while (client.assoclist[i].octet[1] != NULL)
+		while (i < 32 && client.assoclist[i].octet[1] != NULL)
 		{
 			strncpy(stamac, wl_ether_etoa(&(client.assoclist[i])), 24);
 			t = blobmsg_open_table(b, "");
