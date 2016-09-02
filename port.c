@@ -91,25 +91,50 @@ get_port_name(Port *port)
 int
 get_port_speed(char *port, const char *device)
 {
-	const char *portspeed;
+	const char *portspeed, *issfp;
 	char duplex[16];
+	char ad[8];
 	int speed, fixed;
-	portspeed = chrCmd("ethctl %s media-type 2>/dev/null | sed -n '2p'", device);
-	if (strcmp(portspeed, "") == 0) return 1;
-	if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
-		fixed = 0;
-	else if (sscanf(portspeed, "The autonegotiated media type is %dbase%s.", &speed, duplex))
-		fixed = 0;
-	else if (sscanf(portspeed, " Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
-		fixed = 1;
-	if (strcmp(portspeed, "Link is down") == 0){
-		strcpy(port, "Auto");
-	}else{
-		if (strstr(duplex, "ull") || strstr(portspeed, "FD"))
+
+	issfp = chrCmd("ethctl %s media-type 2>&1| grep sfp", device);
+
+	if (!strlen(issfp)) {
+		portspeed = chrCmd("ethctl %s media-type 2>/dev/null | sed -n '2p'", device);
+
+		if (!strlen(portspeed))
+			return 1;
+
+		if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
+			fixed = 0;
+		else if (sscanf(portspeed, "The autonegotiated media type is %dbase%s.", &speed, duplex))
+			fixed = 0;
+		else if (sscanf(portspeed, " Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
+			fixed = 1;
+		if (strcmp(portspeed, "Link is down") == 0){
+			strcpy(port, "Auto");
+		}else{
+			if (strstr(duplex, "ull") || strstr(portspeed, "FD"))
+				strcpy(duplex, "Full");
+			else
+				strcpy(duplex, "Half");
+			sprintf(port, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
+		}
+	} else {
+		portspeed = chrCmd("ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
+
+		if (!strlen(portspeed))
+			portspeed = chrCmd("ethctl %s media-type sfp copper 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
+
+		if (!strlen(portspeed))
+			return 1;
+
+		if (sscanf(portspeed, "Auto Detection %s Media type is %dFD", ad, &speed))
 			strcpy(duplex, "Full");
-		else
+		else if (sscanf(portspeed, "Auto Detection %s Media type is %dHD", ad, &speed))
 			strcpy(duplex, "Half");
-		sprintf(port, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
+
+		sprintf(port, "%s %d Mbps %s Duplex", (strstr(ad, "off"))?"Fixed":"Auto-negotiated", speed, duplex);
+
 	}
 	return 0;
 }
