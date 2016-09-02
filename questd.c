@@ -2496,7 +2496,7 @@ quest_ubus_init(const char *path)
 
 void *dump_router_info(void *arg)
 {
-	//int lpcnt = 0;
+	int lpcnt = 0;
 
 	jiffy_counts_t cur_jif = {0}, prev_jif = {0};
 	
