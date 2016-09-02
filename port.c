@@ -89,7 +89,7 @@ get_port_name(Port *port)
 }
 
 int
-get_port_speed(char *port, const char *device)
+get_port_speed(char *linkspeed, char *device)
 {
 	const char *portspeed, *issfp;
 	char duplex[16];
@@ -110,14 +110,15 @@ get_port_speed(char *port, const char *device)
 			fixed = 0;
 		else if (sscanf(portspeed, " Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
 			fixed = 1;
+
 		if (strcmp(portspeed, "Link is down") == 0){
-			strcpy(port, "Auto");
+			strcpy(linkspeed, "Auto");
 		}else{
 			if (strstr(duplex, "ull") || strstr(portspeed, "FD"))
 				strcpy(duplex, "Full");
 			else
 				strcpy(duplex, "Half");
-			sprintf(port, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
+			sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
 		}
 	} else {
 		portspeed = chrCmd("ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
@@ -133,7 +134,7 @@ get_port_speed(char *port, const char *device)
 		else if (sscanf(portspeed, "Auto Detection %s Media type is %dHD", ad, &speed))
 			strcpy(duplex, "Half");
 
-		sprintf(port, "%s %d Mbps %s Duplex", (strstr(ad, "off"))?"Fixed":"Auto-negotiated", speed, duplex);
+		sprintf(linkspeed, "%s %d Mbps %s Duplex", (strstr(ad, "off"))?"Fixed":"Auto-negotiated", speed, duplex);
 
 	}
 	return 0;

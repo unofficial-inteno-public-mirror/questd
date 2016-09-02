@@ -273,7 +273,7 @@ void dump_hostname(Router *router);
 void dump_sysinfo(Router *router, Memory *memory);
 void dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_jif);
 void get_port_name(Port *port);
-int get_port_speed(char *port, const char *device);
+int get_port_speed(char *linkspeed, char *device);
 void get_port_stats(Port *port);
 void get_bridge_ports(char *network, char **ifname);
 char *get_clients_onport(char *bridge, int portno);

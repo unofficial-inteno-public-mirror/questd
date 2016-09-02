@@ -962,9 +962,9 @@ router_dump_networks(struct blob_buf *b)
 
 static void dump_client(struct blob_buf *b, Client client)
 {	
-	const char *brindex;
 	static char linkspeed[64];
-	const char *port;
+	char brindex[8];
+	char port[16];
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 
@@ -999,8 +999,8 @@ static void dump_client(struct blob_buf *b, Client client)
 		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
 	} else if(client.connected) {
 		if(strstr(client.device, "br-")) {
-			brindex = chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", client.device, client.macaddr);
-			port = chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", client.device, atoi(brindex) + 1);
+			strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", client.device, client.macaddr), 8);
+			strncpy(port, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", client.device, atoi(brindex) + 1), 16);
 			if(!strncmp(port, "eth", 3)) {
 				blobmsg_add_string(b, "ethport", port);
 				get_port_speed(linkspeed, port);
