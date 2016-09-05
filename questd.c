@@ -2144,13 +2144,11 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	pthread_mutex_lock(&lock);
 	dump_hostname(&router);
 	load_networks();
 #if IOPSYS_BROADCOM
 	load_wireless();
 #endif
-	pthread_mutex_unlock(&lock);
 	return 0;
 }
 
