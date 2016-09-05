@@ -762,7 +762,8 @@ ipv6_clients()
 	char line[512];
 	int cno = 0;
 	int iaid, ts, id, length;
-	int toms = 500;
+	int toms = 1000;
+	char *p;
 
 	if ((hosts6 = fopen("/tmp/hosts/odhcpd", "r"))) {
 		while(fgets(line, sizeof(line), hosts6) != NULL)
@@ -775,8 +776,10 @@ ipv6_clients()
 			if (sscanf(line, "# %s %s %x %s %d %x %d %s", clients6[cno].device, clients6[cno].duid, &iaid, clients6[cno].hostname, &ts, &id, &length, clients6[cno].ip6addr)) {
 				clients6[cno].exists = true;
 				clear_macaddr();
-				if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
-					sprintf(clients6[cno].macaddr, get_macaddr());
+				if (p = strchr(clients6[cno].ip6addr, '/')) *p = 0;
+				//if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
+				if((clients6[cno].connected = ndisc6 (clients6[cno].ip6addr, clients6[cno].device, clients6[cno].macaddr))) {
+					//sprintf(clients6[cno].macaddr, get_macaddr());
 				#if IOPSYS_BROADCOM
 					if (wireless_sta6(&clients6[cno])) {
 						clients6[cno].wireless = true;

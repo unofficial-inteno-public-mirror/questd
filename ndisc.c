@@ -505,3 +505,29 @@ error:
 	return false;
 }
 
+bool
+ndisc6(char *ip6addr, char *ifname, char *macaddr)
+{
+	FILE *pipe = 0;
+	char cmd[256];
+	char buffer[64] = {0};
+
+	sprintf(cmd, "ndisc6 -1 -r 1 %s %s 2>/dev/null | grep Target | awk '{print$NF}'", ip6addr, ifname);
+
+	buffer[0] = '\0';
+
+	if ((pipe = popen(cmd, "r"))){
+		fgets(buffer, sizeof(buffer), pipe);
+		pclose(pipe);
+		remove_newline(buffer);
+	}
+
+	memset(macaddr, '\0', 24);
+	strncpy(macaddr, buffer, 24);
+
+	if(strlen(macaddr))
+		return true;
+	else
+		return false;
+}
+
