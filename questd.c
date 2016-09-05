@@ -85,6 +85,17 @@ static const struct blobmsg_policy network_policy[__NETWORK_MAX] = {
 };
 
 enum {
+	LEASENET,
+	FAMILY,
+	__LEASE_MAX,
+};
+
+static const struct blobmsg_policy lease_policy[__LEASE_MAX] = {
+	[LEASENET] = { .name = "network", .type = BLOBMSG_TYPE_STRING },
+	[FAMILY] = { .name = "family", .type = BLOBMSG_TYPE_INT32 },
+};
+
+enum {
 	RADIO_NAME,
 	VIF_NAME,
 	__WL_MAX,
@@ -579,7 +590,7 @@ ipv4_clients()
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
-			if (sscanf(line, "%s %s %s %s %s", clients[cno].leaseno, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
+			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
 
 				if(!strstr(clients[cno].macaddr, "00:22:07"))
 					continue;
@@ -624,7 +635,7 @@ ipv4_clients()
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
-			if (sscanf(line, "%s %s %s %s %s", clients[cno].leaseno, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
+			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
 
 				if(strstr(clients[cno].macaddr, "00:22:07"))
 					continue;
@@ -761,7 +772,7 @@ ipv6_clients()
 	FILE *hosts6;
 	char line[512];
 	int cno = 0;
-	int iaid, ts, id, length;
+	int iaid, id, length;
 	int toms = 1000;
 	char *p;
 
@@ -773,7 +784,7 @@ ipv6_clients()
 			clients6[cno].exists = false;
 			clients6[cno].wireless = false;
 			memset(clients6[cno].hostname, '\0', sizeof(clients[cno].hostname));
-			if (sscanf(line, "# %s %s %x %s %d %x %d %s", clients6[cno].device, clients6[cno].duid, &iaid, clients6[cno].hostname, &ts, &id, &length, clients6[cno].ip6addr)) {
+			if (sscanf(line, "# %s %s %x %s %s %x %d %s", clients6[cno].device, clients6[cno].duid, &iaid, clients6[cno].hostname, clients6[cno].leasetime, &id, &length, clients6[cno].ip6addr)) {
 				clients6[cno].exists = true;
 				clear_macaddr();
 				if (p = strchr(clients6[cno].ip6addr, '/')) *p = 0;
@@ -1413,25 +1424,41 @@ router_dump_ports(struct blob_buf *b, char *interface)
 }
 
 static void
-network_dump_leases(struct blob_buf *b, char *leasenet)
+network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 {
 	void *t;
 	char leasenum[16];
 	int i;
 
-	for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
-		if (clients[i].dhcp && !strcmp(clients[i].network, leasenet)) {
-			sprintf(leasenum, "lease-%d", i + 1);
-			t = blobmsg_open_table(b, leasenum);
-			blobmsg_add_string(b, "leaseno", clients[i].leaseno);
-			blobmsg_add_string(b, "hostname", clients[i].hostname);
-			blobmsg_add_string(b, "ipaddr", clients[i].ipaddr);
-			blobmsg_add_string(b, "macaddr", clients[i].macaddr);
-			blobmsg_add_string(b, "device", clients[i].device);
-			blobmsg_add_u8(b, "connected", clients[i].connected);
-			blobmsg_close_table(b, t);
+	if (family == 4)
+		for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
+			if (clients[i].dhcp && (leasenet == NULL || !strcmp(clients[i].network, leasenet))) {
+				sprintf(leasenum, "lease-%d", i + 1);
+				t = blobmsg_open_table(b, leasenum);
+				blobmsg_add_string(b, "leasetime", clients[i].leasetime);
+				blobmsg_add_string(b, "hostname", clients[i].hostname);
+				blobmsg_add_string(b, "ipaddr", clients[i].ipaddr);
+				blobmsg_add_string(b, "macaddr", clients[i].macaddr);
+				blobmsg_add_string(b, "device", clients[i].device);
+				blobmsg_add_u8(b, "connected", clients[i].connected);
+				blobmsg_close_table(b, t);
+			}
 		}
-	}
+	else if (family == 6)
+		for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
+			//if (clients[i].dhcp && !strcmp(clients[i].network, leasenet)) {
+				sprintf(leasenum, "lease-%d", i + 1);
+				t = blobmsg_open_table(b, leasenum);
+				blobmsg_add_string(b, "leasetime", clients6[i].leasetime);
+				blobmsg_add_string(b, "hostname", clients6[i].hostname);
+				blobmsg_add_string(b, "ip6addr", clients6[i].ip6addr);
+				blobmsg_add_string(b, "duid", clients6[i].duid);
+				blobmsg_add_string(b, "macaddr", clients6[i].macaddr);
+				blobmsg_add_string(b, "device", clients6[i].device);
+				blobmsg_add_u8(b, "connected", clients6[i].connected);
+				blobmsg_close_table(b, t);
+			//}
+		}
 }
 
 static void
@@ -2002,24 +2029,23 @@ quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__NETWORK_MAX];
+	struct blob_attr *tb[__LEASE_MAX];
 	bool nthere = false;
 	int i;
 
-	blobmsg_parse(network_policy, __NETWORK_MAX, tb, blob_data(msg), blob_len(msg));
+	blobmsg_parse(lease_policy, __LEASE_MAX, tb, blob_data(msg), blob_len(msg));
 
-	if (!(tb[NETWORK_NAME]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
+	if (tb[LEASENET]) {
+		for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
+			if(!strcmp(network[i].name, blobmsg_data(tb[LEASENET])))
+				nthere = true;
 
-	for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
-		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
-			nthere = true;
-
-	if (!(nthere))
-		return UBUS_STATUS_INVALID_ARGUMENT;
+		if (!(nthere))
+			return UBUS_STATUS_INVALID_ARGUMENT;
+	}
 
 	blob_buf_init(&bb, 0);
-	network_dump_leases(&bb, blobmsg_data(tb[NETWORK_NAME]));
+	network_dump_leases(&bb, (tb[LEASENET])?blobmsg_data(tb[LEASENET]):NULL, (tb[FAMILY])?blobmsg_get_u32(tb[FAMILY]):4);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
@@ -2196,7 +2222,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("stas", quest_router_stas),
 	UBUS_METHOD_NOARG("wl_assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD("ports", quest_router_ports, network_policy),
-	UBUS_METHOD("leases", quest_network_leases, network_policy),
+	UBUS_METHOD("leases", quest_network_leases, lease_policy),
 	UBUS_METHOD("host", quest_host_status, host_policy),
 	UBUS_METHOD_NOARG("usb", quest_router_usbs),
 #if IOPSYS_BROADCOM

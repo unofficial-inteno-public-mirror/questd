@@ -106,7 +106,7 @@ typedef struct {
 	bool connected;
 	bool local;
 	bool dhcp;
-	char leaseno[24];
+	char leasetime[24];
 	char macaddr[24];
 	char ipaddr[24];
 	char hostname[64];
@@ -126,6 +126,7 @@ typedef struct {
 typedef struct {
 	bool exists;
 	bool connected;
+	char leasetime[24];
 	char ip6addr[128];
 	char macaddr[24];
 	char hostname[64];
