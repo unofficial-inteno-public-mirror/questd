@@ -129,7 +129,16 @@ static const struct blobmsg_policy password_policy[__P_MAX] = {
 	[P_PASSWORD] = { .name = "password", .type = BLOBMSG_TYPE_STRING },
 	[P_CURPASSWORD] = { .name = "curpass", .type = BLOBMSG_TYPE_STRING }
 };
+/*
+enum {
+	KEY,
+	__SSH_MAX
+};
 
+static const struct blobmsg_policy dropbear_policy[__SSH_MAX] = {
+	[KEY] 	= { .name = "key",	.type = BLOBMSG_TYPE_STRING }
+};
+*/
 enum {
 	BANK,
 	__BANK_MAX
@@ -2308,6 +2317,59 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+quest_get_keys(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+	FILE *hosts;
+	char line[4096], type[16], key[4096], comment[64];
+	int num;
+	void *a, *t;
+
+	blob_buf_init(&bb, 0);
+	if((hosts = fopen("/etc/dropbear/authorized_keys")) == NULL){
+		blobmsg_add_string(&bb, "error", "couldn't open /etc/dropbear/authorized_keys file");
+		ubus_send_reply(ctx, req, bb.head);
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+	a = blobmsg_open_array(&bb, "keys");
+	while(line = fgets(line, 1024, hosts) != NULL){
+		errno = 0;
+		num = sscanf(line, "%16s %4096s %64s", type, key, comment);
+		if(num == 2 || num == 3){
+			if((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA" 16) == 0) ||
+				(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAB3NzaC1kc3MA", 16) == 0)){
+				t = blobmsg_open_table(&bb);
+				blomsg_add_string("type", type);
+				blobmsg_add_sting("key", key);
+				if(num == 3) blobmsg_add_string("comment", comment);
+				blobmsg_close_table(t);
+			}
+		}
+	}
+	blobmsg_close_array(a);
+	ubus_send_reply(ctx, req,bb.head);
+	return UBUS_STATUS_OK;
+}
+
+static int
+quest_add_key(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+
+}
+
+static int
+quest_del_key(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+
+
+}
+
+static int
 quest_linkspeed(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
 			struct blob_attr *msg)
@@ -2360,6 +2422,9 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("password_set", quest_password_set, password_policy),
 	UBUS_METHOD("memory_bank", quest_memory_bank, bank_policy),
 	UBUS_METHOD_NOARG("reload", quest_reload),
+	UBUS_METHOD_NOARG("get_ssh_keys", quest_get_keys),
+	//UBUS_METHOD("add_ssh_key", quest_add_key, dropbear_policy),
+	//UBUS_METHOD("del_ssh_key", quest_del_key, dropbear_policy),
 	UBUS_METHOD("linkspeed", quest_linkspeed, linkspeed_policy),
 };
 
