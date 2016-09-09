@@ -2322,36 +2322,36 @@ quest_get_keys(struct ubus_context *ctx, struct ubus_object *obj,
 			struct blob_attr *msg)
 {
 	FILE *hosts;
-	char line[4096], type[16], key[4096], comment[64];
+	char line[4176], type[16], key[4096], comment[64];
 	int num;
 	void *a, *t;
 
 	blob_buf_init(&bb, 0);
-	if((hosts = fopen("/etc/dropbear/authorized_keys")) == NULL){
+	if((hosts = fopen("/etc/dropbear/authorized_keys", "r")) == NULL){
 		blobmsg_add_string(&bb, "error", "couldn't open /etc/dropbear/authorized_keys file");
 		ubus_send_reply(ctx, req, bb.head);
 		return UBUS_STATUS_UNKNOWN_ERROR;
 	}
 	a = blobmsg_open_array(&bb, "keys");
-	while(line = fgets(line, 1024, hosts) != NULL){
-		errno = 0;
+	while(fgets(line, 1024, hosts) != NULL){
 		num = sscanf(line, "%16s %4096s %64s", type, key, comment);
 		if(num == 2 || num == 3){
-			if((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA" 16) == 0) ||
-				(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAB3NzaC1kc3MA", 16) == 0)){
-				t = blobmsg_open_table(&bb);
-				blomsg_add_string("type", type);
-				blobmsg_add_sting("key", key);
-				if(num == 3) blobmsg_add_string("comment", comment);
-				blobmsg_close_table(t);
+			if((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA", 16) == 0) ||
+					(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAB3NzaC1kc3MA", 16) == 0)){
+				t = blobmsg_open_table(&bb, NULL);
+				blobmsg_add_string(&bb, "type", type);
+				blobmsg_add_string(&bb, "key", key);
+				if(num == 3)
+					blobmsg_add_string(&bb, "comment", comment);
+				blobmsg_close_table(&bb, t);
 			}
 		}
 	}
-	blobmsg_close_array(a);
+	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req,bb.head);
 	return UBUS_STATUS_OK;
 }
-
+/*
 static int
 quest_add_key(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
@@ -2368,7 +2368,7 @@ quest_del_key(struct ubus_context *ctx, struct ubus_object *obj,
 
 
 }
-
+*/
 static int
 quest_linkspeed(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
