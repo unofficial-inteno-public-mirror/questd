@@ -113,6 +113,8 @@ typedef struct {
 	char network[32];
 	char device[32];
 	bool wireless;
+	bool repeated;
+	char ethport[8];
 	char wdev[8];
 	struct wl_ether_addr assoclist[32];
 } Client;

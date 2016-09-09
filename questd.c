@@ -578,6 +578,7 @@ ipv4_clients()
 	bool there;
 	int toms = 1000;
 	char assoclist[1280];
+	char brindex[8];
 	char *token;
 
 	memset(clients_new, '\0', sizeof(clients));
@@ -590,6 +591,7 @@ ipv4_clients()
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
+			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
 
 				if(!strstr(clients[cno].macaddr, "00:22:07"))
@@ -604,8 +606,21 @@ ipv4_clients()
 				}
 				else
 			#endif
-				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
-					recalc_sleep_time(true, toms);
+				{
+					clients[cno].repeated = true;
+
+					if(strstr(clients[cno].device, "br-")) {
+						strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+						if(strlen(brindex))
+							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+					}
+
+					if(!strncmp(clients[cno].ethport, "eth", 3)) {
+						clients[cno].connected = true;
+						clients[cno].repeated = false;
+					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
+						recalc_sleep_time(true, toms);
+				}
 
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
@@ -635,6 +650,7 @@ ipv4_clients()
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
+			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
 
 				if(strstr(clients[cno].macaddr, "00:22:07"))
@@ -647,6 +663,7 @@ ipv4_clients()
 				for (i=0; i < cno; i++) {
 					for(j=0; j < 32 && clients[i].assoclist[j].octet[1] != NULL; j++) {
 						if (!strcasecmp(wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
+							clients[cno].repeated = true;
 							clients[cno].connected = true;
 							goto inc;
 						}
@@ -659,8 +676,21 @@ ipv4_clients()
 				}
 				else
 			#endif
-				if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
-					recalc_sleep_time(true, toms);
+				{
+					clients[cno].repeated = true;
+
+					if(strstr(clients[cno].device, "br-")) {
+						strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+						if(strlen(brindex))
+							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+					}
+
+					if(!strncmp(clients[cno].ethport, "eth", 3)) {
+						clients[cno].connected = true;
+						clients[cno].repeated = false;
+					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
+						recalc_sleep_time(true, toms);
+				}
 
 inc:
 				cno++;
@@ -678,6 +708,7 @@ inc:
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
+			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if ((lno > 0) && sscanf(line, "%s 0x%d 0x%d %s %s %s", clients[cno].ipaddr, &hw, &flag, clients[cno].macaddr, mask, clients[cno].device)) {
 				for (i=0; i < cno; i++) {
 					if (!strcmp(clients[cno].macaddr, clients[i].macaddr)) {
@@ -703,8 +734,21 @@ inc:
 							clients[cno].wireless = true;
 						} else
 					#endif
-						if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
-							recalc_sleep_time(true, toms);
+						{
+							clients[cno].repeated = true;
+
+							if(strstr(clients[cno].device, "br-")) {
+								strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+								if(strlen(brindex))
+									strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+							}
+
+							if(!strncmp(clients[cno].ethport, "eth", 3)) {
+								clients[cno].connected = true;
+								clients[cno].repeated = false;
+							} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
+								recalc_sleep_time(true, toms);
+						}
 
 						if(clients[cno].connected && strstr(clients[cno].macaddr, "00:22:07")) {
 							memset(clients[cno].assoclist, '\0', 128);
@@ -978,7 +1022,6 @@ static void dump_client(struct blob_buf *b, Client client)
 {	
 	static char linkspeed[64];
 	char brindex[8];
-	char port[16];
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 
@@ -1012,24 +1055,12 @@ static void dump_client(struct blob_buf *b, Client client)
 		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
 	} else if(client.connected) {
-		if(strstr(client.device, "br-")) {
-			strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", client.device, client.macaddr), 8);
-			strncpy(port, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", client.device, atoi(brindex) + 1), 16);
-			if(!strncmp(port, "eth", 3)) {
-				blobmsg_add_string(b, "ethport", port);
-				get_port_speed(linkspeed, port);
-				blobmsg_add_string(b, "linkspeed", linkspeed);
-			} else {
-				blobmsg_add_u8(b, "repeated", true);
-			}
+		if(!strncmp(client.ethport, "eth", 3)) {
+			blobmsg_add_string(b, "ethport", client.ethport);
+			get_port_speed(linkspeed, client.ethport);
+			blobmsg_add_string(b, "linkspeed", linkspeed);
 		} else {
-			if(!strncmp(client.device, "eth", 3)) {
-				blobmsg_add_string(b, "ethport", client.device);
-				get_port_speed(linkspeed, client.device);
-				blobmsg_add_string(b, "linkspeed", linkspeed);
-			} else {
-				blobmsg_add_u8(b, "repeated", true);
-			}
+			blobmsg_add_u8(b, "repeated", client.repeated);
 		}
 	}
 
