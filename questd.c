@@ -131,6 +131,15 @@ static const struct blobmsg_policy password_policy[__P_MAX] = {
 };
 
 enum {
+	BANK,
+	__BANK_MAX
+};
+
+static const struct blobmsg_policy bank_policy[__BANK_MAX] = {
+	[BANK]     = { .name = "bank",     .type = BLOBMSG_TYPE_INT32 },
+};
+
+enum {
 	L_INTERFACE,
 	__L_MAX
 };
@@ -1604,6 +1613,35 @@ quest_router_filesystem(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+quest_memory_bank(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+	struct blob_attr *tb[__BANK_MAX];
+	int bank;
+
+	blobmsg_parse(bank_policy, __BANK_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (tb[BANK]) {
+		bank = blobmsg_get_u32(tb[BANK]);
+		if (bank == 0 || bank == 1)
+			runCmd("brcm_fw_tool set -u %d", bank);
+		else
+			return UBUS_STATUS_INVALID_ARGUMENT;
+	} else {
+
+		bank = atoi(chrCmd("cat /proc/nvram/Bootline | awk '{print$8}' | cut -d'=' -f2"));
+
+		blob_buf_init(&bb, 0);
+		blobmsg_add_u32(&bb, "code", bank);
+		blobmsg_add_string(&bb, "memory_bank", (bank)?"previous":"current");
+		ubus_send_reply(ctx, req, bb.head);
+	}
+
+	return 0;
+}
+
+static int
 quest_password_set(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
 			struct blob_attr *msg)
@@ -2260,6 +2298,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
 #endif
 	UBUS_METHOD("password_set", quest_password_set, password_policy),
+	UBUS_METHOD("memory_bank", quest_memory_bank, bank_policy),
 	UBUS_METHOD_NOARG("reload", quest_reload),
 	UBUS_METHOD("linkspeed", quest_linkspeed, linkspeed_policy),
 };
