@@ -616,6 +616,7 @@ ipv4_clients()
 				else
 			#endif
 				{
+					clients[cno].connected = false;
 					clients[cno].repeated = true;
 
 					if(strstr(clients[cno].device, "br-")) {
@@ -686,6 +687,7 @@ ipv4_clients()
 				else
 			#endif
 				{
+					clients[cno].connected = false;
 					clients[cno].repeated = true;
 
 					if(strstr(clients[cno].device, "br-")) {
@@ -744,6 +746,7 @@ inc:
 						} else
 					#endif
 						{
+							clients[cno].connected = false;
 							clients[cno].repeated = true;
 
 							if(strstr(clients[cno].device, "br-")) {
