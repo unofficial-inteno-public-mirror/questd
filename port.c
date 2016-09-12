@@ -102,7 +102,7 @@ get_port_speed(char *linkspeed, char *device)
 		portspeed = chrCmd("ethctl %s media-type 2>/dev/null | sed -n '2p'", device);
 
 		if (!strlen(portspeed))
-			return 1;
+			return -1;
 
 		if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
 			fixed = 0;
@@ -120,6 +120,8 @@ get_port_speed(char *linkspeed, char *device)
 				strcpy(duplex, "Half");
 			sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
 		}
+
+		return 0;
 	} else {
 		portspeed = chrCmd("ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
 
@@ -127,7 +129,7 @@ get_port_speed(char *linkspeed, char *device)
 			portspeed = chrCmd("ethctl %s media-type sfp copper 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
 
 		if (!strlen(portspeed))
-			return 1;
+			return -1;
 
 		if (sscanf(portspeed, "Auto Detection %s Media type is %dFD", ad, &speed))
 			strcpy(duplex, "Full");
@@ -136,8 +138,8 @@ get_port_speed(char *linkspeed, char *device)
 
 		sprintf(linkspeed, "%s %d Mbps %s Duplex", (strstr(ad, "off"))?"Fixed":"Auto-negotiated", speed, duplex);
 
+		return 1;
 	}
-	return 0;
 }
 
 void

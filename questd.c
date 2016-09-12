@@ -2263,14 +2263,17 @@ quest_linkspeed(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	char linkspeed[64] = {0};
 	struct blob_attr *tb[__L_MAX];
+	int ret;
 
 	blobmsg_parse(linkspeed_policy, __L_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (!tb[L_INTERFACE])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if(get_port_speed(linkspeed, (char*)blobmsg_data(tb[L_INTERFACE])) == 0){
+	ret = get_port_speed(linkspeed, (char*)blobmsg_data(tb[L_INTERFACE]));
+	if(ret >= 0){
 		blob_buf_init(&bb, 0);
+		blobmsg_add_string(&bb, "linktype", (ret)?"SFP":"Ethernet");
 		blobmsg_add_string(&bb, "linkspeed", linkspeed);
 		ubus_send_reply(ctx, req, bb.head);
 		return 0;
