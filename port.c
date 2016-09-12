@@ -138,8 +138,33 @@ get_port_speed(char *linkspeed, char *device)
 
 		sprintf(linkspeed, "%s %d Mbps %s Duplex", (strstr(ad, "off"))?"Fixed":"Auto-negotiated", speed, duplex);
 
-		return 1;
+		if(speed)
+			return 1;
 	}
+
+	portspeed = chrCmd("ethctl %s media-type 2>/dev/null | sed -n '4p'", device);
+
+	if (!strlen(portspeed))
+		return -1;
+
+	if (sscanf(portspeed, "The autonegotiated media type is %dBT %s Duplex", &speed, duplex))
+		fixed = 0;
+	else if (sscanf(portspeed, "The autonegotiated media type is %dbase%s.", &speed, duplex))
+		fixed = 0;
+	else if (sscanf(portspeed, " Speed fixed at %dMbps, %s-duplex.", &speed, duplex))
+		fixed = 1;
+
+	if (strcmp(portspeed, "Link is down") == 0){
+		strcpy(linkspeed, "Auto");
+	}else{
+		if (strstr(duplex, "ull") || strstr(portspeed, "FD"))
+			strcpy(duplex, "Full");
+		else
+			strcpy(duplex, "Half");
+		sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
+	}
+
+	return 0;
 }
 
 void
