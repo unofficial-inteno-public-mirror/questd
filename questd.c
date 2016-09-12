@@ -1033,10 +1033,20 @@ static void dump_client(struct blob_buf *b, Client client)
 	char brindex[8];
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
+	int i;
 
 	blobmsg_add_string(b, "hostname", client.hostname);
 	blobmsg_add_string(b, "ipaddr", client.ipaddr);
 	blobmsg_add_string(b, "macaddr", client.macaddr);
+
+	for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
+		if(!strcasecmp(clients6[i].macaddr, client.macaddr)) {
+			blobmsg_add_string(b, "ip6addr", clients6[i].ip6addr);
+			blobmsg_add_string(b, "duid", clients6[i].duid);
+			break;
+		}
+	}
+
 	blobmsg_add_string(b, "network", client.network);
 	blobmsg_add_string(b, "device", client.device);
 	blobmsg_add_u8(b, "dhcp", client.dhcp);
