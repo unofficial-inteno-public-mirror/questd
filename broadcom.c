@@ -200,6 +200,22 @@ int wl_get_wpa_auth(const char *ifname, char *wpa)
 		strcpy(wpa, "WPA2 PSK");
 	else if (wpa_auth & WPA_AUTH_PSK)
 		strcpy(wpa, "WPA PSK");
+	else if ((wpa_auth & WPA_AUTH_UNSPECIFIED) && (wpa_auth & WPA2_AUTH_UNSPECIFIED))
+		strcpy(wpa, "WPA/WPA2 802.1x");
+	else if (wpa_auth & WPA2_AUTH_UNSPECIFIED)
+		strcpy(wpa, "WPA2 802.1x");
+	else if (wpa_auth & WPA_AUTH_UNSPECIFIED)
+		strcpy(wpa, "WPA 802.1x");
+	else if (wpa_auth & WPA_AUTH_NONE)
+		strcpy(wpa, "WPA-NONE");
+	else if (wpa_auth & WPA2_AUTH_1X_SHA256)
+		strcpy(wpa, "1X-SHA256");
+	else if (wpa_auth & WPA2_AUTH_FT)
+		strcpy(wpa, "FT");
+	else if (wpa_auth & WPA2_AUTH_PSK_SHA256)
+		strcpy(wpa, "PSK-SHA256");
+	else
+		strcpy(wpa, "Unknown");
 
 	return ret;
 }

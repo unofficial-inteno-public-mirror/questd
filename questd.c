@@ -1884,13 +1884,13 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	int band;
 	wl_get_band(wldev, &band);
 
-	char bssid[24];
+	char bssid[24] = {0};
 	wl_get_bssid(wldev, bssid);
 
-	char ssid[64];
+	char ssid[64] = {0};
 	wl_get_ssid(wldev, ssid);
 
-	char wpa_auth[64];
+	char wpa_auth[64] = {0};
 	wl_get_wpa_auth(wldev, wpa_auth);
 
 	int rate;
