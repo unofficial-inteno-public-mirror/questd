@@ -131,6 +131,9 @@ get_port_speed(char *linkspeed, char *device)
 		if (!strlen(portspeed))
 			return -1;
 
+		if(!strcmp(portspeed, "Auto-negotiation enabled."))
+			goto eth;
+
 		if (sscanf(portspeed, "Auto Detection %s Media type is %dFD", ad, &speed))
 			strcpy(duplex, "Full");
 		else if (sscanf(portspeed, "Auto Detection %s Media type is %dHD", ad, &speed))
@@ -142,7 +145,8 @@ get_port_speed(char *linkspeed, char *device)
 			return 1;
 	}
 
-	portspeed = chrCmd("ethctl %s media-type 2>/dev/null | sed -n '4p'", device);
+eth:
+	portspeed = chrCmd("ethctl %s media-type 2>&1 | sed -n '4p'", device);
 
 	if (!strlen(portspeed))
 		return -1;
