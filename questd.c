@@ -28,6 +28,7 @@
 
 #include <libubus.h>
 
+#include <ctype.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
@@ -129,7 +130,7 @@ static const struct blobmsg_policy password_policy[__P_MAX] = {
 	[P_PASSWORD] = { .name = "password", .type = BLOBMSG_TYPE_STRING },
 	[P_CURPASSWORD] = { .name = "curpass", .type = BLOBMSG_TYPE_STRING }
 };
-/*
+
 enum {
 	KEY,
 	__SSH_MAX
@@ -138,7 +139,7 @@ enum {
 static const struct blobmsg_policy dropbear_policy[__SSH_MAX] = {
 	[KEY] 	= { .name = "key",	.type = BLOBMSG_TYPE_STRING }
 };
-*/
+
 enum {
 	BANK,
 	__BANK_MAX
@@ -2316,26 +2317,38 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+bool is_base64(const char *str)
+{
+	int i;
+	for(i = 0; i < strlen(str); i++){
+		if(!isalnum(str[i]) && str[i] != '+' && str[i] != '/' && str[i] != '=')
+			return false;
+	}
+	return true;
+}
+
 static int
 quest_get_keys(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
 			struct blob_attr *msg)
 {
-	FILE *hosts;
+	FILE *file;
 	char line[4176], type[16], key[4096], comment[64];
 	int num;
 	void *a, *t;
 
 	blob_buf_init(&bb, 0);
-	if((hosts = fopen("/etc/dropbear/authorized_keys", "r")) == NULL){
+	if((file = fopen("/etc/dropbear/authorized_keys", "r")) == NULL){
 		blobmsg_add_string(&bb, "error", "couldn't open /etc/dropbear/authorized_keys file");
 		ubus_send_reply(ctx, req, bb.head);
 		return UBUS_STATUS_UNKNOWN_ERROR;
 	}
 	a = blobmsg_open_array(&bb, "keys");
-	while(fgets(line, 1024, hosts) != NULL){
+	while(fgets(line, 4176, file) != NULL){
 		num = sscanf(line, "%16s %4096s %64s", type, key, comment);
 		if(num == 2 || num == 3){
+			if(!is_base64(key))
+				continue;
 			if((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA", 16) == 0) ||
 					(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAB3NzaC1kc3MA", 16) == 0)){
 				t = blobmsg_open_table(&bb, NULL);
@@ -2348,18 +2361,77 @@ quest_get_keys(struct ubus_context *ctx, struct ubus_object *obj,
 		}
 	}
 	blobmsg_close_array(&bb, a);
+	fclose(file);
 	ubus_send_reply(ctx, req,bb.head);
 	return UBUS_STATUS_OK;
 }
-/*
+
 static int
 quest_add_key(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
 			struct blob_attr *msg)
 {
+	FILE *file;
+	struct blob_attr *tb[__SSH_MAX];
+	int num, tmp_num;
+	char input[4176], type[16], key[4096], comment[64];
+	char line[4176], tmp_type[16], tmp_key[4096], tmp_comment[64];
 
+	blobmsg_parse(dropbear_policy, __SSH_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!tb[KEY])
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	strncpy(input, (char*) blobmsg_data(tb[KEY]), 4176);
+	num = sscanf(input, "%16s %4096s %64s", type, key, comment);
+	blob_buf_init(&bb, 0);
+	if(num < 2){
+		blobmsg_add_string(&bb, "error", "Invalid key");
+		ubus_send_reply(ctx, req, bb.head);
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+	if(!is_base64(key)){
+		blobmsg_add_string(&bb, "error", "Key must be in base64");
+		ubus_send_reply(ctx, req, bb.head);
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+	if((file = fopen("/etc/dropbear/authorized_keys", "r")) == NULL){
+		blobmsg_add_string(&bb, "error", "Couldn't open /etc/dropbear/authorized_keys file");
+		ubus_send_reply(ctx, req, bb.head);
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+	while(fgets(line, 4176, file) != NULL){
+		tmp_num = sscanf(line, "%16s %4096s %64s", tmp_type, tmp_key, tmp_comment);
+		if(tmp_num == 2 || tmp_num == 3){
+			if(!is_base64(tmp_key))
+				continue;
+			if((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA", 16) == 0) ||
+					(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAB3NzaC1kc3MA", 16) == 0)){
+				if(strcmp(key, tmp_key) == 0){
+					blobmsg_add_string(&bb, "error", "key already in dropbear");
+					fclose(file);
+					ubus_send_reply(ctx, req, bb.head);
+					return UBUS_STATUS_INVALID_ARGUMENT;
+				}
+			}
+		}
+	}
+	fclose(file);
+	if(file = fopen("/etc/dropbear/authorized_keys", "a") == NULL){
+		blobmsg_add_string(&bb, "error", "Couldn't open /etc/dropbear/authorized_keys file for writing");
+		ubus_send_reply(ctx, req, bb.head);
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+	strcpy(line, "");
+	if(num == 2)
+		snprintf(line, 4176, "%s %s\n", type, key);
+	else
+		snprintf(line, 4176, "%s %s %s\n", type, key, comment);
+	//fputs(line, file);
+	//fclose(file);
+	return 0;
 }
-
+/*
 static int
 quest_del_key(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
@@ -2423,7 +2495,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("memory_bank", quest_memory_bank, bank_policy),
 	UBUS_METHOD_NOARG("reload", quest_reload),
 	UBUS_METHOD_NOARG("get_ssh_keys", quest_get_keys),
-	//UBUS_METHOD("add_ssh_key", quest_add_key, dropbear_policy),
+	UBUS_METHOD("add_ssh_key", quest_add_key, dropbear_policy),
 	//UBUS_METHOD("del_ssh_key", quest_del_key, dropbear_policy),
 	UBUS_METHOD("linkspeed", quest_linkspeed, linkspeed_policy),
 };
