@@ -1864,8 +1864,9 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct blob_attr *msg)
 {
 	struct blob_attr *tb[__WL_MAX];
+	struct stat s;
+	char syspath[32];
 	char wldev[8];
-	bool nthere = false;
 	int i;
 
 	blobmsg_parse(wl_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
@@ -1882,14 +1883,25 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	else
 		strcpy(wldev, blobmsg_data(tb[RADIO_NAME]));
 
-	for (i=0; i < MAX_VIF && wireless[i].device; i++)
-		if(!strcmp(wireless[i].vif, wldev)) {
-			nthere = true;
-			break;
-		}
-
-	if (!(nthere))
+	if(strncmp(wldev, "wl", 2))
 		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	snprintf(syspath, 32, "/sys/class/net/%s", wldev);
+	if (stat(syspath, &s))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+/*	bool nthere = false;*/
+/*	if (tb[VIF_NAME]) {*/
+/*		for (i=0; i < MAX_VIF && wireless[i].device; i++) {*/
+/*			if(!strcmp(wireless[i].vif, wldev)) {*/
+/*				nthere = true;*/
+/*				break;*/
+/*			}*/
+/*		}*/
+
+/*		if (!(nthere))*/
+/*			return UBUS_STATUS_INVALID_ARGUMENT;*/
+/*	}*/
 
 	int isup;
 	wl_get_isup(wldev, &isup);
