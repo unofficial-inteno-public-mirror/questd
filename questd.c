@@ -571,6 +571,30 @@ active_connections(char *ipaddr)
 }
 #endif
 #endif
+static void
+get_hostname_from_config(const char *mac_in, char *hostname)
+{
+	struct uci_element *e;
+	static struct uci_package *uci_dhcp;
+	struct uci_section *s;
+	const char *mac = NULL;
+	const char *hname = NULL;
+
+	if((uci_dhcp = init_package("dhcp"))) {
+		uci_foreach_element(&uci_dhcp->sections, e) {
+			s = uci_to_section(e);
+
+			if (!strcmp(s->type, "host")) {
+				mac = uci_lookup_option_string(uci_ctx, s, "mac");
+				if(mac && strcasecmp(mac, mac_in) == 0){
+					hname = uci_lookup_option_string(uci_ctx, s, "name");
+					if(hname)
+						strncpy(hostname, hname, 64);
+				}
+			}
+		}
+	}
+}
 
 static void
 ipv4_clients()
@@ -606,6 +630,7 @@ ipv4_clients()
 				if(!strstr(clients[cno].macaddr, "00:22:07"))
 					continue;
 
+				get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
@@ -666,6 +691,7 @@ ipv4_clients()
 				if(strstr(clients[cno].macaddr, "00:22:07"))
 					continue;
 
+				get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
@@ -738,6 +764,7 @@ inc:
 				if (!there) {
 					handle_client(&clients[cno]);
 					if(clients[cno].local) {
+						get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
 						clients[cno].exists = true;
 						clients[cno].dhcp = false;
 					#if IOPSYS_BROADCOM
