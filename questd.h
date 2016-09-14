@@ -8,8 +8,11 @@
 #include <stdbool.h>
 
 #include <sys/sysinfo.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <crypt.h>
 #include <fcntl.h>
 
 #include <uci.h>
@@ -271,6 +274,7 @@ bool arping(char *target, char *device, int toms);
 void get_jif_val(jiffy_counts_t *p_jif);
 void dump_keys(Key *keys);
 void dump_specs(Spec *spec);
+bool ndisc6(char *ip6addr, char *ifname, char *macaddr);
 void dump_static_router_info(Router *router);
 void dump_hostname(Router *router);
 void dump_sysinfo(Router *router, Memory *memory);

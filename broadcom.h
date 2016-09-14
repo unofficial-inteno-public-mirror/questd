@@ -665,6 +665,8 @@ typedef struct wl_country_list {
 	char country_abbrev[1];
 } wl_country_list_t;
 
+int wl_ether_atoe(const char *a, struct wl_ether_addr *n);
+char* wl_ether_etoa(const struct wl_ether_addr *n);
 int wl_get_channel(const char *ifname, int *buf);
 int wl_get_ssid(const char *ifname, char *buf);
 int wl_get_bssid(const char *ifname, char *buf);
@@ -679,6 +681,7 @@ int wl_get_deviceid(const char *ifname, int *buf);
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
+int wl_get_wpa_auth(const char *ifname, char *wpa);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
 

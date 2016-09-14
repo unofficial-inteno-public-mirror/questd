@@ -697,8 +697,8 @@ ipv4_clients()
 				handle_client(&clients[cno]);
 
 				for (i=0; i < cno; i++) {
-					for(j=0; j < 32 && clients[i].assoclist[j].octet[1] != NULL; j++) {
-						if (!strcasecmp(wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
+					for(j=0; j < 32 && clients[i].assoclist[j].octet != NULL; j++) {
+						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
 							clients[cno].repeated = true;
 							clients[cno].connected = true;
 							goto inc;
@@ -870,7 +870,7 @@ ipv6_clients()
 			if (sscanf(line, "# %s %s %x %s %s %x %d %s", clients6[cno].device, clients6[cno].duid, &iaid, clients6[cno].hostname, clients6[cno].leasetime, &id, &length, clients6[cno].ip6addr)) {
 				clients6[cno].exists = true;
 				clear_macaddr();
-				if (p = strchr(clients6[cno].ip6addr, '/')) *p = 0;
+				if ((p = strchr(clients6[cno].ip6addr, '/'))) *p = 0;
 				//if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
 				if((clients6[cno].connected = ndisc6 (clients6[cno].ip6addr, clients6[cno].device, clients6[cno].macaddr))) {
 					//sprintf(clients6[cno].macaddr, get_macaddr());
@@ -1060,7 +1060,6 @@ router_dump_networks(struct blob_buf *b)
 static void dump_client(struct blob_buf *b, Client client)
 {	
 	static char linkspeed[64];
-	char brindex[8];
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 	int i;
@@ -1117,17 +1116,17 @@ static void dump_client(struct blob_buf *b, Client client)
 		void *a, *t;
 		int i = 0;
 		int j = 0;
-		char *stamac[24];
+		char stamac[24];
 
 		a = blobmsg_open_array(b, "assoclist");
 
-		while (i < 32 && client.assoclist[i].octet[1] != NULL)
+		while (i < 32 && client.assoclist[i].octet != NULL)
 		{
-			strncpy(stamac, wl_ether_etoa(&(client.assoclist[i])), 24);
+			strncpy(stamac, (char*) wl_ether_etoa(&(client.assoclist[i])), 24);
 			t = blobmsg_open_table(b, "");
 			blobmsg_add_string(b, "macaddr", stamac);
 			for (j=0; j < MAX_CLIENT && clients[j].exists; j++) {
-				if(!strcasecmp(clients[j].macaddr, stamac)) {
+				if(!strcasecmp(clients[j].macaddr, (const char*) stamac)) {
 					blobmsg_add_string(b, "hostname", clients[j].hostname);
 					blobmsg_add_string(b, "ipaddr", clients[j].ipaddr);
 					break;
@@ -1478,8 +1477,8 @@ router_dump_ports(struct blob_buf *b, char *interface)
 
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (strstr(clients[k].macaddr, "00:22:07")) {
-						for(l=0; l < 32 && clients[k].assoclist[l].octet[1] != NULL; l++) {
-							if (!strcasecmp(wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
+						for(l=0; l < 32 && clients[k].assoclist[l].octet != NULL; l++) {
+							if (!strcasecmp((char*) wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
 								continue;
 						}
 					}
@@ -1709,7 +1708,7 @@ quest_password_set(struct ubus_context *ctx, struct ubus_object *obj,
 		if (!(sp = getspnam(blobmsg_data(tb[P_USER]))))
 			return UBUS_STATUS_PERMISSION_DENIED;
 
-		hash = crypt(blobmsg_data(tb[P_CURPASSWORD]), sp->sp_pwdp);
+		hash = (char*) crypt(blobmsg_data(tb[P_CURPASSWORD]), sp->sp_pwdp);
 
 		if(strcmp(hash, sp->sp_pwdp))
 			return UBUS_STATUS_PERMISSION_DENIED;
@@ -1894,7 +1893,7 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	struct stat s;
 	char syspath[32];
 	char wldev[8];
-	int i;
+	//int i;
 
 	blobmsg_parse(wl_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
 
