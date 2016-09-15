@@ -10,6 +10,8 @@
 #include <netdb.h>
 #include <fcntl.h>
 
+#include "questd.h"
+
 #define PORT 9876
 #define BUF_SIZE 2000
 #define CLADDR_LEN 100
@@ -46,7 +48,7 @@ chrCmd(char *cmd)
 	}
 }
 
-static int arp_ping(char *ipaddr, char *device, int tmo, int retry)
+static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 {
 	int ret = 0;
 	int i;
@@ -95,8 +97,9 @@ void *ping_uplink(void *arg)
 }
 
 int wifiserver(void) {
+	socklen_t len;
 	struct sockaddr_in addr, cl_addr;
-	int sockfd, len, ret, newsockfd;
+	int sockfd, ret, newsockfd;
 	char buffer[BUF_SIZE];
 	pid_t childpid;
 	char clientAddr[CLADDR_LEN];
@@ -201,7 +204,7 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 	tv.tv_usec = 0;
 
 	if (select(sockfd+1, &fdset, NULL, NULL, &tv) > 0) {
-		ret = connect(sockfd, (struct sockaddr *) &addr, sizeof(addr));
+		ret = connect(sockfd, (struct sockaddr *) &addr, (socklen_t)sizeof(addr));
 		if (ret < 0) {
 			close(sockfd);
 			printf("Error connecting to the server %s\n", serverAddr);

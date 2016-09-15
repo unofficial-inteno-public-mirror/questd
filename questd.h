@@ -270,7 +270,7 @@ struct fdb_entry
 
 void recalc_sleep_time(bool calc, int toms);
 void init_db_hw_config(void);
-bool arping(char *target, char *device, int toms);
+bool arping(const char *target, char *device, int toms);
 void get_jif_val(jiffy_counts_t *p_jif);
 void dump_keys(Key *keys);
 void dump_specs(Spec *spec);

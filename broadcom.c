@@ -531,7 +531,7 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 	return 0;
 }
 
-int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
+void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
 	FILE *stainfo;
 	char cmnd[64];
@@ -550,7 +550,7 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 			//sscanf(line, "\t state: AUTHENTICATED ASSOCIATED AUTHORIZED");
 			sscanf(line, "\t flags 0x%x:", &(sta_info->flags));
 			sscanf(line, "\t HT caps 0x%x:", htcaps);
-			sscanf(line, "\t VHT caps 0x%x:", &(sta_info->vht_flags));
+			sscanf(line, "\t VHT caps 0x%hu:", &(sta_info->vht_flags));
 			sscanf(line, "\t tx total pkts: %u", &(sta_info->tx_tot_pkts));
 			sscanf(line, "\t tx total bytes: %llu\n", &(sta_info->tx_tot_bytes));
 			sscanf(line, "\t tx ucast pkts: %u", &(sta_info->tx_pkts));
@@ -569,11 +569,11 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 			sscanf(line, "\t rx decrypt succeeds: %u", &(sta_info->rx_decrypt_succeeds));
 			sscanf(line, "\t rx decrypt failures: %u", &(sta_info->rx_decrypt_failures));
 			sscanf(line, "\t tx data pkts retried: %u", &(sta_info->tx_pkts_retried));
-			sscanf(line, "\t per antenna rssi of last rx data frame: %d %d %d %d", &(sta_info->rx_lastpkt_rssi[0]), 
+			sscanf(line, "\t per antenna rssi of last rx data frame: %hhd %hhd %hhd %hhd", &(sta_info->rx_lastpkt_rssi[0]),
 					&(sta_info->rx_lastpkt_rssi[1]), &(sta_info->rx_lastpkt_rssi[2]), &(sta_info->rx_lastpkt_rssi[3]));
-			sscanf(line, "\t per antenna average rssi of rx data frames: %d %d %d %d", &(sta_info->rssi[0]), &(sta_info->rssi[1]), 
+			sscanf(line, "\t per antenna average rssi of rx data frames: %hhd %hhd %hhd %hhd", &(sta_info->rssi[0]), &(sta_info->rssi[1]),
 					&(sta_info->rssi[2]), &(sta_info->rssi[3]));
-			sscanf(line, "\t per antenna noise floor: %d %d %d %d", &(sta_info->nf[0]), &(sta_info->nf[1]), 
+			sscanf(line, "\t per antenna noise floor: %hhd %hhd %hhd %hhd", &(sta_info->nf[0]), &(sta_info->nf[1]),
 					&(sta_info->nf[2]), &(sta_info->nf[3]));
 			sscanf(line, "\t tx total pkts sent: %u", &(sta_info->tx_pkts_total));
 			sscanf(line, "\t tx pkts retries: %u", &(sta_info->tx_pkts_retries));

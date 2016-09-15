@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
-
+#define _GNU_SOURCE
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <net/if.h>
@@ -50,11 +50,11 @@ send_pack(struct in_addr *src_addr, struct in_addr *dst_addr, struct sockaddr_ll
 	ah->ar_pln = 4;
 	ah->ar_op = htons(ARPOP_REQUEST);
 
-	p = mempcpy(p, &ME->sll_addr, ah->ar_hln);
-	p = mempcpy(p, src_addr, 4);
+	p = (unsigned char*)mempcpy((void*)p, (const void*)ME->sll_addr, (size_t)ah->ar_hln);
+	p = (unsigned char*)mempcpy((void*)p, (const void*)src_addr, 4);
 
-	p = mempcpy(p, &HE->sll_addr, ah->ar_hln);
-	p = mempcpy(p, dst_addr, 4);
+	p = (unsigned char*)mempcpy((void*)p, (const void*)HE->sll_addr, (size_t)ah->ar_hln);
+	p = (unsigned char*)mempcpy((void*)p, (const void*)dst_addr, 4);
 
 	err = sendto(sock_fd, buf, p - buf, 0, (struct sockaddr *) HE, sizeof(*HE));
 	return err;
@@ -103,7 +103,7 @@ recv_pack(char *buf, int len, struct sockaddr_ll *FROM)
 
 
 bool
-arping(char *targetIP, char *device, int toms)
+arping(const char *targetIP, char *device, int toms)
 {
 	struct sockaddr_in saddr;
 	struct ifreq ifr;
