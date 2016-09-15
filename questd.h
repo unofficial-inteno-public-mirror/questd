@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #include <sys/sysinfo.h>
 #include <sys/wait.h>
