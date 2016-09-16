@@ -942,28 +942,32 @@ populate_ports(Network *network)
 		get_port_name(&port[i]);
 		if(strstr(port[i].device, "eth"))
 			get_port_speed(port[i].linkspeed, port[i].device);
-
-		i++;
 nextport:
 		prt = strtok (NULL, " ");
+		i++;
 	}
 	
 	network->ports_populated = true;
 		
 get_clients:	
-	for(i=1; i < MAX_PORT && strlen(port[i].device)>2; i++)
-	{				
+	for(i=1; i < MAX_PORT; i++)
+	{
+
+		if(strlen(port[i].device)<2)
+			continue;
+
 		memset(&port[i].stat, '\0', sizeof(Statistic));
 		for (j=0; port[i].client[j].exists; j++) {
 			memset(&port[i].client[j], '\0', sizeof(Client));
 		}
-		
+
 		get_port_stats(&port[i]);
 		strncpy(macaddr, get_clients_onport(bridge, i), 2400);
 
 		l = 0;
 		if(network->is_lan) {
 			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
+				if(l >= MAX_CLIENT) break;
 				if (strstr(macaddr, clients[k].macaddr) && clients[k].connected) {
 					port[i].client[l] = clients[k];
 					l++;
@@ -973,7 +977,7 @@ get_clients:
 			mac = strtok(macaddr, " ");
 			while (mac != NULL)
 			{
-				if(i < MAX_CLIENT) break;
+				if(l >= MAX_CLIENT) break;
 				port[i].client[l].exists = true;
 				strcpy(port[i].client[l].macaddr, mac);
 				mac = strtok (NULL, " ");
@@ -1477,7 +1481,10 @@ router_dump_ports(struct blob_buf *b, char *interface)
 		return;
 
 	for (pno=0; pno<=7; pno++) {
-		for (i = 1; i < MAX_PORT && strlen(port[i].name) > 2; i++) {
+		for (i = 1; i < MAX_PORT; i++) {
+			if(strlen(port[i].device) < 2)
+				continue;
+
 			if(strcmp(port[i].name, ports[pno]))
 				continue;
 			t = blobmsg_open_table(b, port[i].device);
