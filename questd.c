@@ -938,7 +938,7 @@ populate_ports(Network *network)
 		if(strncmp(prt, "wl", 2) && strchr(prt, '.'))
 			goto nextport;
 
-		strcpy(port[i].device, prt);
+		strncpy(port[i].device, prt, 32);
 		get_port_name(&port[i]);
 		if(strstr(port[i].device, "eth"))
 			get_port_speed(port[i].linkspeed, port[i].device);
@@ -1504,6 +1504,15 @@ router_dump_ports(struct blob_buf *b, char *interface)
 								continue;
 						}
 					}
+				}
+
+				port[i].client[j].connected = true;
+				if(!strncmp(port[i].device, "wl", 2)) {
+					strncpy(port[i].client[j].wdev, port[i].device, 8);
+					port[i].client[j].wireless = true;
+				} else {
+					strncpy(port[i].client[j].ethport, port[i].device, 8);
+					port[i].client[j].wireless = false;
 				}
 
 				h = blobmsg_open_table(b, "NULL");
