@@ -935,9 +935,7 @@ populate_ports(Network *network)
 	prt = strtok(theports, " ");
 	while (prt != NULL)
 	{
-		if(!strncmp(prt, "eth", 3) && strchr(prt, '.'))
-			goto nextport;
-		else if (strncmp(prt, "eth", 3) && strncmp(prt, "wl", 2))
+		if(strncmp(prt, "wl", 2) && strchr(prt, '.'))
 			goto nextport;
 
 		strcpy(port[i].device, prt);
