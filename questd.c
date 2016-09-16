@@ -2412,7 +2412,9 @@ quest_add_key(struct ubus_context *ctx, struct ubus_object *obj,
 	}
 	while(fgets(line, 4176, out_file) != NULL){
 		tmp_num = sscanf(line, "%16s %4096s ", tmp_type, tmp_key);
-		if(tmp_num < 2 || !is_valid_key(tmp_type, tmp_key)){
+		if(tmp_num < 2)
+			continue;
+		if(is_valid_key(tmp_type, tmp_key)){
 			if(strcmp(key, tmp_key) == 0){
 				blobmsg_add_string(&bb, "error", "Key already in dropbear");
 				ubus_send_reply(ctx, req, bb.head);
