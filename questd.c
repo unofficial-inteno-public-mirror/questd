@@ -935,12 +935,19 @@ populate_ports(Network *network)
 	prt = strtok(theports, " ");
 	while (prt != NULL)
 	{
+		if(!strncmp(prt, "eth", 3) && strchr(prt, '.'))
+			goto nextport;
+		else if (strncmp(prt, "eth", 3) && strncmp(prt, "wl", 2))
+			goto nextport;
+
 		strcpy(port[i].device, prt);
 		get_port_name(&port[i]);
 		if(strstr(port[i].device, "eth"))
 			get_port_speed(port[i].linkspeed, port[i].device);
-		prt = strtok (NULL, " ");
+
 		i++;
+nextport:
+		prt = strtok (NULL, " ");
 	}
 	
 	network->ports_populated = true;
