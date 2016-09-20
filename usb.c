@@ -95,6 +95,9 @@ dump_usb_info(USB *usb, char *usbno)
 		remove_newline(result);
 		fclose(in);
 
+		memset(usb->netdevice, '\0', sizeof(usb->netdevice));
+		memset(usb->device, '\0', sizeof(usb->device));
+
 		strcpy(usb->product, result);
 		memset(result, '\0', sizeof(result));
 		sprintf(usb->no, "%s", usbno);
