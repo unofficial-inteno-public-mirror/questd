@@ -707,7 +707,7 @@ ipv4_clients()
 				handle_client(&clients[cno]);
 
 				for (i=0; i < cno; i++) {
-					for(j=0; j < 32 && clients[i].assoclist[j].octet != NULL; j++) {
+					for(j=0; j < 32 && clients[i].assoclist[j].octet[0] != 0; j++) {
 						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
 							clients[cno].repeated = true;
 							clients[cno].connected = true;
@@ -1139,7 +1139,7 @@ static void dump_client(struct blob_buf *b, Client client)
 
 		a = blobmsg_open_array(b, "assoclist");
 
-		while (i < 32 && client.assoclist[i].octet != NULL)
+		while (i < 32 && client.assoclist[i].octet[0] != 0)
 		{
 			strncpy(stamac, (char*) wl_ether_etoa(&(client.assoclist[i])), 24);
 			t = blobmsg_open_table(b, "");
@@ -1499,7 +1499,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (strstr(clients[k].macaddr, "00:22:07")) {
-						for(l=0; l < 32 && clients[k].assoclist[l].octet != NULL; l++) {
+						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
 							if (!strcasecmp((char*) wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
 								continue;
 						}
