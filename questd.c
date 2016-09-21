@@ -2016,6 +2016,62 @@ quest_router_connected_clients6(struct ubus_context *ctx, struct ubus_object *ob
 }
 
 static int
+quest_router_processes(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *top;
+	char line[1024];
+	void *f, *l, *t;
+	int pid, ppid, vsz;
+	char user[64];
+	char stat[64];
+	char vszp[8];
+	char cpup[8];
+	char command[128];
+
+	blob_buf_init(&bb, 0);
+
+	f = blobmsg_open_array(&bb, "fields");
+	blobmsg_add_string(&bb, "", "PID");
+	blobmsg_add_string(&bb, "", "PPID");
+	blobmsg_add_string(&bb, "", "USER");
+	blobmsg_add_string(&bb, "", "STAT");
+	blobmsg_add_string(&bb, "", "VSZ");
+	blobmsg_add_string(&bb, "", "%VSZ");
+	blobmsg_add_string(&bb, "", "%CPU");
+	blobmsg_add_string(&bb, "", "COMMAND");
+	blobmsg_close_array(&bb, f);
+
+	if ((top = popen("top -bn1", "r"))) {
+		l = blobmsg_open_array(&bb, "processes");
+		while(fgets(line, sizeof(line), top) != NULL)
+		{
+			remove_newline(line);
+			single_space(line);
+			if(sscanf(line, "%d %d %s %s %d %s %s %s", &pid, &ppid, user, stat, &vsz, vszp, cpup, command)) {
+				t = blobmsg_open_table(&bb, "");
+				blobmsg_add_u32(&bb, "PID", pid);
+				blobmsg_add_u32(&bb, "PPID", ppid);
+				blobmsg_add_string(&bb, "USER", user);
+				blobmsg_add_string(&bb, "STAT", stat);
+				blobmsg_add_u32(&bb, "VSZ", vsz);
+				blobmsg_add_string(&bb, "%VSZ", vszp);
+				blobmsg_add_string(&bb, "%CPU", cpup);
+				blobmsg_add_string(&bb, "COMMAND", command);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(top);
+		blobmsg_close_array(&bb, l);
+	}
+
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+static int
 quest_router_igmp_table(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -2579,6 +2635,7 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("clients6", quest_router_clients6),
 	UBUS_METHOD_NOARG("connected", quest_router_connected_clients),
 	UBUS_METHOD_NOARG("connected6", quest_router_connected_clients6),
+	UBUS_METHOD_NOARG("processes", quest_router_processes),
 	UBUS_METHOD_NOARG("igmptable", quest_router_igmp_table),
 	UBUS_METHOD("sta", quest_router_wireless_stas, wl_policy),
 	UBUS_METHOD_NOARG("stas", quest_router_stas),
