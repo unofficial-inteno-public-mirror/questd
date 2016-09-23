@@ -1086,7 +1086,9 @@ router_dump_networks(struct blob_buf *b)
 static void dump_client(struct blob_buf *b, Client client)
 {	
 	static char linkspeed[64];
+#if IOPSYS_BROADCOM
 	struct wl_sta_info sta_info;
+#endif
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 	int i;
 
@@ -1263,7 +1265,6 @@ router_dump_wl_assoclist(struct blob_buf *b)
 		blobmsg_close_table(b, t);
 	}
 }
-#endif
 
 static void
 router_dump_stas(struct blob_buf *b, char *wname, bool vif)
@@ -1308,7 +1309,6 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u8(b, "dhcp", clients[i].dhcp);
 		if(strstr(clients[i].device, "br-"))
 			blobmsg_add_string(b, "bridge", clients[i].device);
-#if IOPSYS_BROADCOM
 		blobmsg_add_string(b, "wdev", clients[i].wdev);
 		blobmsg_add_string(b, "frequency", (channel >= 36) ? "5GHz" : "2.4GHz");
 		blobmsg_add_u32(b, "rssi", rssi);
@@ -1399,11 +1399,11 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 				blobmsg_add_u32(b, "", sta_info.rssi[j]);			
 			blobmsg_close_array(b, r);
 		}
-#endif
 		blobmsg_close_table(b, t);
 		num++;
 	}
 }
+#endif
 
 static void
 router_dump_usbs(struct blob_buf *b)
@@ -2155,6 +2155,7 @@ quest_router_clients6(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+#if IOPSYS_BROADCOM
 static int
 quest_router_stas(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -2171,7 +2172,6 @@ quest_router_stas(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-#if IOPSYS_BROADCOM
 static int
 quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -2187,7 +2187,6 @@ quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
-#endif
 
 static int
 quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
@@ -2232,6 +2231,7 @@ quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
+#endif
 
 static int
 quest_router_usbs(struct ubus_context *ctx, struct ubus_object *obj,
@@ -2649,9 +2649,9 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("connected6", quest_router_connected_clients6),
 	UBUS_METHOD_NOARG("processes", quest_router_processes),
 	UBUS_METHOD_NOARG("igmptable", quest_router_igmp_table),
+#if IOPSYS_BROADCOM
 	UBUS_METHOD("sta", quest_router_wireless_stas, wl_policy),
 	UBUS_METHOD_NOARG("stas", quest_router_stas),
-#if IOPSYS_BROADCOM
 	UBUS_METHOD_NOARG("wl_assoclist", quest_router_wl_assoclist),
 #endif
 	UBUS_METHOD("ports", quest_router_ports, network_policy),
