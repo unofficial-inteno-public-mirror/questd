@@ -620,7 +620,9 @@ ipv4_clients()
 	int i, j;
 	bool there;
 	int toms = 1000;
+#if IOPSYS_BROADCOM
 	char assoclist[1280];
+#endif
 	char brindex[8];
 	char *token;
 
@@ -667,6 +669,7 @@ ipv4_clients()
 						recalc_sleep_time(true, toms);
 				}
 
+			#if IOPSYS_BROADCOM
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
 					strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
@@ -680,6 +683,7 @@ ipv4_clients()
 						ano++;
 					}
 				}
+			#endif
 
 				cno++;
 			}
@@ -706,6 +710,7 @@ ipv4_clients()
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
 
+			#if IOPSYS_BROADCOM
 				for (i=0; i < cno; i++) {
 					for(j=0; j < 32 && clients[i].assoclist[j].octet[0] != 0; j++) {
 						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
@@ -716,7 +721,7 @@ ipv4_clients()
 					}
 				}
 
-			#if IOPSYS_BROADCOM
+
 				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 					clients[cno].wireless = true;
 				}
@@ -799,6 +804,7 @@ inc:
 								recalc_sleep_time(true, toms);
 						}
 
+					#if IOPSYS_BROADCOM
 						if(clients[cno].connected && strstr(clients[cno].macaddr, "00:22:07")) {
 							memset(clients[cno].assoclist, '\0', 128);
 							strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
@@ -812,6 +818,7 @@ inc:
 								ano++;
 							}
 						}
+					#endif
 
 						cno++;
 					}
@@ -1221,6 +1228,7 @@ router_dump_clients6(struct blob_buf *b, bool connected)
 	}
 }
 
+#if IOPSYS_BROADCOM
 static void
 router_dump_wl_assoclist(struct blob_buf *b)
 {
@@ -1255,6 +1263,7 @@ router_dump_wl_assoclist(struct blob_buf *b)
 		blobmsg_close_table(b, t);
 	}
 }
+#endif
 
 static void
 router_dump_stas(struct blob_buf *b, char *wname, bool vif)
@@ -1497,6 +1506,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
 
+			#if IOPSYS_BROADCOM
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (strstr(clients[k].macaddr, "00:22:07")) {
 						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
@@ -1505,6 +1515,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 						}
 					}
 				}
+			#endif
 
 				port[i].client[j].connected = true;
 				if(!strncmp(port[i].device, "wl", 2)) {
@@ -2160,6 +2171,7 @@ quest_router_stas(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+#if IOPSYS_BROADCOM
 static int
 quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -2175,7 +2187,7 @@ quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
-
+#endif
 
 static int
 quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
@@ -2639,7 +2651,9 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("igmptable", quest_router_igmp_table),
 	UBUS_METHOD("sta", quest_router_wireless_stas, wl_policy),
 	UBUS_METHOD_NOARG("stas", quest_router_stas),
+#if IOPSYS_BROADCOM
 	UBUS_METHOD_NOARG("wl_assoclist", quest_router_wl_assoclist),
+#endif
 	UBUS_METHOD("ports", quest_router_ports, network_policy),
 	UBUS_METHOD("leases", quest_network_leases, lease_policy),
 	UBUS_METHOD("host", quest_host_status, host_policy),

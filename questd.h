@@ -120,7 +120,9 @@ typedef struct {
 	bool repeated;
 	char ethport[8];
 	char wdev[8];
+#ifdef IOPSYS_BROADCOM
 	struct wl_ether_addr assoclist[32];
+#endif
 } Client;
 
 typedef struct {
