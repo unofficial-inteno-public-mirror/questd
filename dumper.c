@@ -136,7 +136,7 @@ dump_keys(Key *keys)
 	get_db_hw_value("desKey", &keys->des);
 	get_db_hw_value("wpaKey", &keys->wpa);
 #else
-	#error "dumper.c: dump_keys()"
+	//#error "dumper.c: dump_keys()"
 #endif
 }
 
@@ -170,7 +170,7 @@ dump_static_router_info(Router *router)
 	get_db_hw_value("BaseMacAddr", &router->basemac);
 	get_db_hw_value("serialNumber", &router->serialno);
 #else
-	#error "dumper.c: dump_static_router_info()"
+	//#error "dumper.c: dump_static_router_info()"
 #endif
 }
 
