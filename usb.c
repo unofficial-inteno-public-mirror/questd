@@ -194,7 +194,7 @@ quest_router_usbs(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 struct ubus_method usb_object_methods[] = {
-	UBUS_METHOD_NOARG("dump", quest_router_usbs),
+	UBUS_METHOD_NOARG("status", quest_router_usbs),
 };
 
 struct ubus_object_type usb_object_type = UBUS_OBJECT_TYPE("usb", usb_object_methods);

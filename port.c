@@ -314,7 +314,7 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 struct ubus_method port_object_methods[] = {
-	UBUS_METHOD("info", quest_portinfo, port_policy),
+	UBUS_METHOD("status", quest_portinfo, port_policy),
 };
 
 struct ubus_object_type port_object_type =

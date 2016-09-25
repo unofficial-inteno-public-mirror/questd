@@ -1918,18 +1918,20 @@ static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD("memory_bank", quest_memory_bank, bank_policy),
 
 	/* To be moved to router.network object */
-	UBUS_METHOD_NOARG("networks", quest_router_networks), // still here for backwards compatibility
-	UBUS_METHOD_NOARG("clients", quest_router_clients), // still here for backwards compatibility
-	UBUS_METHOD_NOARG("clients6", quest_router_clients6), // still here for backwards compatibility
-	UBUS_METHOD("ports", quest_router_ports, network_policy), // still here for backwards compatibility
-	UBUS_METHOD("leases", quest_network_leases, lease_policy), // still here for backwards compatibility
-	UBUS_METHOD("host", quest_host_status, host_policy), // still here for backwards compatibility
+	/* still here for backwards compatibility */
+	UBUS_METHOD_NOARG("networks", quest_router_networks),
+	UBUS_METHOD_NOARG("clients", quest_router_clients),
+	UBUS_METHOD_NOARG("clients6", quest_router_clients6),
+	UBUS_METHOD("ports", quest_router_ports, network_policy),
+	UBUS_METHOD("leases", quest_network_leases, lease_policy),
+	UBUS_METHOD("host", quest_host_status, host_policy),
 
 	/* To be moved to router.wireless object */
+	/* still here for backwards compatibility */
 #if IOPSYS_BROADCOM
-	UBUS_METHOD_NOARG("radios", quest_router_radios), // still here for backwards compatibility
-	UBUS_METHOD_NOARG("stas", quest_router_stas), // still here for backwards compatibility
-	UBUS_METHOD("wl", quest_router_wl, wl_policy), // still here for backwards compatibility
+	UBUS_METHOD_NOARG("radios", quest_router_radios),
+	UBUS_METHOD_NOARG("stas", quest_router_stas),
+	UBUS_METHOD("wl", quest_router_wl, wl_policy),
 #endif
 
 	UBUS_METHOD_NOARG("reload", quest_reload),
@@ -1946,7 +1948,6 @@ static struct ubus_object router_object = {
 };
 
 /* NETWORK OBJECT */
-
 extern int
 igmp_snooping_table(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
