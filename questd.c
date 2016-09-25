@@ -64,18 +64,8 @@ static Router router;
 static Memory memory;
 static Key keys;
 static Spec spec;
-static USB usb[MAX_USB];
 
 /* POLICIES */
-enum {
-	QUEST_NAME,
-	__QUEST_MAX,
-};
-
-static const struct blobmsg_policy quest_policy[__QUEST_MAX] = {
-	[QUEST_NAME] = { .name = "info", .type = BLOBMSG_TYPE_STRING },
-};
-
 enum {
 	NETWORK_NAME,
 	__NETWORK_MAX,
@@ -119,28 +109,6 @@ static const struct blobmsg_policy host_policy[__HOST_MAX] = {
 };
 
 enum {
-	P_USER,
-	P_PASSWORD,
-	P_CURPASSWORD,
-	__P_MAX
-};
-
-static const struct blobmsg_policy password_policy[__P_MAX] = {
-	[P_USER]     = { .name = "user",     .type = BLOBMSG_TYPE_STRING },
-	[P_PASSWORD] = { .name = "password", .type = BLOBMSG_TYPE_STRING },
-	[P_CURPASSWORD] = { .name = "curpass", .type = BLOBMSG_TYPE_STRING }
-};
-
-enum {
-	SSH_PATH,
-	__SSH_MAX
-};
-
-static const struct blobmsg_policy dropbear_policy[__SSH_MAX] = {
-	[SSH_PATH] 	= { .name = "path",	.type = BLOBMSG_TYPE_STRING }
-};
-
-enum {
 	BANK,
 	__BANK_MAX
 };
@@ -148,52 +116,12 @@ enum {
 static const struct blobmsg_policy bank_policy[__BANK_MAX] = {
 	[BANK]     = { .name = "bank",     .type = BLOBMSG_TYPE_INT32 },
 };
-
-enum {
-	L_INTERFACE,
-	__L_MAX
-};
-
-static const struct blobmsg_policy linkspeed_policy[__L_MAX] = {
-	[L_INTERFACE] =	{ .name = "interface",	.type = BLOBMSG_TYPE_STRING }
-};
-
-enum {
-	PIN,
-	__PIN_MAX,
-};
-
-static const struct blobmsg_policy pin_policy[__PIN_MAX] = {
-	[PIN] = { .name = "pin", .type = BLOBMSG_TYPE_STRING },
-};
 /* END POLICIES */
 
 pthread_t tid[1];
 pthread_mutex_t lock;
 static long sleep_time = DEFAULT_SLEEP;
 static bool popc = true;
-
-static int
-errno_status(void)
-{
-	switch (errno)
-	{
-	case EACCES:
-		return UBUS_STATUS_PERMISSION_DENIED;
-
-	case ENOTDIR:
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	case ENOENT:
-		return UBUS_STATUS_NOT_FOUND;
-
-	case EINVAL:
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	default:
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	}
-}
 
 void recalc_sleep_time(bool calc, int toms)
 {
@@ -1406,59 +1334,6 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 #endif
 
 static void
-router_dump_usbs(struct blob_buf *b)
-{
-	DIR *dir;
-	struct dirent *ent;
-	void *t;
-	int uno = 0;
-
-	memset(usb, '\0', sizeof(usb));
-	if ((dir = opendir ("/sys/bus/usb/devices")) != NULL) {
-		while ((ent = readdir (dir)) != NULL) {
-			if(uno >= MAX_USB) break;
-			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
-				continue;
-			if(strchr(ent->d_name, ':') || strstr(ent->d_name, "usb"))
-				continue;
-
-			dump_usb_info(&usb[uno], ent->d_name);
-
-			if(strlen(usb[uno].product) < 1)
-				continue;
-
-			t = blobmsg_open_table(b, usb[uno].name);
-			blobmsg_add_string(b, "idproduct", usb[uno].idproduct);
-			blobmsg_add_string(b, "idvendor", usb[uno].idvendor);
-			blobmsg_add_string(b, "product", usb[uno].product);
-			blobmsg_add_string(b, "speed", usb[uno].speed);
-			if (usb[uno].maxchild && strcmp(usb[uno].maxchild, "0")) {
-				blobmsg_add_u32(b, "maxchild", atoi(usb[uno].maxchild));
-			}
-			else {
-				blobmsg_add_string(b, "manufacturer", usb[uno].manufacturer);
-				blobmsg_add_string(b, "serial", usb[uno].serial);
-				if(strlen(usb[uno].device) > 1) {
-					blobmsg_add_string(b, "device", usb[uno].device);
-					blobmsg_add_u64(b, "size", usb[uno].size);
-					blobmsg_add_string(b, "mntdir", usb[uno].mount);
-				}
-			}
-			if(strlen(usb[uno].netdevice) > 2) {
-				blobmsg_add_string(b, "netdevice", usb[uno].netdevice);
-				blobmsg_add_string(b, "description", usb[uno].desc);
-			}
-			blobmsg_close_table(b, t);
-			uno++;
-		}
-		closedir(dir);
-	} else {
-		perror ("Could not open /sys/bus/usb/devices directory");
-	}
-}
-
-
-static void
 router_dump_ports(struct blob_buf *b, char *interface)
 {
 	void *t, *c, *h, *s;
@@ -1603,45 +1478,11 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 	}
 }
 
-/* ROUTER OBJECT */
-static int
-quest_router_specific(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[QUEST_NAME]) || (strcmp(blobmsg_data(tb[QUEST_NAME]), "system") && strcmp(blobmsg_data(tb[QUEST_NAME]), "memory")
-		&& strcmp(blobmsg_data(tb[QUEST_NAME]), "keys") && strcmp(blobmsg_data(tb[QUEST_NAME]), "specs")))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	blob_buf_init(&bb, 0);
-
-	if (!strcmp(blobmsg_data(tb[QUEST_NAME]), "system"))
-		router_dump_system_info(&bb, false);
-	else if (!strcmp(blobmsg_data(tb[QUEST_NAME]), "memory"))
-		router_dump_memory_info(&bb, false);
-	else if (!strcmp(blobmsg_data(tb[QUEST_NAME]), "keys"))
-		router_dump_keys(&bb, false);
-	else if (!strcmp(blobmsg_data(tb[QUEST_NAME]), "specs"))
-		router_dump_specs(&bb, false);
-
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
 static int
 quest_router_info(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
 	dump_sysinfo(&router, &memory);
 
 	blob_buf_init(&bb, 0);
@@ -1694,198 +1535,10 @@ quest_router_filesystem(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
-quest_memory_bank(struct ubus_context *ctx, struct ubus_object *obj,
-			struct ubus_request_data *req, const char *method,
-			struct blob_attr *msg)
-{
-	struct blob_attr *tb[__BANK_MAX];
-	int bank;
-	char this_fw[64];
-	char other_fw[64];
-
-	blobmsg_parse(bank_policy, __BANK_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (tb[BANK]) {
-		bank = blobmsg_get_u32(tb[BANK]);
-		if (bank == 0 || bank == 1)
-			runCmd("brcm_fw_tool set -u %d", bank);
-		else
-			return UBUS_STATUS_INVALID_ARGUMENT;
-	} else {
-
-		bank = atoi(chrCmd("cat /proc/nvram/Bootline | awk '{print$8}' | cut -d'=' -f2"));
-		strncpy(this_fw, chrCmd("cat /tmp/this_bank_iopver"), 64);
-		strncpy(other_fw, chrCmd("cat /tmp/other_bank_iopver"), 64);
-
-		blob_buf_init(&bb, 0);
-		blobmsg_add_u32(&bb, "code", bank);
-		blobmsg_add_string(&bb, "memory_bank", (bank)?"previous":"current");
-		blobmsg_add_string(&bb, "current_bank_firmware", this_fw);
-		blobmsg_add_string(&bb, "previous_bank_firmware", other_fw);
-		ubus_send_reply(ctx, req, bb.head);
-	}
-
-	return 0;
-}
-
-static int
-quest_password_set(struct ubus_context *ctx, struct ubus_object *obj,
-			struct ubus_request_data *req, const char *method,
-			struct blob_attr *msg)
-{
-	pid_t pid;
-	int fd, fds[2];
-	char *hash;
-	struct spwd *sp;
-	struct stat s;
-	struct blob_attr *tb[__P_MAX];
-
-	blobmsg_parse(password_policy, __P_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!tb[P_USER] || !tb[P_PASSWORD])
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if(tb[P_CURPASSWORD])
-	{
-		if (!(sp = getspnam(blobmsg_data(tb[P_USER]))))
-			return UBUS_STATUS_PERMISSION_DENIED;
-
-		hash = (char*) crypt(blobmsg_data(tb[P_CURPASSWORD]), sp->sp_pwdp);
-
-		if(strcmp(hash, sp->sp_pwdp))
-			return UBUS_STATUS_PERMISSION_DENIED;
-	} else
-		return UBUS_STATUS_PERMISSION_DENIED;
-
-	if (stat("/usr/bin/passwd", &s))
-		return UBUS_STATUS_NOT_FOUND;
-
-	if (!(s.st_mode & S_IXUSR))
-		return UBUS_STATUS_PERMISSION_DENIED;
-
-	if (pipe(fds))
-		return errno_status();
-
-	switch ((pid = fork()))
-	{
-	case -1:
-		close(fds[0]);
-		close(fds[1]);
-		return errno_status();
-
-	case 0:
-		uloop_done();
-
-		dup2(fds[0], 0);
-		close(fds[0]);
-		close(fds[1]);
-
-		if ((fd = open("/dev/null", O_RDWR)) > -1)
-		{
-			dup2(fd, 1);
-			dup2(fd, 2);
-			close(fd);
-		}
-
-		chdir("/");
-
-		if (execl("/usr/bin/passwd", "/usr/bin/passwd",
-		          blobmsg_data(tb[P_USER]), NULL))
-			return errno_status();
-
-	default:
-		close(fds[0]);
-
-		write(fds[1], blobmsg_data(tb[P_PASSWORD]),
-		              blobmsg_data_len(tb[P_PASSWORD]) - 1);
-		write(fds[1], "\n", 1);
-
-		usleep(100 * 1000);
-
-		write(fds[1], blobmsg_data(tb[P_PASSWORD]),
-		              blobmsg_data_len(tb[P_PASSWORD]) - 1);
-		write(fds[1], "\n", 1);
-
-		close(fds[1]);
-
-		waitpid(pid, NULL, 0);
-
-		return 0;
-	}
-}
-
-static int
-quest_router_logread(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	void *a, *t;
-	FILE *log;
-	char line[512];
-	char dayofweek[8];
-	char month[8];
-	int dayofmonth;
-	char hour[16];
-	int year;
-	char id[32];
-	char source[32];
-	char time[64];
-
-	struct stat s;
-
-	blob_buf_init(&bb, 0);
-	a = blobmsg_open_array(&bb, "logs");
-	if (!stat("/log/messages", &s)) {
-		if ((log = popen("tail -n 400 /log/messages 2>/dev/null", "r"))) {
-			while(fgets(line, sizeof(line), log) != NULL)
-			{
-				remove_newline(line);
-				if (sscanf(line, "%s %d %s %s %s:", month, &dayofmonth, hour, id, source)) {
-					sprintf(time, "%s %d %s", month, dayofmonth, hour);
-					source[strlen(source)-1] = '\0';
-					t = blobmsg_open_table(&bb, "");
-					blobmsg_add_string(&bb, "time", time);
-					blobmsg_add_string(&bb, "id", id);
-					blobmsg_add_string(&bb, "source", source);
-					blobmsg_add_string(&bb, "message", line+(int)(strstr(line,source)-&line[0])+strlen(source)+2);
-					blobmsg_close_table(&bb, t);
-				}
-			}
-			pclose(log);
-		}
-	} else {
-		if ((log = popen("logread -l 400", "r"))) {
-			while(fgets(line, sizeof(line), log) != NULL)
-			{
-				remove_newline(line);
-				if (sscanf(line, "%s %s %d %s %d %s %s:", dayofweek, month, &dayofmonth, hour, &year, id, source)) {
-					sprintf(time, "%s %s %d %s %d", dayofweek, month, dayofmonth, hour, year);
-					source[strlen(source)-1] = '\0';
-					t = blobmsg_open_table(&bb, "");
-					blobmsg_add_string(&bb, "time", time);
-					blobmsg_add_string(&bb, "id", id);
-					blobmsg_add_string(&bb, "source", source);
-					blobmsg_add_string(&bb, "message", line+(int)(strstr(line,source)-&line[0])+strlen(source)+2);
-					blobmsg_close_table(&bb, t);
-				}
-			}
-			pclose(log);
-		}
-	}
-	blobmsg_close_array(&bb, a);
-	ubus_send_reply(ctx, req, bb.head);
-	return 0;
-}
-
-static int
 quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
 	blob_buf_init(&bb, 0);
 	router_dump_networks(&bb);
 	ubus_send_reply(ctx, req, bb.head);
@@ -1898,10 +1551,6 @@ quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
 	blob_buf_init(&bb, 0);
 	router_dump_clients(&bb, false, NULL);
 	ubus_send_reply(ctx, req, bb.head);
@@ -1910,16 +1559,12 @@ quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
-quest_router_connected_clients(struct ubus_context *ctx, struct ubus_object *obj,
+quest_router_clients6(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
 	blob_buf_init(&bb, 0);
-	router_dump_clients(&bb, true, NULL);
+	router_dump_clients6(&bb, false);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
@@ -2008,163 +1653,12 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
-#endif
 
-static int
-quest_router_connected_clients6(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
-	blob_buf_init(&bb, 0);
-	router_dump_clients6(&bb, true);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-quest_router_processes(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	FILE *top;
-	char line[1024];
-	void *f, *l, *t;
-	int pid, ppid, vsz;
-	char user[64];
-	char stat[64];
-	char vszp[8];
-	char cpup[8];
-	char command[128];
-
-	blob_buf_init(&bb, 0);
-
-	f = blobmsg_open_array(&bb, "fields");
-	blobmsg_add_string(&bb, "", "PID");
-	blobmsg_add_string(&bb, "", "PPID");
-	blobmsg_add_string(&bb, "", "USER");
-	blobmsg_add_string(&bb, "", "STAT");
-	blobmsg_add_string(&bb, "", "VSZ");
-	blobmsg_add_string(&bb, "", "%VSZ");
-	blobmsg_add_string(&bb, "", "%CPU");
-	blobmsg_add_string(&bb, "", "COMMAND");
-	blobmsg_close_array(&bb, f);
-
-	if ((top = popen("top -bn1", "r"))) {
-		l = blobmsg_open_array(&bb, "processes");
-		while(fgets(line, sizeof(line), top) != NULL)
-		{
-			remove_newline(line);
-			single_space(line);
-			if(sscanf(line, "%d %d %s %s %d %s %s %s", &pid, &ppid, user, stat, &vsz, vszp, cpup, command)) {
-				t = blobmsg_open_table(&bb, "");
-				blobmsg_add_u32(&bb, "PID", pid);
-				blobmsg_add_u32(&bb, "PPID", ppid);
-				blobmsg_add_string(&bb, "USER", user);
-				blobmsg_add_string(&bb, "STAT", stat);
-				blobmsg_add_u32(&bb, "VSZ", vsz);
-				blobmsg_add_string(&bb, "%VSZ", vszp);
-				blobmsg_add_string(&bb, "%CPU", cpup);
-				blobmsg_add_string(&bb, "COMMAND", command);
-				blobmsg_close_table(&bb, t);
-			}
-		}
-		pclose(top);
-		blobmsg_close_array(&bb, l);
-	}
-
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-quest_router_igmp_table(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	IGMPTable table[MAX_IGMP_ENTRY];
-	FILE *snptable;
-	char line[256];
-	int idx = 0;
-	void *t, *a;
-
-	if ((snptable = fopen("/proc/net/igmp_snooping", "r"))) {
-		while(fgets(line, sizeof(line), snptable) != NULL)
-		{
-			remove_newline(line);
-			table[idx].exists = false;
-			if(sscanf(single_space(line),"%s %s %s %s %x %x %s %s %s %s %s %d %x %d",
-					table[idx].bridge, table[idx].device, table[idx].srcdev, table[idx].tags, &(table[idx].lantci), &(table[idx].wantci),
-					table[idx].group, table[idx].mode, table[idx].RxGroup, table[idx].source, table[idx].reporter,
-					&(table[idx].timeout), &(table[idx].Index), &(table[idx].ExcludPt)) == 14)
-			{
-				table[idx].exists = true;
-				idx++;
-			}
-		}
-		fclose(snptable);
-	} else
-		return UBUS_STATUS_NOT_FOUND;
-
-	blob_buf_init(&bb, 0);
-	a = blobmsg_open_array(&bb, "table");
-	for (idx = 0; idx < MAX_IGMP_ENTRY; idx++) {
-		if (!table[idx].exists)
-			break;
-		t = blobmsg_open_table(&bb, NULL);
-		blobmsg_add_string(&bb,"bridge", table[idx].bridge);
-		blobmsg_add_string(&bb,"device", table[idx].device);
-		blobmsg_add_string(&bb,"srcdev", table[idx].srcdev);
-		blobmsg_add_string(&bb,"tags", table[idx].tags);
-		blobmsg_add_u32(&bb,"lantci", table[idx].lantci);
-		blobmsg_add_u32(&bb,"wantci", table[idx].wantci);
-		blobmsg_add_string(&bb,"group", table[idx].group);
-		blobmsg_add_string(&bb,"mode", table[idx].mode);
-		blobmsg_add_string(&bb,"rxgroup", table[idx].RxGroup);
-		blobmsg_add_string(&bb,"source", table[idx].source);
-		blobmsg_add_string(&bb,"reporter", table[idx].reporter);
-		blobmsg_add_u32(&bb,"timeout", table[idx].timeout);
-		blobmsg_add_u32(&bb,"index", table[idx].Index);
-		blobmsg_add_u32(&bb,"excludpt", table[idx].ExcludPt);
-		blobmsg_close_table(&bb, t);
-	}
-	blobmsg_close_array(&bb, a);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-quest_router_clients6(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
-	blob_buf_init(&bb, 0);
-	router_dump_clients6(&bb, false);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-#if IOPSYS_BROADCOM
 static int
 quest_router_stas(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
 	blob_buf_init(&bb, 0);
 	router_dump_stas(&bb, NULL, false);
 	ubus_send_reply(ctx, req, bb.head);
@@ -2177,10 +1671,6 @@ quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
 	blob_buf_init(&bb, 0);
 	router_dump_wl_assoclist(&bb);
 	ubus_send_reply(ctx, req, bb.head);
@@ -2231,108 +1721,7 @@ quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
 
 	return 0;
 }
-#endif
 
-static int
-quest_router_usbs(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__QUEST_MAX];
-
-	blobmsg_parse(quest_policy, __QUEST_MAX, tb, blob_data(msg), blob_len(msg));
-
-	blob_buf_init(&bb, 0);
-	router_dump_usbs(&bb);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__LEASE_MAX];
-	bool nthere = false;
-	int i;
-
-	blobmsg_parse(lease_policy, __LEASE_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (tb[LEASENET]) {
-		for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
-			if(!strcmp(network[i].name, blobmsg_data(tb[LEASENET])))
-				nthere = true;
-
-		if (!(nthere))
-			return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	blob_buf_init(&bb, 0);
-	network_dump_leases(&bb, (tb[LEASENET])?blobmsg_data(tb[LEASENET]):NULL, (tb[FAMILY])?blobmsg_get_u32(tb[FAMILY]):4);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-quest_router_ports(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__NETWORK_MAX];
-	bool nthere = false;
-	int i;
-
-	blobmsg_parse(network_policy, __NETWORK_MAX, tb, blob_data(msg), blob_len(msg));
-	
-	if (!(tb[NETWORK_NAME]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-		
-	for (i=0; i < MAX_NETWORK && network[i].exists; i++) {
-		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
-			if(!strcmp(network[i].type, "bridge")) {
-			nthere = true;
-			break;
-		}
-	}
-
-	if (!(nthere))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	
-	blob_buf_init(&bb, 0);
-	router_dump_ports(&bb, blobmsg_data(tb[NETWORK_NAME]));
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-
-
-static int
-quest_host_status(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__HOST_MAX];
-
-	blobmsg_parse(host_policy, __HOST_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[IP_ADDR]) && !(tb[MAC_ADDR]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	blob_buf_init(&bb, 0);
-	if (tb[IP_ADDR])
-		host_dump_status(&bb, blobmsg_data(tb[IP_ADDR]), true);
-	else
-		host_dump_status(&bb, blobmsg_data(tb[MAC_ADDR]), false);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-#if IOPSYS_BROADCOM
 static int
 quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -2394,6 +1783,122 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 #endif
 
 static int
+quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__LEASE_MAX];
+	bool nthere = false;
+	int i;
+
+	blobmsg_parse(lease_policy, __LEASE_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (tb[LEASENET]) {
+		for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
+			if(!strcmp(network[i].name, blobmsg_data(tb[LEASENET])))
+				nthere = true;
+
+		if (!(nthere))
+			return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
+	blob_buf_init(&bb, 0);
+	network_dump_leases(&bb, (tb[LEASENET])?blobmsg_data(tb[LEASENET]):NULL, (tb[FAMILY])?blobmsg_get_u32(tb[FAMILY]):4);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+static int
+quest_router_ports(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__NETWORK_MAX];
+	bool nthere = false;
+	int i;
+
+	blobmsg_parse(network_policy, __NETWORK_MAX, tb, blob_data(msg), blob_len(msg));
+	
+	if (!(tb[NETWORK_NAME]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+		
+	for (i=0; i < MAX_NETWORK && network[i].exists; i++) {
+		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
+			if(!strcmp(network[i].type, "bridge")) {
+			nthere = true;
+			break;
+		}
+	}
+
+	if (!(nthere))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	
+	blob_buf_init(&bb, 0);
+	router_dump_ports(&bb, blobmsg_data(tb[NETWORK_NAME]));
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+static int
+quest_host_status(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__HOST_MAX];
+
+	blobmsg_parse(host_policy, __HOST_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!(tb[IP_ADDR]) && !(tb[MAC_ADDR]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	blob_buf_init(&bb, 0);
+	if (tb[IP_ADDR])
+		host_dump_status(&bb, blobmsg_data(tb[IP_ADDR]), true);
+	else
+		host_dump_status(&bb, blobmsg_data(tb[MAC_ADDR]), false);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+static int
+quest_memory_bank(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+	struct blob_attr *tb[__BANK_MAX];
+	int bank;
+	char this_fw[64];
+	char other_fw[64];
+
+	blobmsg_parse(bank_policy, __BANK_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (tb[BANK]) {
+		bank = blobmsg_get_u32(tb[BANK]);
+		if (bank == 0 || bank == 1)
+			runCmd("brcm_fw_tool set -u %d", bank);
+		else
+			return UBUS_STATUS_INVALID_ARGUMENT;
+	} else {
+
+		bank = atoi(chrCmd("cat /proc/nvram/Bootline | awk '{print$8}' | cut -d'=' -f2"));
+		strncpy(this_fw, chrCmd("cat /tmp/this_bank_iopver"), 64);
+		strncpy(other_fw, chrCmd("cat /tmp/other_bank_iopver"), 64);
+
+		blob_buf_init(&bb, 0);
+		blobmsg_add_u32(&bb, "code", bank);
+		blobmsg_add_string(&bb, "memory_bank", (bank)?"previous":"current");
+		blobmsg_add_string(&bb, "current_bank_firmware", this_fw);
+		blobmsg_add_string(&bb, "previous_bank_firmware", other_fw);
+		ubus_send_reply(ctx, req, bb.head);
+	}
+
+	return 0;
+}
+
+static int
 quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -2406,272 +1911,32 @@ quest_reload(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-bool is_valid_key(const char *type, const char *key)
-{
-	int i;
-	for(i = 0; i < strlen(key); i++){
-		if(!isalnum(key[i]) && key[i] != '+' && key[i] != '/' && key[i] != '=')
-			return false;
-	}
-	return ((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA", 16) == 0) ||
-			(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAAB3NzaC1kc3MA", 16) == 0));
-}
-
-static int
-quest_get_keys(struct ubus_context *ctx, struct ubus_object *obj,
-			struct ubus_request_data *req, const char *method,
-			struct blob_attr *msg)
-{
-	FILE *file;
-	char line[4176], type[16], key[4096], comment[64];
-	int num;
-	void *a, *t;
-
-	blob_buf_init(&bb, 0);
-	if((file = fopen("/etc/dropbear/authorized_keys", "r")) == NULL){
-		blobmsg_add_string(&bb, "error", "Couldn't open /etc/dropbear/authorized_keys file");
-		ubus_send_reply(ctx, req, bb.head);
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	}
-	a = blobmsg_open_array(&bb, "keys");
-	while(fgets(line, 4176, file) != NULL){
-		num = sscanf(line, "%16s %4096s %64s", type, key, comment);
-		if(num > 1 && is_valid_key(type, key)){
-			t = blobmsg_open_table(&bb, NULL);
-			blobmsg_add_string(&bb, "type", type);
-			blobmsg_add_string(&bb, "key", key);
-			if(num == 3)
-				blobmsg_add_string(&bb, "comment", comment);
-			blobmsg_close_table(&bb, t);
-		}
-	}
-	blobmsg_close_array(&bb, a);
-	fclose(file);
-	ubus_send_reply(ctx, req,bb.head);
-	return UBUS_STATUS_OK;
-}
-
-static int
-quest_add_key(struct ubus_context *ctx, struct ubus_object *obj,
-			struct ubus_request_data *req, const char *method,
-			struct blob_attr *msg)
-{
-	int status = UBUS_STATUS_OK, num, tmp_num;
-	FILE *in_file, *out_file;
-	struct blob_attr *tb[__SSH_MAX];
-	char path[256], real_path[PATH_MAX], line[4176], type[16], key[4096], comment[64];
-	char tmp_type[16], tmp_key[4096];
-
-	blobmsg_parse(dropbear_policy, __SSH_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!tb[SSH_PATH])
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	strncpy(path, blobmsg_get_string(tb[SSH_PATH]), 256);
-	path[255] = '\0'; //make sure string is null-terminated
-
-	if(realpath(path, real_path) == NULL){
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	if(strncmp(real_path, "/tmp/", 5) != 0)
-		return UBUS_STATUS_PERMISSION_DENIED;
-
-	if((in_file = fopen(real_path, "r")) == NULL)
-		return UBUS_STATUS_UNKNOWN_ERROR;
-
-	if(fgets(line, 4176, in_file) == NULL){
-		status = UBUS_STATUS_UNKNOWN_ERROR;
-		goto out;
-	}
-
-	num = sscanf(line, "%16s %4096s %64s", type, key, comment);
-	blob_buf_init(&bb, 0);
-	if(num < 2 || !is_valid_key(type, key)){
-		blobmsg_add_string(&bb, "error", "Invalid key");
-		ubus_send_reply(ctx, req, bb.head);
-		status = UBUS_STATUS_INVALID_ARGUMENT;
-		goto out;
-	}
-	if((out_file = fopen("/etc/dropbear/authorized_keys", "a+")) == NULL){
-		blobmsg_add_string(&bb, "error", "Couldn't open /etc/dropbear/authorized_keys file");
-		ubus_send_reply(ctx, req, bb.head);
-		status = UBUS_STATUS_UNKNOWN_ERROR;
-		goto out;
-	}
-	while(fgets(line, 4176, out_file) != NULL){
-		tmp_num = sscanf(line, "%16s %4096s ", tmp_type, tmp_key);
-		if(tmp_num < 2)
-			continue;
-		if(is_valid_key(tmp_type, tmp_key)){
-			if(strcmp(key, tmp_key) == 0){
-				blobmsg_add_string(&bb, "error", "Key already in dropbear");
-				ubus_send_reply(ctx, req, bb.head);
-				status = UBUS_STATUS_INVALID_ARGUMENT;
-				goto close_both;
-			}
-		}
-	}
-	if(num == 2)
-		snprintf(line, 4176, "%s %s\n", type, key);
-	else
-		snprintf(line, 4176, "%s %s %s\n", type, key, comment);
-	fputs(line, out_file);
-	fsync(fileno(out_file));
-close_both:
-	fclose(out_file);
-out:
-	fclose(in_file);
-	return status;
-}
-
-static int
-quest_del_key(struct ubus_context *ctx, struct ubus_object *obj,
-			struct ubus_request_data *req, const char *method,
-			struct blob_attr *msg)
-{
-	int status = UBUS_STATUS_OK, num, tmp_num;
-	FILE *in_file, *out_file, *tmp_file;
-	struct blob_attr *tb[__SSH_MAX];
-	char path[256], real_path[PATH_MAX], line[4176], type[16], key[4096], comment[64];
-	char tmp_type[16], tmp_key[4096];
-
-	blobmsg_parse(dropbear_policy, __SSH_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!tb[SSH_PATH])
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	strncpy(path, blobmsg_get_string(tb[SSH_PATH]), 256);
-	path[255] = '\0'; //make sure string is null-terminated
-
-	if(realpath(path, real_path) == NULL){
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	if(strncmp(real_path, "/tmp/", 5) != 0)
-		return UBUS_STATUS_PERMISSION_DENIED;
-
-	if((in_file = fopen(real_path, "r")) == NULL)
-		return UBUS_STATUS_UNKNOWN_ERROR;
-
-	if(fgets(line, 4176, in_file) == NULL){
-		status = UBUS_STATUS_UNKNOWN_ERROR;
-		goto out;
-	}
-
-	num = sscanf(line, "%16s %4096s %64s", type, key, comment);
-	blob_buf_init(&bb, 0);
-	if(num < 2 || !is_valid_key(type, key)){
-		blobmsg_add_string(&bb, "error", "Invalid key");
-		ubus_send_reply(ctx, req, bb.head);
-		status = UBUS_STATUS_INVALID_ARGUMENT;
-		goto out;
-	}
-	if((out_file = fopen("/etc/dropbear/authorized_keys", "r")) == NULL){
-		blobmsg_add_string(&bb, "error", "Couldn't open /etc/dropbear/authorized_keys file");
-		ubus_send_reply(ctx, req, bb.head);
-		status = UBUS_STATUS_UNKNOWN_ERROR;
-		goto out;
-	}
-	if((tmp_file = fopen("/etc/dropbear/authorized_keys.bak", "w")) == NULL){
-		blobmsg_add_string(&bb, "error", "Couldn't open temporary file");
-		ubus_send_reply(ctx, req, bb.head);
-		status = UBUS_STATUS_UNKNOWN_ERROR;
-		goto close_both;
-	}
-	while(fgets(line, 4176, out_file) != NULL){
-		tmp_num = sscanf(line, "%16s %4096s ", tmp_type, tmp_key);
-		if(tmp_num < 2 || !is_valid_key(tmp_type, tmp_key) || strcmp(key, tmp_key) != 0){
-			fputs(line, tmp_file);
-		}
-	}
-	fsync(fileno(tmp_file));
-	fclose(in_file);
-	fclose(out_file);
-	fclose(tmp_file);
-	if(remove("/etc/dropbear/authorized_keys") == 0){
-		if(rename("/etc/dropbear/authorized_keys.bak", "/etc/dropbear/authorized_keys") != 0){
-			blobmsg_add_u32(&bb, "error", errno);
-			blobmsg_add_string(&bb, "errormsg", "Couldn't move tmp file to authorized_keys");
-			ubus_send_reply(ctx, req, bb.head);
-		}
-	}else{
-		blobmsg_add_u32(&bb, "error", errno);
-		blobmsg_add_string(&bb, "errormsg", "Couldn't delete old authorized_keys");
-		ubus_send_reply(ctx, req, bb.head);
-	}
-	return 0;
-close_both:
-	fclose(out_file);
-out:
-	fclose(in_file);
-	return status;
-}
-
-static int
-quest_linkspeed(struct ubus_context *ctx, struct ubus_object *obj,
-			struct ubus_request_data *req, const char *method,
-			struct blob_attr *msg)
-{
-	char linkspeed[64] = {0};
-	struct blob_attr *tb[__L_MAX];
-	int ret;
-
-	blobmsg_parse(linkspeed_policy, __L_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!tb[L_INTERFACE])
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	ret = get_port_speed(linkspeed, (char*)blobmsg_data(tb[L_INTERFACE]));
-	if(ret >= 0){
-		blob_buf_init(&bb, 0);
-		blobmsg_add_string(&bb, "linktype", (ret)?"SFP":"Ethernet");
-		blobmsg_add_string(&bb, "linkspeed", linkspeed);
-		ubus_send_reply(ctx, req, bb.head);
-		return 0;
-	}
-	return UBUS_STATUS_INVALID_ARGUMENT;
-}
-
+/* ROUTER OBJECT */
 static struct ubus_method router_object_methods[] = {
 	UBUS_METHOD_NOARG("info", quest_router_info),
 	UBUS_METHOD_NOARG("filesystem", quest_router_filesystem),
-	UBUS_METHOD("quest", quest_router_specific, quest_policy),
-	UBUS_METHOD_NOARG("logs", quest_router_logread),
-	UBUS_METHOD_NOARG("networks", quest_router_networks),
-#if IOPSYS_BROADCOM
-	UBUS_METHOD("wl", quest_router_wl, wl_policy),
-#endif
-	UBUS_METHOD_NOARG("dslstats", dslstats_rpc), 
-	UBUS_METHOD_NOARG("clients", quest_router_clients),
-	UBUS_METHOD_NOARG("clients6", quest_router_clients6),
-	UBUS_METHOD_NOARG("connected", quest_router_connected_clients),
-	UBUS_METHOD_NOARG("connected6", quest_router_connected_clients6),
-	UBUS_METHOD_NOARG("processes", quest_router_processes),
-	UBUS_METHOD_NOARG("igmptable", quest_router_igmp_table),
-#if IOPSYS_BROADCOM
-	UBUS_METHOD("sta", quest_router_wireless_stas, wl_policy),
-	UBUS_METHOD_NOARG("stas", quest_router_stas),
-	UBUS_METHOD_NOARG("wl_assoclist", quest_router_wl_assoclist),
-#endif
-	UBUS_METHOD("ports", quest_router_ports, network_policy),
-	UBUS_METHOD("leases", quest_network_leases, lease_policy),
-	UBUS_METHOD("host", quest_host_status, host_policy),
-	UBUS_METHOD_NOARG("usb", quest_router_usbs),
-#if IOPSYS_BROADCOM
-	UBUS_METHOD_NOARG("radios", quest_router_radios),
-#endif
-	UBUS_METHOD("password_set", quest_password_set, password_policy),
 	UBUS_METHOD("memory_bank", quest_memory_bank, bank_policy),
+
+	/* To be moved to router.network object */
+	UBUS_METHOD_NOARG("networks", quest_router_networks), // still here for backwards compatibility
+	UBUS_METHOD_NOARG("clients", quest_router_clients), // still here for backwards compatibility
+	UBUS_METHOD_NOARG("clients6", quest_router_clients6), // still here for backwards compatibility
+	UBUS_METHOD("ports", quest_router_ports, network_policy), // still here for backwards compatibility
+	UBUS_METHOD("leases", quest_network_leases, lease_policy), // still here for backwards compatibility
+	UBUS_METHOD("host", quest_host_status, host_policy), // still here for backwards compatibility
+
+	/* To be moved to router.wireless object */
+#if IOPSYS_BROADCOM
+	UBUS_METHOD_NOARG("radios", quest_router_radios), // still here for backwards compatibility
+	UBUS_METHOD_NOARG("stas", quest_router_stas), // still here for backwards compatibility
+	UBUS_METHOD("wl", quest_router_wl, wl_policy), // still here for backwards compatibility
+#endif
+
 	UBUS_METHOD_NOARG("reload", quest_reload),
-	UBUS_METHOD_NOARG("get_ssh_keys", quest_get_keys),
-	UBUS_METHOD("add_ssh_key", quest_add_key, dropbear_policy),
-	UBUS_METHOD("del_ssh_key", quest_del_key, dropbear_policy),
-	UBUS_METHOD("linkspeed", quest_linkspeed, linkspeed_policy),
 };
 
 static struct ubus_object_type router_object_type =
-	UBUS_OBJECT_TYPE("system", router_object_methods);
+	UBUS_OBJECT_TYPE("router", router_object_methods);
 
 static struct ubus_object router_object = {
 	.name = "router",
@@ -2679,220 +1944,124 @@ static struct ubus_object router_object = {
 	.methods = router_object_methods,
 	.n_methods = ARRAY_SIZE(router_object_methods),
 };
-/* END OF ROUTER OBJECT */
 
-#if IOPSYS_BROADCOM
-/* WPS OBJECT */
-static int
-wps_status(struct ubus_context *ctx, struct ubus_object *obj,
+/* NETWORK OBJECT */
+
+extern int
+igmp_snooping_table(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	char status[16];
-	int code = atoi(chrCmd("nvram get wps_proc_status"));
+		  struct blob_attr *msg);
 
-	switch (code) {
-		case 0:
-			strcpy(status, "init");
-			break;
-		case 1:
-			strcpy(status, "processing");
-			break;
-		case 2:
-			strcpy(status, "success");
-			break;
-		case 3:
-			strcpy(status, "fail");
-			break;
-		case 4:
-			strcpy(status, "timeout");
-			break;
-		case 7:
-			strcpy(status, "msgdone");
-			break;
-		default:
-			strcpy(status, "unknown");
-			break;
-	}
-
-	blob_buf_init(&bb, 0);
-	blobmsg_add_u32(&bb, "code", code);
-	blobmsg_add_string(&bb, "status", status);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-wps_pbc(struct ubus_context *ctx, struct ubus_object *obj,
+extern int
+ip_conntrack_table(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	system("killall -SIGUSR2 wps_monitor");
-	return 0;
-}
+		  struct blob_attr *msg);
 
-static int
-wps_pbc_client(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	system("INTERFACE=wpscbutton ACTION=register /sbin/hotplug-call button &");
-	return 0;
-}
-
-static int
-wps_genpin(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	FILE *genpin;
-	char cmnd[16];
-	char pin[9] = { '\0' };
-
-	sprintf(cmnd, "wps_cmd genpin");
-	if ((genpin = popen(cmnd, "r"))) {
-		fgets(pin, sizeof(pin), genpin);
-		remove_newline(pin);
-		pclose(genpin);
-	}
-
-	blob_buf_init(&bb, 0);
-
-	blobmsg_add_string(&bb, "pin", pin);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-wps_checkpin(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__PIN_MAX];
-
-	blobmsg_parse(pin_policy, __PIN_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[PIN]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	FILE *checkpin;
-	char cmnd[32];
-	char pin[9] = { '\0' };
-	bool valid = false;
-
-	snprintf(cmnd, 32, "wps_cmd checkpin %s", (char*)blobmsg_data(tb[PIN]));
-	if ((checkpin = popen(cmnd, "r"))) {
-		fgets(pin, sizeof(pin), checkpin);
-		remove_newline(pin);
-		pclose(checkpin);
-	}
-
-	if(strlen(pin))
-		valid = true;
-
-	blob_buf_init(&bb, 0);
-	blobmsg_add_u8(&bb, "valid", valid);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-wps_stapin(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__PIN_MAX];
-
-	blobmsg_parse(pin_policy, __PIN_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[PIN]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	runCmd("wps_cmd addenrollee wl0 sta_pin=%s &", blobmsg_data(tb[PIN]));
-
-	return 0;
-}
-
-static int
-wps_setpin(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__PIN_MAX];
-
-	blobmsg_parse(pin_policy, __PIN_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[PIN]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	runCmd("wps_cmd setpin %s &", blobmsg_data(tb[PIN]));
-
-	return 0;
-}
-
-static int
-wps_showpin(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	FILE *showpin;
-	char cmnd[32];
-	char pin[9] = { '\0' };
-
-	sprintf(cmnd, "nvram get wps_device_pin");
-	if ((showpin = popen(cmnd, "r"))) {
-		fgets(pin, sizeof(pin), showpin);
-		remove_newline(pin);
-		pclose(showpin);
-	}
-
-	blob_buf_init(&bb, 0);
-
-	blobmsg_add_string(&bb, "pin", pin);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-wps_stop(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	system("killall -SIGTERM wps_monitor");
-	system("nvram set wps_proc_status=0");
-	system("wps_monitor &");
-	return 0;
-}
-
-
-static struct ubus_method wps_object_methods[] = {
-	UBUS_METHOD_NOARG("status", wps_status),
-	UBUS_METHOD_NOARG("pbc", wps_pbc),
-	UBUS_METHOD_NOARG("pbc_client", wps_pbc_client),
-	UBUS_METHOD_NOARG("genpin", wps_genpin),
-	UBUS_METHOD("checkpin", wps_checkpin, pin_policy),
-	UBUS_METHOD("stapin", wps_stapin, pin_policy),
-	UBUS_METHOD("setpin", wps_setpin, pin_policy),
-	UBUS_METHOD_NOARG("showpin", wps_showpin),
-	UBUS_METHOD_NOARG("stop", wps_stop),
+static struct ubus_method network_object_methods[] = {
+	UBUS_METHOD_NOARG("dump", quest_router_networks),
+	UBUS_METHOD_NOARG("clients", quest_router_clients),
+	UBUS_METHOD("leases", quest_network_leases, lease_policy),
+	UBUS_METHOD("ports", quest_router_ports, network_policy),
+	UBUS_METHOD_NOARG("igmp_snooping_table", igmp_snooping_table),
+	UBUS_METHOD_NOARG("ip_conntrack_table", ip_conntrack_table),
 };
 
-static struct ubus_object_type wps_object_type =
-	UBUS_OBJECT_TYPE("wps", wps_object_methods);
+static struct ubus_object_type network_object_type =
+	UBUS_OBJECT_TYPE("network", network_object_methods);
+
+static struct ubus_object network_object = {
+	.name = "router.network",
+	.type = &network_object_type,
+	.methods = network_object_methods,
+	.n_methods = ARRAY_SIZE(network_object_methods),
+};
+
+#if IOPSYS_BROADCOM
+/* WIRELESS OBJECT */
+static struct ubus_method wireless_object_methods[] = {
+	UBUS_METHOD("status", quest_router_wl, wl_policy),
+	UBUS_METHOD_NOARG("stas", quest_router_stas),
+	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
+	UBUS_METHOD_NOARG("radios", quest_router_radios),
+};
+
+static struct ubus_object_type wireless_object_type =
+	UBUS_OBJECT_TYPE("wireless", wireless_object_methods);
+
+static struct ubus_object wireless_object = {
+	.name = "router.wireless",
+	.type = &wireless_object_type,
+	.methods = wireless_object_methods,
+	.n_methods = ARRAY_SIZE(wireless_object_methods),
+};
+
+/* WPS OBJECT */
+extern struct ubus_object_type wps_object_type;
+extern struct ubus_method wps_object_methods[9];
 
 static struct ubus_object wps_object = {
-	.name = "wps",
+	.name = "router.wps",
 	.type = &wps_object_type,
 	.methods = wps_object_methods,
 	.n_methods = ARRAY_SIZE(wps_object_methods),
 };
 
-/* END OF WPS OBJECT */
-#endif /* IOPSYS_BROADCOM */
+/* DSL OBJECT */
+extern struct ubus_object_type dsl_object_type;
+extern struct ubus_method dsl_object_methods[1];
+
+static struct ubus_object dsl_object = {
+	.name = "router.dsl",
+	.type = &dsl_object_type,
+	.methods = dsl_object_methods,
+	.n_methods = ARRAY_SIZE(dsl_object_methods),
+};
+
+/* PORT OBJECT */
+extern struct ubus_method port_object_methods[1];
+
+extern struct ubus_object_type port_object_type;
+
+static struct ubus_object port_object = {
+	.name = "router.port",
+	.type = &port_object_type,
+	.methods = port_object_methods,
+	.n_methods = ARRAY_SIZE(port_object_methods),
+};
+#endif
+
+/* SYSTEM OBJECT */
+extern struct ubus_object_type system_object_type;
+extern struct ubus_method system_object_methods[3];
+
+static struct ubus_object system_object = {
+	.name = "router.system",
+	.type = &system_object_type,
+	.methods = system_object_methods,
+	.n_methods = ARRAY_SIZE(system_object_methods),
+};
+
+/* DROPBEAR OBJECT */
+extern struct ubus_object_type dropbear_object_type;
+extern struct ubus_method dropbear_object_methods[3];
+
+static struct ubus_object dropbear_object = {
+	.name = "router.dropbear",
+	.type = &dropbear_object_type,
+	.methods = dropbear_object_methods,
+	.n_methods = ARRAY_SIZE(dropbear_object_methods),
+};
+
+/* USB OBJECT */
+extern struct ubus_object_type usb_object_type;
+extern struct ubus_method usb_object_methods[1];
+
+static struct ubus_object usb_object = {
+	.name = "router.usb",
+	.type = &usb_object_type,
+	.methods = usb_object_methods,
+	.n_methods = ARRAY_SIZE(usb_object_methods),
+};
 
 static void
 quest_ubus_add_fd(void)
@@ -2918,8 +2087,6 @@ quest_ubus_reconnect_timer(struct uloop_timeout *timeout)
 	printf("reconnected to ubus, new id: %08x\n", ctx->local_id);
 	quest_ubus_add_fd();
 }
-
-
 
 static void
 quest_ubus_connection_lost(struct ubus_context *ctx)
@@ -2951,7 +2118,14 @@ quest_ubus_init(const char *path)
 	quest_ubus_add_fd();
 
 	quest_add_object(&router_object);
+	quest_add_object(&system_object);
+	quest_add_object(&dropbear_object);
+	quest_add_object(&usb_object);
+	quest_add_object(&network_object);
 #if IOPSYS_BROADCOM
+	quest_add_object(&dsl_object);
+	quest_add_object(&port_object);
+	quest_add_object(&wireless_object);
 	quest_add_object(&wps_object);
 #endif
 

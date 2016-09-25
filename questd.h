@@ -25,8 +25,6 @@
 
 #include <libubus.h>
 
-#include "dslstats.h"
-
 #if IOPSYS_BROADCOM
 #include "broadcom.h" // WILL NOT BE NEEDED LATER
 #endif
@@ -221,42 +219,6 @@ typedef struct {
 	int eports;
 } Spec;
 
-typedef struct {
-	char mount[64];
-	char product[64];
-	char no[8];
-	char name[8];
-	unsigned long size;
-	char device[64];
-	char manufacturer[64];
-	char serial[64];
-	char speed[64];
-	char maxchild[64];
-	char idproduct[64];
-	char idvendor[64];
-	char netdevice[32];
-	char desc[128];
-} USB;
-
-typedef struct {
-	bool exists;
-	char bridge[32];
-	char device[32];
-	char srcdev[32];
-	char tags[32];
-	int lantci;
-	int wantci;
-	char group[16];
-	char mode[32];
-	char RxGroup[16];
-	char source[16];
-	char reporter[16];
-	int timeout;
-	int Index;
-	int ExcludPt;
-
-}IGMPTable;
-
 typedef struct jiffy_counts_t {
 	unsigned long long usr, nic, sys, idle;
 	unsigned long long iowait, irq, softirq, steal;
@@ -287,7 +249,6 @@ int get_port_speed(char *linkspeed, char *device);
 void get_port_stats(Port *port);
 void get_bridge_ports(char *network, char **ports);
 char *get_clients_onport(char *bridge, int portno);
-void dump_usb_info(USB *usb, char *usbno);
 void clear_macaddr(void);
 char *get_macaddr(void);
 bool ndisc (const char *name, const char *ifname, unsigned flags, unsigned retry, unsigned wait_ms);
