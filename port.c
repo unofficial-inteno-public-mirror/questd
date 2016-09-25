@@ -26,6 +26,7 @@
 #include <errno.h>
 
 #include "questd.h"
+#include "network.h"
 #include "tools.h"
 
 #define CHUNK		128
