@@ -7,7 +7,7 @@ SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c broad
 LIBSRCS		= 
 ISRCS		= questd.h tools.h broadcom.h
 
-all: questd ueventd uscriptd wificontrol
+all: questd wificontrol
 
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
