@@ -220,6 +220,23 @@ int wl_get_wpa_auth(const char *ifname, char *wpa)
 	return ret;
 }
 
+int wl_get_wsec(const char *ifname, int *buf)
+{
+	unsigned int wsec;
+	int ret = 0;
+
+	wl_endianness_check(ifname);
+
+	if ((ret = wl_ioctl(ifname, WLC_GET_WSEC, &wsec, sizeof(wsec))) < 0)
+		return ret;
+
+	wsec = eswap32(wsec);
+
+	*buf = wsec;
+
+	return ret;
+}
+
 int wl_get_noise(const char *ifname, int *buf)
 {
 	unsigned int noise;
