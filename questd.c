@@ -2344,6 +2344,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	void *t, *c;
 	int i, j;
 	int isup, band, rate, bw, channel, noise;
+	char maxrate[10];
 	char bitrate[10];
 	char frequency[10];
 	char bandwidth[10];
@@ -2365,13 +2366,29 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
 
+		if (band == 1) {
+			if (bw == 160)
+				strcpy(maxrate, "2600 Mbps");
+			else if (bw == 80)
+				strcpy(maxrate, "1300 Mbps");
+			else if (bw == 40)
+				strcpy(maxrate, "600 Mbps");
+			else
+				strcpy(maxrate, "288.5 Mbps");
+		} else {
+			if (bw == 40)
+				strcpy(maxrate, "300 Mbps");
+			else
+				strcpy(maxrate, "144 Mbps");
+		}
+
 		t = blobmsg_open_table(&bb, radio[i].name);
 		blobmsg_add_u8(&bb, "isup", isup);
 		blobmsg_add_string(&bb, "frequency", frequency);
 		blobmsg_add_string(&bb, "bandwidth", bandwidth);
 		blobmsg_add_u32(&bb, "channel", channel);
 		blobmsg_add_u32(&bb, "noise", noise);
-		blobmsg_add_string(&bb, "rate", bitrate);
+		blobmsg_add_string(&bb, "rate", maxrate);
 		c = blobmsg_open_array(&bb, "hwmodes");
 		for(j=0; radio[i].hwmodes[j]; j++) {
 			blobmsg_add_string(&bb, "", radio[i].hwmodes[j]);
