@@ -27,6 +27,7 @@
 #include <crypt.h>
 #include <shadow.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 
 #include <libubox/blobmsg.h>
 #include <libubus.h>

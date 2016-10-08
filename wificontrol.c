@@ -22,6 +22,7 @@
  
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -30,12 +31,15 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <fcntl.h>
-
-#include "questd.h"
+#include <sys/wait.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PORT 9876
 #define BUF_SIZE 2000
 #define CLADDR_LEN 100
+
+extern bool arping(const char *targetIP, char *device, int toms);
 
 static int client_connected = 0;
 static pthread_t tid;
