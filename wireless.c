@@ -230,7 +230,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 
 	Client clients[MAX_CLIENT];
 
-	get_network_clients(&clients);
+	get_network_clients(clients);
 
 	for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 		if (!(clients[i].wireless))
