@@ -242,3 +242,10 @@ struct ubus_method dropbear_object_methods[] = {
 };
 
 struct ubus_object_type dropbear_object_type = UBUS_OBJECT_TYPE("dropbear", dropbear_object_methods);
+
+struct ubus_object dropbear_object = {
+	.name = "router.dropbear",
+	.type = &dropbear_object_type,
+	.methods = dropbear_object_methods,
+	.n_methods = ARRAY_SIZE(dropbear_object_methods),
+};

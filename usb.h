@@ -16,3 +16,4 @@ typedef struct {
 } USB;
 
 void dump_usb_info(USB *usb, char *usbno);
+

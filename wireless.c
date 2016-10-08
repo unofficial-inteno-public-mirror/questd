@@ -604,3 +604,10 @@ struct ubus_method wireless_object_methods[] = {
 
 struct ubus_object_type wireless_object_type =
 	UBUS_OBJECT_TYPE("wireless", wireless_object_methods);
+
+struct ubus_object wireless_object = {
+	.name = "router.wireless",
+	.type = &wireless_object_type,
+	.methods = wireless_object_methods,
+	.n_methods = ARRAY_SIZE(wireless_object_methods),
+};

@@ -66,6 +66,8 @@ static Client clients_old[MAX_CLIENT];
 static Client clients_new[MAX_CLIENT];
 static Client6 clients6[MAX_CLIENT];
 
+static int lease_time_count = 0;
+
 static struct uci_package *
 init_package(const char *config)
 {
@@ -91,13 +93,6 @@ void
 get_clients(Client *clnt)
 {
 	memcpy(clnt, clients, sizeof(clients));
-}
-
-void
-clear_clients()
-{
-	memset(clients, '\0', sizeof(clients));
-	memset(clients6, '\0', sizeof(clients6));
 }
 
 static bool
@@ -996,6 +991,12 @@ static bool popc = true;
 void
 populate_clients()
 {
+	if (lease_time_count == 720) {
+		lease_time_count = 0;
+		memset(clients, '\0', sizeof(clients));
+		memset(clients6, '\0', sizeof(clients6));
+	}
+
 	if (popc) {
 	#if IOPSYS_BROADCOM
 		wireless_assoclist();
@@ -1005,6 +1006,8 @@ populate_clients()
 		popc = false;
 	} else
 		popc = true;
+
+	lease_time_count++;
 }
 
 int
@@ -1139,14 +1142,34 @@ quest_host_status(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+int
+quest_network_reload(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	load_networks();
+#if IOPSYS_BROADCOM
+	load_wireless();
+#endif
+	return 0;
+}
+
 struct ubus_method network_object_methods[] = {
 	UBUS_METHOD_NOARG("dump", quest_router_networks),
 	UBUS_METHOD_NOARG("clients", quest_router_clients),
 	UBUS_METHOD("leases", quest_network_leases, lease_policy),
 	UBUS_METHOD("ports", quest_router_ports, network_policy),
+	UBUS_METHOD_NOARG("reload", quest_network_reload),
 	UBUS_METHOD_NOARG("igmp_snooping_table", igmp_snooping_table),
 	UBUS_METHOD_NOARG("ip_conntrack_table", ip_conntrack_table),
 };
 
 struct ubus_object_type network_object_type =
 	UBUS_OBJECT_TYPE("network", network_object_methods);
+
+struct ubus_object network_object = {
+	.name = "router.network",
+	.type = &network_object_type,
+	.methods = network_object_methods,
+	.n_methods = ARRAY_SIZE(network_object_methods),
+};

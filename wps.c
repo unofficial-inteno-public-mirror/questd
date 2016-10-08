@@ -213,4 +213,11 @@ struct ubus_method wps_object_methods[] = {
 
 struct ubus_object_type wps_object_type =
 	UBUS_OBJECT_TYPE("wps", wps_object_methods);
+
+struct ubus_object wps_object = {
+	.name = "router.wps",
+	.type = &wps_object_type,
+	.methods = wps_object_methods,
+	.n_methods = ARRAY_SIZE(wps_object_methods),
+};
 #endif /* IOPSYS_BROADCOM */

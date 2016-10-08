@@ -240,4 +240,3 @@ dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_jif)
 
 	router->cpu = cpu;
 }
-

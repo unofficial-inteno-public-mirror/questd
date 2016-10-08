@@ -198,3 +198,10 @@ struct ubus_method usb_object_methods[] = {
 };
 
 struct ubus_object_type usb_object_type = UBUS_OBJECT_TYPE("usb", usb_object_methods);
+
+struct ubus_object usb_object = {
+	.name = "router.usb",
+	.type = &usb_object_type,
+	.methods = usb_object_methods,
+	.n_methods = ARRAY_SIZE(usb_object_methods),
+};

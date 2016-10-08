@@ -23,7 +23,42 @@ static const struct blobmsg_policy password_policy[__P_MAX] = {
 	[P_CURPASSWORD] = { .name = "curpass", .type = BLOBMSG_TYPE_STRING }
 };
 
+enum {
+	BANK,
+	__BANK_MAX
+};
+
+static const struct blobmsg_policy bank_policy[__BANK_MAX] = {
+	[BANK]     = { .name = "bank",     .type = BLOBMSG_TYPE_INT32 },
+};
+
 static struct blob_buf bb;
+
+static Router router;
+static Memory memory;
+static Key keys;
+static Spec spec;
+
+static jiffy_counts_t cur_jif = {0};
+static jiffy_counts_t prev_jif = {0};
+
+int collect_system_info(void) {
+	dump_keys(&keys);
+	dump_specs(&spec);
+	dump_static_router_info(&router);
+	dump_hostname(&router);
+}
+
+int get_cpu_usage(int p) {
+	if (p == 0)
+		get_jif_val(&prev_jif);
+	else
+		get_jif_val(&cur_jif);
+}
+
+int calculate_cpu_usage(void) {
+	dump_cpuinfo(&router, &prev_jif, &cur_jif);
+}
 
 static int
 errno_status(void)
@@ -252,10 +287,153 @@ quest_router_processes(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+int
+quest_router_info(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	void *t, *m, *k, *s;
+	dump_sysinfo(&router, &memory);
+
+	blob_buf_init(&bb, 0);
+
+	t = blobmsg_open_table(&bb, "system");
+	blobmsg_add_string(&bb, "name", router.name);
+	blobmsg_add_string(&bb, "hardware", router.hardware);
+	blobmsg_add_string(&bb, "model", router.model);
+	blobmsg_add_string(&bb, "boardid", router.boardid);
+	blobmsg_add_string(&bb, "firmware", router.firmware);
+	blobmsg_add_string(&bb, "brcmver", router.brcmver);
+	blobmsg_add_string(&bb, "filesystem", router.filesystem);
+	blobmsg_add_string(&bb, "socmod", router.socmod);
+	blobmsg_add_string(&bb, "socrev", router.socrev);
+	blobmsg_add_string(&bb, "cfever", router.cfever);
+	blobmsg_add_string(&bb, "kernel", router.kernel);
+	blobmsg_add_string(&bb, "basemac", router.basemac);
+	blobmsg_add_string(&bb, "serialno", router.serialno);
+	blobmsg_add_u32(&bb, "localtime", router.localtime);
+	blobmsg_add_string(&bb, "date", router.date);
+	blobmsg_add_string(&bb, "uptime", router.uptime);
+	blobmsg_add_u32(&bb, "procs", router.procs);
+	blobmsg_add_u32(&bb, "cpu_per", router.cpu);
+	blobmsg_close_table(&bb, t);
+
+	m =blobmsg_open_table(&bb, "memoryKB");
+	blobmsg_add_u64(&bb, "total", memory.total);
+	blobmsg_add_u64(&bb, "used", memory.used);
+	blobmsg_add_u64(&bb, "free", memory.free);
+	blobmsg_add_u64(&bb, "shared", memory.shared);
+	blobmsg_add_u64(&bb, "buffers", memory.buffers);
+	blobmsg_close_table(&bb, m);
+
+	k = blobmsg_open_table(&bb, "keys");
+	blobmsg_add_string(&bb, "auth", keys.auth);
+	blobmsg_add_string(&bb, "des", keys.des);
+	blobmsg_add_string(&bb, "wpa", keys.wpa);
+	blobmsg_close_table(&bb, k);
+
+	s = blobmsg_open_table(&bb, "specs");
+	blobmsg_add_u8(&bb, "wifi", spec.wifi);
+	blobmsg_add_u8(&bb, "adsl", spec.adsl);
+	blobmsg_add_u8(&bb, "vdsl", spec.vdsl);
+	blobmsg_add_u8(&bb, "voice", spec.voice);
+	blobmsg_add_u32(&bb, "voice_ports", spec.vports);
+	blobmsg_add_u32(&bb, "eth_ports", spec.eports);
+	blobmsg_close_table(&bb, s);
+
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+int
+quest_router_filesystem(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	void *a, *t;
+	FILE *df;
+	char line[128];
+	char name[64];
+	char mounted_on[128];
+	char use_per[5];
+	int blocks, used, available;
+
+	blob_buf_init(&bb, 0);
+	a = blobmsg_open_array(&bb, "filesystem");
+	if ((df = popen("df", "r"))) {
+		while(fgets(line, sizeof(line), df) != NULL)
+		{
+			remove_newline(line);
+			single_space(line);
+			if (sscanf(line, "%s %d %d %d %s %s", name, &blocks, &used, &available, use_per, mounted_on) == 6) {
+				use_per[strlen(use_per)-1] = '\0';
+				t = blobmsg_open_table(&bb, "");
+				blobmsg_add_string(&bb, "name", name);
+				blobmsg_add_u32(&bb, "1kblocks", blocks);
+				blobmsg_add_u32(&bb, "used", used);
+				blobmsg_add_u32(&bb, "available", available);
+				blobmsg_add_u32(&bb, "use_pre", atoi(use_per));
+				blobmsg_add_string(&bb, "mounted_on", mounted_on);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(df);
+	}
+	blobmsg_close_array(&bb, a);
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
+int
+quest_memory_bank(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+	struct blob_attr *tb[__BANK_MAX];
+	int bank;
+	char this_fw[64];
+	char other_fw[64];
+
+	blobmsg_parse(bank_policy, __BANK_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (tb[BANK]) {
+		bank = blobmsg_get_u32(tb[BANK]);
+		if (bank == 0 || bank == 1)
+			runCmd("brcm_fw_tool set -u %d", bank);
+		else
+			return UBUS_STATUS_INVALID_ARGUMENT;
+	} else {
+
+		bank = atoi(chrCmd("cat /proc/nvram/Bootline | awk '{print$8}' | cut -d'=' -f2"));
+		strncpy(this_fw, chrCmd("cat /tmp/this_bank_iopver"), 64);
+		strncpy(other_fw, chrCmd("cat /tmp/other_bank_iopver"), 64);
+
+		blob_buf_init(&bb, 0);
+		blobmsg_add_u32(&bb, "code", bank);
+		blobmsg_add_string(&bb, "memory_bank", (bank)?"previous":"current");
+		blobmsg_add_string(&bb, "current_bank_firmware", this_fw);
+		blobmsg_add_string(&bb, "previous_bank_firmware", other_fw);
+		ubus_send_reply(ctx, req, bb.head);
+	}
+
+	return 0;
+}
+
 struct ubus_method system_object_methods[] = {
+	UBUS_METHOD_NOARG("fs", quest_router_filesystem),
+	UBUS_METHOD_NOARG("info", quest_router_info),
 	UBUS_METHOD_NOARG("logs", quest_router_logread),
+	UBUS_METHOD("memory_bank", quest_memory_bank, bank_policy),
 	UBUS_METHOD_NOARG("processes", quest_router_processes),
 	UBUS_METHOD("password_set", quest_password_set, password_policy),
 };
 
 struct ubus_object_type system_object_type = UBUS_OBJECT_TYPE("system", system_object_methods);
+
+struct ubus_object system_object = {
+	.name = "router.system",
+	.type = &system_object_type,
+	.methods = system_object_methods,
+	.n_methods = ARRAY_SIZE(system_object_methods),
+};

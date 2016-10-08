@@ -355,3 +355,10 @@ struct ubus_method dsl_object_methods[] = {
 };
 
 struct ubus_object_type dsl_object_type = UBUS_OBJECT_TYPE("dsl", dsl_object_methods);
+
+struct ubus_object dsl_object = {
+	.name = "router.dsl",
+	.type = &dsl_object_type,
+	.methods = dsl_object_methods,
+	.n_methods = ARRAY_SIZE(dsl_object_methods),
+};

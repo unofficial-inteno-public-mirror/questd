@@ -320,3 +320,10 @@ struct ubus_method port_object_methods[] = {
 
 struct ubus_object_type port_object_type =
 	UBUS_OBJECT_TYPE("port", port_object_methods);
+
+struct ubus_object port_object = {
+	.name = "router.port",
+	.type = &port_object_type,
+	.methods = port_object_methods,
+	.n_methods = ARRAY_SIZE(port_object_methods),
+};
