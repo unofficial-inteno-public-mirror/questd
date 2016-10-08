@@ -127,8 +127,8 @@ ip_conntrack_table(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 struct ubus_method net_object_methods[] = {
-	UBUS_METHOD_NOARG("igmp_snooping_table", igmp_snooping_table),
-	UBUS_METHOD_NOARG("ip_conntrack_table", ip_conntrack_table),
+	UBUS_METHOD_NOARG("igmp_snooping", igmp_snooping_table),
+	UBUS_METHOD_NOARG("ip_conntrack", ip_conntrack_table),
 };
 
 struct ubus_object_type net_object_type =
