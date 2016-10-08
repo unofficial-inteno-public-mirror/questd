@@ -1,5 +1,5 @@
 /*
- * dslstats -- collects adsl information for questd
+ * dsl -- provides router.dsl object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,7 +20,10 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
+#include "dsl.h"
 #include "tools.h"
 
 #define DSLDEBUG(...) {} //printf(__VA_ARGS__)
@@ -330,7 +333,6 @@ void dslstats_to_blob_buffer(struct dsl_stats *self, struct blob_buf *b){
 	blobmsg_close_table(b, t);
 }
 
-
 int dslstats_rpc(struct ubus_context *ctx, struct ubus_object *obj, 
 	struct ubus_request_data *req, const char *method, 
 	struct blob_attr *msg){
@@ -349,3 +351,16 @@ int dslstats_rpc(struct ubus_context *ctx, struct ubus_object *obj,
 	
 	return 0; 	
 }
+
+struct ubus_method dsl_object_methods[] = {
+	UBUS_METHOD_NOARG("stats", dslstats_rpc),
+};
+
+struct ubus_object_type dsl_object_type = UBUS_OBJECT_TYPE("dsl", dsl_object_methods);
+
+struct ubus_object dsl_object = {
+	.name = "router.dsl",
+	.type = &dsl_object_type,
+	.methods = dsl_object_methods,
+	.n_methods = ARRAY_SIZE(dsl_object_methods),
+};

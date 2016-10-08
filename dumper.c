@@ -1,5 +1,5 @@
 /*
- * dumper -- collects router device and system info for questd
+ * dumper -- contains functions to collect router system info
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,7 +20,14 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
+#include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <sys/sysinfo.h>
+
+#include <uci.h>
+
+#include "system.h"
 #include "tools.h"
 #include "uboot_env.h"
 
@@ -240,4 +247,3 @@ dump_cpuinfo(Router *router, jiffy_counts_t *prev_jif, jiffy_counts_t *cur_jif)
 
 	router->cpu = cpu;
 }
-

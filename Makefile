@@ -2,10 +2,10 @@ CC		= gcc
 CFLAGS		= -g -Wall $(QUESTD_CLFAGS)
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
 LOCLIBS		= 
-OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dslstats.o tools.o broadcom.o uboot_env.o
-SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dslstats.c tools.c broadcom.c uboot_env.c
+OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dsl.o tools.o broadcom.o uboot_env.o dropbear.o wps.o system.o net.o network.o wireless.o
+SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c uboot_env.c dropbear.c wps.c system.c net.c network.c wireless.c
 LIBSRCS		= 
-ISRCS		= questd.h tools.h broadcom.h
+ISRCS		= network.h port.h wireless.h dsl.h tools.h broadcom.h
 
 all: questd wificontrol
 

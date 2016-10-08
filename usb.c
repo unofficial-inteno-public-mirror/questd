@@ -1,5 +1,5 @@
 /*
- * usb -- collects usb info for questd
+ * network -- provides router.usb object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,10 +20,17 @@
  * 02110-1301 USA
  */
 
-#include <string.h>
+#include <dirent.h>
 
-#include "questd.h"
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
+#include "usb.h"
 #include "tools.h"
+
+static struct blob_buf bb;
+
+static USB usb[MAX_USB];
 
 char*
 get_usb_infos(char *usbno, char *info) {
@@ -121,3 +128,80 @@ dump_usb_info(USB *usb, char *usbno)
 		usb->size = get_usb_size(usb->device);
 	}
 }
+
+static void
+router_dump_usbs(struct blob_buf *b)
+{
+	DIR *dir;
+	struct dirent *ent;
+	void *t;
+	int uno = 0;
+
+	memset(usb, '\0', sizeof(usb));
+	if ((dir = opendir ("/sys/bus/usb/devices")) != NULL) {
+		while ((ent = readdir (dir)) != NULL) {
+			if(uno >= MAX_USB) break;
+			if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
+				continue;
+			if(strchr(ent->d_name, ':') || strstr(ent->d_name, "usb"))
+				continue;
+
+			dump_usb_info(&usb[uno], ent->d_name);
+
+			if(strlen(usb[uno].product) < 1)
+				continue;
+
+			t = blobmsg_open_table(b, usb[uno].name);
+			blobmsg_add_string(b, "idproduct", usb[uno].idproduct);
+			blobmsg_add_string(b, "idvendor", usb[uno].idvendor);
+			blobmsg_add_string(b, "product", usb[uno].product);
+			blobmsg_add_string(b, "speed", usb[uno].speed);
+			if (usb[uno].maxchild && strcmp(usb[uno].maxchild, "0")) {
+				blobmsg_add_u32(b, "maxchild", atoi(usb[uno].maxchild));
+			}
+			else {
+				blobmsg_add_string(b, "manufacturer", usb[uno].manufacturer);
+				blobmsg_add_string(b, "serial", usb[uno].serial);
+				if(strlen(usb[uno].device) > 1) {
+					blobmsg_add_string(b, "device", usb[uno].device);
+					blobmsg_add_u64(b, "size", usb[uno].size);
+					blobmsg_add_string(b, "mntdir", usb[uno].mount);
+				}
+			}
+			if(strlen(usb[uno].netdevice) > 2) {
+				blobmsg_add_string(b, "netdevice", usb[uno].netdevice);
+				blobmsg_add_string(b, "description", usb[uno].desc);
+			}
+			blobmsg_close_table(b, t);
+			uno++;
+		}
+		closedir(dir);
+	} else {
+		perror ("Could not open /sys/bus/usb/devices directory");
+	}
+}
+
+static int
+quest_router_usbs(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	blob_buf_init(&bb, 0);
+	router_dump_usbs(&bb);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
+struct ubus_method usb_object_methods[] = {
+	UBUS_METHOD_NOARG("status", quest_router_usbs),
+};
+
+struct ubus_object_type usb_object_type = UBUS_OBJECT_TYPE("usb", usb_object_methods);
+
+struct ubus_object usb_object = {
+	.name = "router.usb",
+	.type = &usb_object_type,
+	.methods = usb_object_methods,
+	.n_methods = ARRAY_SIZE(usb_object_methods),
+};

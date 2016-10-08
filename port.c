@@ -1,5 +1,5 @@
 /*
- * port -- collects port info for questd
+ * port -- provides router.port object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,15 +20,27 @@
  * 02110-1301 USA
  */
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <linux/if_bridge.h>
-#include <errno.h>
+#include <stdlib.h>
 
-#include "questd.h"
+#include <linux/if_bridge.h>
+
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
+#include "network.h"
+#include "port.h"
 #include "tools.h"
 
-#define CHUNK		128
+enum {
+	PORT,
+	__PORT_MAX
+};
+
+static const struct blobmsg_policy port_policy[__PORT_MAX] = {
+	[PORT] =	{ .name = "port",	.type = BLOBMSG_TYPE_STRING }
+};
+
+static struct blob_buf bb;
 
 static long
 get_port_stat(char *dev, char *stat)
@@ -276,3 +288,42 @@ get_clients_onport(char *bridge, int portno)
 
 	return tmpmac;
 }
+
+static int
+quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
+			struct ubus_request_data *req, const char *method,
+			struct blob_attr *msg)
+{
+	char linkspeed[64] = {0};
+	struct blob_attr *tb[__PORT_MAX];
+	int ret;
+
+	blobmsg_parse(port_policy, __PORT_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!tb[PORT])
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	ret = get_port_speed(linkspeed, (char*)blobmsg_data(tb[PORT]));
+	if(ret >= 0){
+		blob_buf_init(&bb, 0);
+		blobmsg_add_string(&bb, "type", (ret)?"SFP":"Ethernet");
+		blobmsg_add_string(&bb, "speed", linkspeed);
+		ubus_send_reply(ctx, req, bb.head);
+		return 0;
+	}
+	return UBUS_STATUS_INVALID_ARGUMENT;
+}
+
+struct ubus_method port_object_methods[] = {
+	UBUS_METHOD("status", quest_portinfo, port_policy),
+};
+
+struct ubus_object_type port_object_type =
+	UBUS_OBJECT_TYPE("port", port_object_methods);
+
+struct ubus_object port_object = {
+	.name = "router.port",
+	.type = &port_object_type,
+	.methods = port_object_methods,
+	.n_methods = ARRAY_SIZE(port_object_methods),
+};

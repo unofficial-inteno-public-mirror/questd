@@ -1,6 +1,28 @@
+/*
+ * wificontrol -- wifi control utility for Inteno routers
+ *
+ * Copyright (C) 2016 Inteno Broadband Technology AB. All rights reserved.
+ *
+ * Author: sukru.senli@inteno.se
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ */
  
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -9,12 +31,15 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <fcntl.h>
-
-#include "questd.h"
+#include <sys/wait.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PORT 9876
 #define BUF_SIZE 2000
 #define CLADDR_LEN 100
+
+extern bool arping(const char *targetIP, char *device, int toms);
 
 static int client_connected = 0;
 static pthread_t tid;
