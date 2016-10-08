@@ -45,6 +45,7 @@ enum {
 
 static const struct blobmsg_policy network_policy[__NETWORK_MAX] = {
 	[NETWORK_NAME] = { .name = "network", .type = BLOBMSG_TYPE_STRING },
+	[FAMILY] = { .name = "family", .type = BLOBMSG_TYPE_INT32 },
 };
 
 static const struct blobmsg_policy lease_policy[__NETWORK_MAX] = {
