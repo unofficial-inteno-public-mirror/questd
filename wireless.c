@@ -1,5 +1,5 @@
 /*
- * wireless -- collects wireless info for questd
+ * network -- provides router.wireless object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,12 +20,15 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
-#include "network.h"
-#include "wireless.h"
-#include "tools.h"
-
 #include <sys/stat.h>
+
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+#include <uci.h>
+
+#include "network.h"
+#include "tools.h"
+#include "wireless.h"
 
 enum {
 	RADIO_NAME,
@@ -227,7 +230,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 
 	Client clients[MAX_CLIENT];
 
-	get_clients(&clients);
+	get_network_clients(&clients);
 
 	for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 		if (!(clients[i].wireless))
@@ -487,50 +490,6 @@ quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 		blobmsg_close_table(&bb, t);
 	}
 
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-static int
-quest_router_wireless_stas(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	struct blob_attr *tb[__WL_MAX];
-	char lookup[8];
-	bool nthere = false;
-	int i;
-
-	blobmsg_parse(wl_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[RADIO_NAME]) && !(tb[VIF_NAME]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if (tb[RADIO_NAME] && strchr(blobmsg_data(tb[RADIO_NAME]), '.'))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	memset(lookup, '\0', sizeof(lookup));
-	if (tb[VIF_NAME])
-		strcpy(lookup, blobmsg_data(tb[VIF_NAME]));
-	else
-		strcpy(lookup, blobmsg_data(tb[RADIO_NAME]));
-
-	for (i=0; i < MAX_VIF && wireless[i].device; i++)
-		if(!strcmp(wireless[i].vif, lookup)) {
-			nthere = true;
-			break;
-		}
-
-	if (!(nthere))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-
-	blob_buf_init(&bb, 0);
-	if (tb[RADIO_NAME])
-		router_dump_stas(&bb, blobmsg_data(tb[RADIO_NAME]), false);
-	else
-		router_dump_stas(&bb, blobmsg_data(tb[VIF_NAME]), true);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;

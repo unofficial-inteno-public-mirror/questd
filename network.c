@@ -1,5 +1,5 @@
 /*
- * network -- collects network info for questd
+ * network -- provides router.network object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,10 +20,22 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
-#include "wireless.h"
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+#include <uci.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "network.h"
+#include "port.h"
 #include "tools.h"
+#include "wireless.h"
+
+extern void recalc_sleep_time(bool calc, int toms);
+extern bool arping(const char *targetIP, char *device, int toms);
+extern bool ndisc6(char *ip6addr, char *ifname, char *macaddr);
+extern void clear_macaddr(void);
 
 enum {
 	NETWORK_NAME,
@@ -90,7 +102,7 @@ init_package(const char *config)
 }
 
 void
-get_clients(Client *clnt)
+get_network_clients(Client *clnt)
 {
 	memcpy(clnt, clients, sizeof(clients));
 }
@@ -1160,8 +1172,6 @@ struct ubus_method network_object_methods[] = {
 	UBUS_METHOD("leases", quest_network_leases, lease_policy),
 	UBUS_METHOD("ports", quest_router_ports, network_policy),
 	UBUS_METHOD_NOARG("reload", quest_network_reload),
-	UBUS_METHOD_NOARG("igmp_snooping_table", igmp_snooping_table),
-	UBUS_METHOD_NOARG("ip_conntrack_table", ip_conntrack_table),
 };
 
 struct ubus_object_type network_object_type =

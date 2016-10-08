@@ -1,5 +1,5 @@
 /*
- * usb -- collects usb info for questd
+ * network -- provides router.usb object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,13 +20,13 @@
  * 02110-1301 USA
  */
 
-#include <string.h>
-
-#include "questd.h"
-#include "tools.h"
-#include "usb.h"
-
 #include <dirent.h>
+
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
+#include "usb.h"
+#include "tools.h"
 
 static struct blob_buf bb;
 

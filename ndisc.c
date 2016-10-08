@@ -43,8 +43,8 @@
 
 #include <netinet/in.h>
 #include <netinet/icmp6.h>
+
 #include "tools.h"
-#include "questd.h"
 
 #ifndef IPV6_RECVHOPLIMIT
 /* Using obsolete RFC 2292 instead of RFC 3542 */ 

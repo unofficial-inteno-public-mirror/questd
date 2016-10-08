@@ -1,5 +1,5 @@
 /*
- * dsl -- collects adsl information for questd
+ * dsl -- provides router.dsl object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,9 +20,11 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
-#include "tools.h"
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
 #include "dsl.h"
+#include "tools.h"
 
 #define DSLDEBUG(...) {} //printf(__VA_ARGS__)
 

@@ -1,3 +1,6 @@
+#define MAX_RADIO	4
+#define MAX_VIF		8
+
 typedef struct {
 	const char *vif;
 	const char *device;
@@ -69,4 +72,7 @@ typedef struct {
 	bool htc_vht_cap;
 } VHTCaps;
 
-void wireless_assoclist();
+void wireless_assoclist(void);
+void load_wireless(void);
+bool wireless_sta(Client *clnt);
+bool wireless_sta6(Client6 *clnt);

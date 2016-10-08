@@ -1,5 +1,5 @@
 /*
- * dropbear -- contains functions to handle dropbear SSH keys
+ * dropbear -- provides router.dropbear object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,7 +20,14 @@
  * 02110-1301 USA
  */
 
-#include "questd.h"
+#include <stdio.h>
+#include <ctype.h>
+#include <unistd.h>
+
+#include <limits.h>
+
+#include <libubox/blobmsg.h>
+#include <libubus.h>
 
 enum {
 	SSH_PATH,

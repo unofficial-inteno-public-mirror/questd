@@ -1,14 +1,38 @@
-#include "questd.h"
-#include "tools.h"
+/*
+ * system -- provides router.system object of questd
+ *
+ * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
+ *
+ * Author: sukru.senli@inteno.se
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ */
 
-#include <ctype.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <time.h>
-#include <stdio.h>
-#include <dirent.h>
-#include <shadow.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <crypt.h>
+#include <shadow.h>
+#include <fcntl.h>
+
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
+#include "system.h"
+#include "tools.h"
 
 enum {
 	P_USER,
@@ -42,21 +66,21 @@ static Spec spec;
 static jiffy_counts_t cur_jif = {0};
 static jiffy_counts_t prev_jif = {0};
 
-int collect_system_info(void) {
+void collect_system_info(void) {
 	dump_keys(&keys);
 	dump_specs(&spec);
 	dump_static_router_info(&router);
 	dump_hostname(&router);
 }
 
-int get_cpu_usage(int p) {
+void get_cpu_usage(int p) {
 	if (p == 0)
 		get_jif_val(&prev_jif);
 	else
 		get_jif_val(&cur_jif);
 }
 
-int calculate_cpu_usage(void) {
+void calculate_cpu_usage(void) {
 	dump_cpuinfo(&router, &prev_jif, &cur_jif);
 }
 

@@ -1,3 +1,5 @@
+#define MAX_USB		18
+
 typedef struct {
 	char mount[64];
 	char product[64];

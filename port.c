@@ -1,5 +1,5 @@
 /*
- * port -- collects port info for questd
+ * port -- provides router.port object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -20,16 +20,16 @@
  * 02110-1301 USA
  */
 
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <stdlib.h>
+
 #include <linux/if_bridge.h>
-#include <errno.h>
 
-#include "questd.h"
+#include <libubox/blobmsg.h>
+#include <libubus.h>
+
 #include "network.h"
+#include "port.h"
 #include "tools.h"
-
-#define CHUNK		128
 
 enum {
 	PORT,

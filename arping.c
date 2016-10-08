@@ -25,10 +25,12 @@
 #include <net/ethernet.h>
 #include <net/if_arp.h>
 #include <netinet/ether.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <string.h>
-
-#include "questd.h"
-
+#include <stdbool.h>
+#include <unistd.h>
 
 struct in_addr src;
 struct in_addr dst;

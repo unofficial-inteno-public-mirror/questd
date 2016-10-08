@@ -1,3 +1,12 @@
+#define MAX_NETWORK	16
+#define MAX_CLIENT	96
+#define MAX_CLIENT_PER_PORT 64
+#define MAX_PORT	16
+
+#ifdef IOPSYS_BROADCOM
+#include "broadcom.h"
+#endif
+
 typedef struct {
 	bool exists;
 	bool connected;
@@ -66,13 +75,6 @@ typedef struct {
 void populate_clients();
 void load_networks();
 void load_wireless();
-void get_clients(Client *clnt);
-void clear_clients();
-
-int igmp_snooping_table(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg);
-
-int ip_conntrack_table(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg);
+void get_network_clients(Client *clnt);
+void get_port_name(Port *port);
+void get_port_stats(Port *port);

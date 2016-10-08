@@ -20,26 +20,21 @@
  * 02110-1301 USA
  */
 
+
+#include <unistd.h>
+#include <stdbool.h>
+#include <pthread.h>
+
 #include <libubox/blobmsg.h>
 #include <libubox/blobmsg_json.h>
 #include <libubox/uloop.h>
 #include <libubox/ustream.h>
 #include <libubox/utils.h>
-
 #include <libubus.h>
 
-#include <ctype.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <time.h>
-#include <stdio.h>
-#include <dirent.h>
-#include <shadow.h>
-#include <unistd.h>
-
-#include "questd.h"
-#include "tools.h"
 #include "network.h"
+#include "system.h"
+#include "tools.h"
 
 #define DEFAULT_SLEEP	5000000
 
@@ -103,6 +98,7 @@ static struct ubus_object router_object = {
 	.n_methods = ARRAY_SIZE(router_object_methods),
 };
 
+extern struct ubus_object net_object;
 extern struct ubus_object network_object;
 #if IOPSYS_BROADCOM
 extern struct ubus_object wireless_object;
@@ -172,6 +168,7 @@ quest_ubus_init(const char *path)
 	quest_add_object(&system_object);
 	quest_add_object(&dropbear_object);
 	quest_add_object(&usb_object);
+	quest_add_object(&net_object);
 	quest_add_object(&network_object);
 #if IOPSYS_BROADCOM
 	quest_add_object(&dsl_object);
