@@ -32,24 +32,23 @@
 #include <libubox/utils.h>
 #include <libubus.h>
 
+#include "questd.h"
 #include "network.h"
 #include "system.h"
 #include "tools.h"
 
-#define DEFAULT_SLEEP	5000000
-
 static struct ubus_context *ctx = NULL;
 static const char *ubus_path;
 
-pthread_t tid[1];
-pthread_mutex_t lock;
-static long sleep_time = DEFAULT_SLEEP;
+static pthread_t tid[1];
+static pthread_mutex_t lock;
+static long sleep_time = INTERVAL;
 
 void recalc_sleep_time(bool calc, int toms)
 {
 	long dec = toms * 1000;
 	if (!calc)
-		sleep_time = DEFAULT_SLEEP;
+		sleep_time = INTERVAL;
 	else if(sleep_time >= dec)
 		sleep_time -= dec;
 }
@@ -61,54 +60,6 @@ system_fd_set_cloexec(int fd)
 	fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
 #endif
 }
-
-extern int
-quest_router_info(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg);
-
-extern int
-quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg);
-
-extern int
-quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg);
-
-static struct ubus_method router_object_methods[] = {
-	/* moved to router.system object */
-	/* still here for backwards compatibility */
-	UBUS_METHOD_NOARG("info", quest_router_info),
-
-	/* moved to router.network object */
-	/* still here for backwards compatibility */
-	UBUS_METHOD_NOARG("networks", quest_router_networks),
-	UBUS_METHOD_NOARG("clients", quest_router_clients),
-};
-
-static struct ubus_object_type router_object_type =
-	UBUS_OBJECT_TYPE("router", router_object_methods);
-
-static struct ubus_object router_object = {
-	.name = "router",
-	.type = &router_object_type,
-	.methods = router_object_methods,
-	.n_methods = ARRAY_SIZE(router_object_methods),
-};
-
-extern struct ubus_object net_object;
-extern struct ubus_object network_object;
-#if IOPSYS_BROADCOM
-extern struct ubus_object wireless_object;
-extern struct ubus_object wps_object;
-extern struct ubus_object dsl_object;
-extern struct ubus_object port_object;
-#endif
-extern struct ubus_object system_object;
-extern struct ubus_object dropbear_object;
-extern struct ubus_object usb_object;
 
 static void
 quest_ubus_add_fd(void)
@@ -164,7 +115,6 @@ quest_ubus_init(const char *path)
 	ctx->connection_lost = quest_ubus_connection_lost;
 	quest_ubus_add_fd();
 
-	quest_add_object(&router_object);
 	quest_add_object(&system_object);
 	quest_add_object(&dropbear_object);
 	quest_add_object(&usb_object);
