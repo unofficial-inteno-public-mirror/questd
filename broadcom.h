@@ -684,6 +684,7 @@ int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
 void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
 int wl_get_wpa_auth(const char *ifname, char *wpa);
+int wl_get_wsec(const char *ifname, int *buf);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
 

@@ -396,6 +396,9 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	char wpa_auth[64] = {0};
 	wl_get_wpa_auth(wldev, wpa_auth);
 
+	int wsec;
+	wl_get_wsec(wldev, &wsec);
+
 	int rate;
 	wl_get_bitrate(wldev, &rate);
 
@@ -407,7 +410,7 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "radio", isup);
 	blobmsg_add_string(&bb, "ssid", ssid);
 	blobmsg_add_string(&bb, "bssid", bssid);
-	blobmsg_add_string(&bb, "encryption", wpa_auth);
+	blobmsg_add_string(&bb, "encryption", (wsec == 1) ? "WEP" : wpa_auth);
 	blobmsg_add_u32(&bb, "frequency", (band==1)?5:2);
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
@@ -488,6 +491,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	void *t, *c;
 	int i, j;
 	int isup, band, rate, bw, channel, noise;
+	char maxrate[10];
 	char bitrate[10];
 	char frequency[10];
 	char bandwidth[10];
@@ -508,6 +512,22 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
+
+		if (band == 1) {
+			if (bw == 160)
+				strcpy(maxrate, "2600 Mbps");
+			else if (bw == 80)
+				strcpy(maxrate, "1300 Mbps");
+			else if (bw == 40)
+				strcpy(maxrate, "600 Mbps");
+			else
+				strcpy(maxrate, "288.5 Mbps");
+		} else {
+			if (bw == 40)
+				strcpy(maxrate, "300 Mbps");
+			else
+				strcpy(maxrate, "144 Mbps");
+		}
 
 		t = blobmsg_open_table(&bb, radio[i].name);
 		blobmsg_add_u8(&bb, "isup", isup);
