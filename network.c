@@ -39,6 +39,7 @@ extern void clear_macaddr(void);
 
 enum {
 	NETWORK_NAME,
+	FAMILY,
 	__NETWORK_MAX,
 };
 
@@ -46,14 +47,12 @@ static const struct blobmsg_policy network_policy[__NETWORK_MAX] = {
 	[NETWORK_NAME] = { .name = "network", .type = BLOBMSG_TYPE_STRING },
 };
 
-enum {
-	LEASENET,
-	FAMILY,
-	__LEASE_MAX,
+static const struct blobmsg_policy lease_policy[__NETWORK_MAX] = {
+	[NETWORK_NAME] = { .name = "network", .type = BLOBMSG_TYPE_STRING },
+	[FAMILY] = { .name = "family", .type = BLOBMSG_TYPE_INT32 },
 };
 
-static const struct blobmsg_policy lease_policy[__LEASE_MAX] = {
-	[LEASENET] = { .name = "network", .type = BLOBMSG_TYPE_STRING },
+static const struct blobmsg_policy family_policy[__NETWORK_MAX] = {
 	[FAMILY] = { .name = "family", .type = BLOBMSG_TYPE_INT32 },
 };
 
@@ -1022,7 +1021,7 @@ populate_clients()
 	lease_time_count++;
 }
 
-int
+static int
 quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -1049,44 +1048,40 @@ quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-int
+static int
 quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
+	struct blob_attr *tb[__NETWORK_MAX];
+
+	blobmsg_parse(family_policy, __NETWORK_MAX, tb, blob_data(msg), blob_len(msg));
+
 	blob_buf_init(&bb, 0);
-	router_dump_clients(&bb, false, NULL);
+
+	if (tb[FAMILY] && blobmsg_get_u32(tb[FAMILY]) == 6)
+		router_dump_clients6(&bb, false);
+	else
+		router_dump_clients(&bb, false, NULL);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
 }
 
-int
-quest_router_clients6(struct ubus_context *ctx, struct ubus_object *obj,
-		  struct ubus_request_data *req, const char *method,
-		  struct blob_attr *msg)
-{
-	blob_buf_init(&bb, 0);
-	router_dump_clients6(&bb, false);
-	ubus_send_reply(ctx, req, bb.head);
-
-	return 0;
-}
-
-int
+static int
 quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__LEASE_MAX];
+	struct blob_attr *tb[__NETWORK_MAX];
 	bool nthere = false;
 	int i;
 
-	blobmsg_parse(lease_policy, __LEASE_MAX, tb, blob_data(msg), blob_len(msg));
+	blobmsg_parse(lease_policy, __NETWORK_MAX, tb, blob_data(msg), blob_len(msg));
 
-	if (tb[LEASENET]) {
+	if (tb[NETWORK_NAME]) {
 		for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
-			if(!strcmp(network[i].name, blobmsg_data(tb[LEASENET])))
+			if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
 				nthere = true;
 
 		if (!(nthere))
@@ -1094,7 +1089,7 @@ quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
 	}
 
 	blob_buf_init(&bb, 0);
-	network_dump_leases(&bb, (tb[LEASENET])?blobmsg_data(tb[LEASENET]):NULL, (tb[FAMILY])?blobmsg_get_u32(tb[FAMILY]):4);
+	network_dump_leases(&bb, (tb[NETWORK_NAME])?blobmsg_data(tb[NETWORK_NAME]):NULL, (tb[FAMILY])?blobmsg_get_u32(tb[FAMILY]):4);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
