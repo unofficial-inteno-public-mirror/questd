@@ -31,13 +31,11 @@
 #include "wireless.h"
 
 enum {
-	RADIO_NAME,
 	VIF_NAME,
 	__WL_MAX,
 };
 
-static const struct blobmsg_policy wl_policy[__WL_MAX] = {
-	[RADIO_NAME] = { .name = "radio", .type = BLOBMSG_TYPE_STRING },
+static const struct blobmsg_policy vif_policy[__WL_MAX] = {
 	[VIF_NAME] = { .name = "vif", .type = BLOBMSG_TYPE_STRING },
 };
 
@@ -359,7 +357,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 
 
 static int
-quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
+quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
@@ -367,21 +365,14 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	struct stat s;
 	char syspath[32];
 	char wldev[8];
-	//int i;
 
-	blobmsg_parse(wl_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
+	blobmsg_parse(vif_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
 
-	if (!(tb[RADIO_NAME]) && !(tb[VIF_NAME]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if (tb[RADIO_NAME] && strchr(blobmsg_data(tb[RADIO_NAME]), '.'))
+	if (!(tb[VIF_NAME]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	memset(wldev, '\0', sizeof(wldev));
-	if (tb[VIF_NAME])
-		strcpy(wldev, blobmsg_data(tb[VIF_NAME]));
-	else
-		strcpy(wldev, blobmsg_data(tb[RADIO_NAME]));
+	strcpy(wldev, blobmsg_data(tb[VIF_NAME]));
 
 	if(strncmp(wldev, "wl", 2))
 		return UBUS_STATUS_INVALID_ARGUMENT;
@@ -389,19 +380,6 @@ quest_router_wl(struct ubus_context *ctx, struct ubus_object *obj,
 	snprintf(syspath, 32, "/sys/class/net/%s", wldev);
 	if (stat(syspath, &s))
 		return UBUS_STATUS_INVALID_ARGUMENT;
-
-/*	bool nthere = false;*/
-/*	if (tb[VIF_NAME]) {*/
-/*		for (i=0; i < MAX_VIF && wireless[i].device; i++) {*/
-/*			if(!strcmp(wireless[i].vif, wldev)) {*/
-/*				nthere = true;*/
-/*				break;*/
-/*			}*/
-/*		}*/
-
-/*		if (!(nthere))*/
-/*			return UBUS_STATUS_INVALID_ARGUMENT;*/
-/*	}*/
 
 	int isup;
 	wl_get_isup(wldev, &isup);
@@ -446,8 +424,15 @@ quest_router_stas(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
+	struct blob_attr *tb[__WL_MAX];
+
+	blobmsg_parse(vif_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
+
 	blob_buf_init(&bb, 0);
-	router_dump_stas(&bb, NULL, false);
+	if (tb[VIF_NAME])
+		router_dump_stas(&bb, blobmsg_data(tb[VIF_NAME]), true);
+	else
+		router_dump_stas(&bb, NULL, false);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
@@ -555,8 +540,8 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 struct ubus_method wireless_object_methods[] = {
-	UBUS_METHOD("status", quest_router_wl, wl_policy),
-	UBUS_METHOD_NOARG("stas", quest_router_stas),
+	UBUS_METHOD("status", quest_router_vif_status, vif_policy),
+	UBUS_METHOD("stas", quest_router_stas, vif_policy),
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
 };
