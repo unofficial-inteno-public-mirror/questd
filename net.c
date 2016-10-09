@@ -28,6 +28,49 @@
 static struct blob_buf bb;
 
 int
+arp_table(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *arptable;
+	void *t, *a;
+	char line[512];
+	char ipaddr[24];
+	char macaddr[24];
+	char device [16];
+	char mask[8];
+	char hw[8];
+	char flag[8];
+	char tmp[16];
+
+	if ((arptable = fopen("/proc/net/arp", "r"))) {
+		blob_buf_init(&bb, 0);
+		a = blobmsg_open_array(&bb, "table");
+		while(fgets(line, sizeof(line), arptable) != NULL)
+		{
+			remove_newline(line);
+			if(sscanf(single_space(line), "%s %s %s %s %s %s %s", ipaddr, hw, flag, macaddr, mask, device, tmp) == 6)
+			{
+				t = blobmsg_open_table(&bb, NULL);
+				blobmsg_add_string(&bb,"ipaddr", ipaddr);
+				blobmsg_add_string(&bb,"hw", hw);
+				blobmsg_add_string(&bb,"flags", flag);
+				blobmsg_add_string(&bb,"macaddr", macaddr);
+				blobmsg_add_string(&bb,"mask", mask);
+				blobmsg_add_string(&bb,"device", device);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		fclose(arptable);
+		blobmsg_close_array(&bb, a);
+		ubus_send_reply(ctx, req, bb.head);
+	} else
+		return UBUS_STATUS_NOT_FOUND;
+
+	return 0;
+}
+
+int
 igmp_snooping_table(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -126,9 +169,145 @@ ip_conntrack_table(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+int
+ipv4_routes_table(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *ipv4rtable;
+	void *t, *a;
+	char line[512];
+	char dest[24];
+	char gw[24];
+	char mask [24];
+	char flags[8];
+	char metric[8];
+	char ref[8];
+	char use[8];
+	char iface[16];
+
+	if ((ipv4rtable = popen("route -n | tail -n +3", "r"))) {
+		blob_buf_init(&bb, 0);
+		a = blobmsg_open_array(&bb, "routes");
+		while(fgets(line, sizeof(line), ipv4rtable) != NULL)
+		{
+			remove_newline(line);
+			if(sscanf(single_space(line), "%s %s %s %s %s %s %s %s", dest, gw, mask, flags, metric, ref, use, iface) == 8)
+			{
+				t = blobmsg_open_table(&bb, NULL);
+				blobmsg_add_string(&bb,"destination", dest);
+				blobmsg_add_string(&bb,"gateway", gw);
+				blobmsg_add_string(&bb,"mask", mask);
+				blobmsg_add_string(&bb,"flags", flags);
+				blobmsg_add_string(&bb,"metric", metric);
+				blobmsg_add_string(&bb,"ref", ref);
+				blobmsg_add_string(&bb,"use", use);
+				blobmsg_add_string(&bb,"iface", iface);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(ipv4rtable);
+		blobmsg_close_array(&bb, a);
+		ubus_send_reply(ctx, req, bb.head);
+	} else
+		return UBUS_STATUS_NOT_FOUND;
+
+	return 0;
+}
+
+int
+ipv6_neigh_table(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *ipv6nghtable;
+	void *t, *a;
+	char line[512];
+	char ip6addr[128];
+	char device[16];
+	char macaddr[24];
+	char router[16];
+	char ip6status[16];
+
+	if ((ipv6nghtable = popen("ip -6 neigh", "r"))) {
+		blob_buf_init(&bb, 0);
+		a = blobmsg_open_array(&bb, "neighbors");
+		while(fgets(line, sizeof(line), ipv6nghtable) != NULL)
+		{
+			remove_newline(line);
+			memset(router, '\0', sizeof(router));
+			if(sscanf(single_space(line), "%s dev %s lladdr %s %s %s", ip6addr, device, macaddr, router, ip6status) == 5 ||
+				sscanf(single_space(line), "%s dev %s lladdr %s %s %s", ip6addr, device, macaddr, ip6status) == 4)
+			{
+				t = blobmsg_open_table(&bb, NULL);
+				blobmsg_add_string(&bb,"ip6addr", ip6addr);
+				blobmsg_add_string(&bb,"device", device);
+				blobmsg_add_string(&bb,"macaddr", macaddr);
+				blobmsg_add_u8(&bb,"router", strstr(router, "router")?true:false);
+				blobmsg_add_string(&bb,"ip6status", ip6status);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(ipv6nghtable);
+		blobmsg_close_array(&bb, a);
+		ubus_send_reply(ctx, req, bb.head);
+	} else
+		return UBUS_STATUS_NOT_FOUND;
+
+	return 0;
+}
+
+int
+ipv6_routes_table(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *ipv6rtable;
+	void *t, *a;
+	char line[512];
+	char dest[128];
+	char nhop[128];
+	char flags[8];
+	char metric[8];
+	char ref[8];
+	char use[8];
+	char iface[16];
+
+	if ((ipv6rtable = popen("route -A inet6 | tail -n +3", "r"))) {
+		blob_buf_init(&bb, 0);
+		a = blobmsg_open_array(&bb, "routes");
+		while(fgets(line, sizeof(line), ipv6rtable) != NULL)
+		{
+			remove_newline(line);
+			if(sscanf(single_space(line), "%s %s %s %s %s %s %s", dest, nhop, flags, metric, ref, use, iface) == 7)
+			{
+				t = blobmsg_open_table(&bb, NULL);
+				blobmsg_add_string(&bb,"destination", dest);
+				blobmsg_add_string(&bb,"next_hop", nhop);
+				blobmsg_add_string(&bb,"flags", flags);
+				blobmsg_add_string(&bb,"metric", metric);
+				blobmsg_add_string(&bb,"ref", ref);
+				blobmsg_add_string(&bb,"use", use);
+				blobmsg_add_string(&bb,"iface", iface);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		pclose(ipv6rtable);
+		blobmsg_close_array(&bb, a);
+		ubus_send_reply(ctx, req, bb.head);
+	} else
+		return UBUS_STATUS_NOT_FOUND;
+
+	return 0;
+}
+
 struct ubus_method net_object_methods[] = {
+	UBUS_METHOD_NOARG("arp", arp_table),
 	UBUS_METHOD_NOARG("igmp_snooping", igmp_snooping_table),
 	UBUS_METHOD_NOARG("ip_conntrack", ip_conntrack_table),
+	UBUS_METHOD_NOARG("ipv4_routes", ipv4_routes_table),
+	UBUS_METHOD_NOARG("ipv6_neigh", ipv6_neigh_table),
+	UBUS_METHOD_NOARG("ipv6_routes", ipv6_routes_table),
 };
 
 struct ubus_object_type net_object_type =
