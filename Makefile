@@ -5,9 +5,9 @@ LOCLIBS		=
 OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dsl.o tools.o broadcom.o uboot_env.o dropbear.o wps.o system.o net.o network.o wireless.o
 SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c uboot_env.c dropbear.c wps.c system.c net.c network.c wireless.c
 LIBSRCS		= 
-ISRCS		= network.h port.h wireless.h dsl.h tools.h broadcom.h
+ISRCS		= questd.h network.h port.h wireless.h dsl.h tools.h broadcom.h
 
-all: questd wificontrol
+all: questd wificontrol netcheck
 
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
@@ -30,6 +30,12 @@ WSRCS		= wificontrol.c arping.c
 wificontrol: ${WOBJS}
 	${CC} ${LDFLAGS} -o wificontrol ${WOBJS} -lpthread
 
+NOBJS		= netcheck.o arping.o
+NSRCS		= netcheck.c arping.c
+
+netcheck: ${NOBJS}
+	${CC} ${LDFLAGS} -o netcheck ${NOBJS} -luci -ljson-c
+
 clean:
-	rm -f questd ueventd uscriptd wificontrol *.o
+	rm -f questd ueventd uscriptd wificontrol netcheck *.o
 
