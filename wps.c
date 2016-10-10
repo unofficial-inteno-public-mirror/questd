@@ -36,14 +36,13 @@ static const struct blobmsg_policy pin_policy[__PIN_MAX] = {
 
 static struct blob_buf bb;
 
-#if IOPSYS_BROADCOM
 static int
 wps_status(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
 	char status[16];
-	int code = atoi(chrCmd("nvram get wps_proc_status"));
+	int code = atoi(chrCmd("nvram get wps_proc_status 2>/dev/null"));
 
 	switch (code) {
 		case 0:
@@ -196,7 +195,7 @@ wps_showpin(struct ubus_context *ctx, struct ubus_object *obj,
 	char cmnd[32];
 	char pin[9] = { '\0' };
 
-	sprintf(cmnd, "nvram get wps_device_pin");
+	sprintf(cmnd, "nvram get wps_device_pin 2>/dev/null");
 	if ((showpin = popen(cmnd, "r"))) {
 		fgets(pin, sizeof(pin), showpin);
 		remove_newline(pin);
@@ -244,4 +243,3 @@ struct ubus_object wps_object = {
 	.methods = wps_object_methods,
 	.n_methods = ARRAY_SIZE(wps_object_methods),
 };
-#endif /* IOPSYS_BROADCOM */

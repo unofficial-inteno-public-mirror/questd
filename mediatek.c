@@ -152,70 +152,65 @@ wl_ether_etoa(const struct wl_ether_addr *n)
 
 int wl_get_channel(const char *ifname, int *buf)
 {
-	return wl_ioctl(ifname, WLC_GET_CHANNEL, buf, sizeof(buf));
+	char channel[4];
+
+	strcpy(channel, chrCmd("iwinfo %s info 2>/dev/null| grep Channel | awk '{print$4}'", ifname));	
+
+	*buf = atoi(channel);
 }
 
 int wl_get_ssid(const char *ifname, char *buf)
 {
-	int ret = -1;
-	wlc_ssid_t ssid;
+	strcpy(buf, chrCmd("iwinfo %s info 2>/dev/null| grep ESSID | awk '{print$NF}' | tr -d '\"'", ifname));
 
-	if (!(ret = wl_ioctl(ifname, WLC_GET_SSID, &ssid, sizeof(ssid))))
-		memcpy(buf, ssid.ssid, 64);
-
-	return ret;
+	return 0;
 }
 
 int wl_get_bssid(const char *ifname, char *buf)
 {
-	int ret = -1;
-	char bssid[6];
+	strcpy(buf, chrCmd("iwinfo %s info 2>/dev/null | grep 'Access Point' | awk '{print$NF}'", ifname));
 
-	if (!(ret = wl_ioctl(ifname, WLC_GET_BSSID, bssid, 6)))
-		sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
-			(uint8_t)bssid[0], (uint8_t)bssid[1], (uint8_t)bssid[2],
-			(uint8_t)bssid[3], (uint8_t)bssid[4], (uint8_t)bssid[5]
-		);
-
-	return ret;
+	return 0;
 }
 
 int wl_get_wpa_auth(const char *ifname, char *wpa)
 {
-	unsigned int wpa_auth;
 	int ret = 0;
+/*	unsigned int wpa_auth;*/
 
-	wl_endianness_check(ifname);
+/*	wl_endianness_check(ifname);*/
 
-	if ((ret = wl_ioctl(ifname, WLC_GET_WPA_AUTH, &wpa_auth, sizeof(wpa_auth))) < 0)
-		return ret;
+/*	if ((ret = wl_ioctl(ifname, WLC_GET_WPA_AUTH, &wpa_auth, sizeof(wpa_auth))) < 0)*/
+/*		return ret;*/
 
-	wpa_auth = eswap32(wpa_auth);
+/*	wpa_auth = eswap32(wpa_auth);*/
 
-	if (wpa_auth == WPA_AUTH_DISABLED)
-		strcpy(wpa, "Disabled");
-	else if ((wpa_auth & WPA_AUTH_PSK) && (wpa_auth & WPA2_AUTH_PSK))
-		strcpy(wpa, "WPA/WPA2 PSK");
-	else if (wpa_auth & WPA2_AUTH_PSK)
-		strcpy(wpa, "WPA2 PSK");
-	else if (wpa_auth & WPA_AUTH_PSK)
-		strcpy(wpa, "WPA PSK");
-	else if ((wpa_auth & WPA_AUTH_UNSPECIFIED) && (wpa_auth & WPA2_AUTH_UNSPECIFIED))
-		strcpy(wpa, "WPA/WPA2 802.1x");
-	else if (wpa_auth & WPA2_AUTH_UNSPECIFIED)
-		strcpy(wpa, "WPA2 802.1x");
-	else if (wpa_auth & WPA_AUTH_UNSPECIFIED)
-		strcpy(wpa, "WPA 802.1x");
-	else if (wpa_auth & WPA_AUTH_NONE)
-		strcpy(wpa, "WPA-NONE");
-	else if (wpa_auth & WPA2_AUTH_1X_SHA256)
-		strcpy(wpa, "1X-SHA256");
-	else if (wpa_auth & WPA2_AUTH_FT)
-		strcpy(wpa, "FT");
-	else if (wpa_auth & WPA2_AUTH_PSK_SHA256)
-		strcpy(wpa, "PSK-SHA256");
-	else
-		strcpy(wpa, "Unknown");
+/*	if (wpa_auth == WPA_AUTH_DISABLED)*/
+/*		strcpy(wpa, "Disabled");*/
+/*	else if ((wpa_auth & WPA_AUTH_PSK) && (wpa_auth & WPA2_AUTH_PSK))*/
+/*		strcpy(wpa, "WPA/WPA2 PSK");*/
+/*	else if (wpa_auth & WPA2_AUTH_PSK)*/
+/*		strcpy(wpa, "WPA2 PSK");*/
+/*	else if (wpa_auth & WPA_AUTH_PSK)*/
+/*		strcpy(wpa, "WPA PSK");*/
+/*	else if ((wpa_auth & WPA_AUTH_UNSPECIFIED) && (wpa_auth & WPA2_AUTH_UNSPECIFIED))*/
+/*		strcpy(wpa, "WPA/WPA2 802.1x");*/
+/*	else if (wpa_auth & WPA2_AUTH_UNSPECIFIED)*/
+/*		strcpy(wpa, "WPA2 802.1x");*/
+/*	else if (wpa_auth & WPA_AUTH_UNSPECIFIED)*/
+/*		strcpy(wpa, "WPA 802.1x");*/
+/*	else if (wpa_auth & WPA_AUTH_NONE)*/
+/*		strcpy(wpa, "WPA-NONE");*/
+/*	else if (wpa_auth & WPA2_AUTH_1X_SHA256)*/
+/*		strcpy(wpa, "1X-SHA256");*/
+/*	else if (wpa_auth & WPA2_AUTH_FT)*/
+/*		strcpy(wpa, "FT");*/
+/*	else if (wpa_auth & WPA2_AUTH_PSK_SHA256)*/
+/*		strcpy(wpa, "PSK-SHA256");*/
+/*	else*/
+/*		strcpy(wpa, "Unknown");*/
+
+	strcpy(wpa, "Disabled");
 
 	return ret;
 }
@@ -271,30 +266,22 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf)
 
 int wl_get_bitrate(const char *ifname, int *buf)
 {
-	int ret = -1;
-	int rate = 0;
+	char rate[8];
 
-	wl_endianness_check(ifname);
+	sprintf(rate, chrCmd("iwinfo %s info 2>/dev/null | grep 'Bit Rate' | awk '{print$3}' | cut -d'.' -f1", ifname));
 
-	if( !(ret = wl_ioctl(ifname, WLC_GET_RATE, &rate, sizeof(rate))) && (rate > 0))
-		*buf = eswap32(rate);
-		//*buf = ((eswap32(rate) / 2) * 1000) + ((rate & 1) ? 500 : 0);
-	else
-		*buf = 0;
+	*buf = atoi(rate)*2;
 
-	return ret;
+	return 0;
 }
 
 int wl_get_isup(const char *ifname, int *buf)
 {
 	unsigned int isup;
 
-	wl_endianness_check(ifname);
+	isup = atoi(chrCmd("ifconfig %s | grep -c UP", ifname));
 
-	if (wl_ioctl(ifname, WLC_GET_UP, &isup, sizeof(isup)) < 0)
-		isup = 0;
-
-	*buf = eswap32(isup);
+	*buf = isup;
 
 	return 0;
 }
@@ -303,12 +290,12 @@ int wl_get_band(const char *ifname, int *buf)
 {
 	unsigned int band;
 
-	wl_endianness_check(ifname);
-
-	if (wl_ioctl(ifname, WLC_GET_BAND, &band, sizeof(band)) < 0)
+	if(!strncmp(ifname, "rai", 3))
+		band = 1;
+	else
 		band = 0;
 
-	*buf = eswap32(band);
+	*buf = band;
 
 	return 0;
 }
@@ -379,60 +366,58 @@ void dump_bss_info_summary(wl_bss_info_t *bi)
 
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
-	wl_bss_info_t *bi;
-/*	unsigned int ap;*/
-	int ioctl_req_version = 0x2000;
-	char tmp[WLC_IOCTL_MAXLEN];
+	char ch[4];
 
-	wl_endianness_check(ifname);
+	strcpy(ch, chrCmd("iwinfo %s info 2>/dev/null | grep Channel | awk '{print$4}'", ifname));	
 
-	memset(tmp, 0, WLC_IOCTL_MAXLEN);
-	memcpy(tmp, &ioctl_req_version, sizeof(ioctl_req_version));
+	*channel = atoi(ch);
 
-	wl_ioctl(ifname, WLC_GET_BSS_INFO, tmp, WLC_IOCTL_MAXLEN);
+	*noise = -85;
 
-/*	if (!wl_ioctl(ifname, WLC_GET_AP, &ap, sizeof(ap)) && !ap)*/
-/*	{*/
-/*		*buf = tmp[WL_BSS_RSSI_OFFSET];*/
-/*	}*/
-
-	bi = (wl_bss_info_t*)(tmp + 4);
-
-	*channel = (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(eswap16(bi->chanspec));
-	*noise = (int16)(bi->phy_noise);
-	*bandwidth = (CHSPEC_IS160(eswap16(bi->chanspec)) ?
-		160:(CHSPEC_IS80(eswap16(bi->chanspec)) ?
-		80 : (CHSPEC_IS40(eswap16(bi->chanspec)) ?
-		40 : (CHSPEC_IS20(eswap16(bi->chanspec)) ? 20 : 10))));
+	if(!strncmp(ifname, "rai", 3))
+		*bandwidth = 80;
+	else
+		*bandwidth = 20;
 
 	return 0;
 }
 
 int wl_get_chanlist(const char *ifname, int *buf)
 {
-	uint32 chan_buf[WL_NUMCHANNELS + 1];
-	wl_uint32_list_t *list;
-	int ret, chan_count;
-	uint i;
-
-	wl_endianness_check(ifname);
-
-	list = (wl_uint32_list_t *)(void *)chan_buf;
-	list->count = eswap32(WL_NUMCHANNELS);
-	ret = wl_ioctl(ifname, WLC_GET_VALID_CHANNELS, chan_buf, sizeof(chan_buf));
-	if (ret < 0)
-		return ret;
-
-	chan_count = eswap32(list->count);
-
-	for (i = 0; i < chan_count; i++) {
-		buf[i] = eswap32(list->element[i]);
+	if(!strncmp(ifname, "rai", 3)) {
+		buf[0] = 36;
+		buf[1] = 40;
+		buf[2] = 44;
+		buf[3] = 48;
+		buf[4] = 52;
+		buf[5] = 56;
+		buf[6] = 60;
+		buf[7] = 64;
+		buf[8] = 100;
+		buf[9] = 104;
+		buf[10] = 108;
+		buf[11] = 112;
+		buf[12] = 116;
+		buf[13] = 132;
+		buf[14] = 136;
+		buf[15] = 140;
+	} else {
+		buf[0] = 1;
+		buf[1] = 2;
+		buf[2] = 3;
+		buf[3] = 4;
+		buf[4] = 5;
+		buf[5] = 6;
+		buf[6] = 7;
+		buf[7] = 8;
+		buf[8] = 9;
+		buf[9] = 10;
+		buf[10] = 11;
+		buf[11] = 12;
+		buf[12] = 13;
 	}
 
-	if (i < WL_NUMCHANNELS)
-		buf[i+1] = 0;
-
-	return ret;
+	return 0;
 }
 
 int wl_get_deviceid(const char *ifname, int *buf)
