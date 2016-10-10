@@ -163,6 +163,7 @@ load_wireless()
 					wireless[wno].device = device;
 					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
 					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
+				#if IOPSYS_BROADCOM
 					if (!strcmp(device, "wl0")) {
 						vif = vif0;
 						vif0++;
@@ -174,6 +175,19 @@ load_wireless()
 						sprintf(wdev, "%s.%d", device, vif);
 					else
 						strcpy(wdev, device);
+				#elif IOPSYS_MEDIATEK
+					if (!strncmp(device, "rai", 3)) {
+						vif = vif0;
+						vif0++;
+					} else {
+						vif = vif1;
+						vif1++;
+					}
+					if (vif > 0)
+						sprintf(wdev, "%s%d", device, vif);
+					else
+						strcpy(wdev, device);
+				#endif
 
 					wireless[wno].vif = strdup(wdev);
 
@@ -186,12 +200,15 @@ load_wireless()
 				if(!(radio[rno].band = uci_lookup_option_string(uci_ctx, s, "band")))
 					radio[rno].band = "b";
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
-				wl_get_deviceid(radio[rno].name, &(radio[rno].deviceid));
 				radio[rno].is_ac = false;
 				memset(output, 0, 32);
 				chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid);
 				if (radio[rno].deviceid && *output?atoi(output):0 == 1)
 					radio[rno].is_ac = true;
+			#elif IOPSYS_MEDIATEK
+				if (!strncmp(radio[rno].name, "rai", 3))
+					radio[rno].is_ac = true;
+			#endif
 
 				if(radio[rno].frequency == 2) {
 					radio[rno].hwmodes[0] = "11b";
@@ -383,8 +400,10 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	memset(wldev, '\0', sizeof(wldev));
 	strcpy(wldev, blobmsg_data(tb[VIF_NAME]));
 
+#if IOPSYS_BROADCOM
 	if(strncmp(wldev, "wl", 2))
 		return UBUS_STATUS_INVALID_ARGUMENT;
+#endif
 
 	snprintf(syspath, 32, "/sys/class/net/%s", wldev);
 	if (stat(syspath, &s))

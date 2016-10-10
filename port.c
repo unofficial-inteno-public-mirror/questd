@@ -110,6 +110,7 @@ get_port_name(Port *port)
 int
 get_port_speed(char *linkspeed, char *device)
 {
+#if IOPSYS_BROADCOM
 	const char *portspeed, *issfp;
 	char duplex[16] = {0};
 	char ad[8] = {0};
@@ -189,6 +190,10 @@ eth:
 	}
 
 	return 0;
+#else
+	strcpy(linkspeed, "Auto-negotiated 1000 Mbps Full Duplex");
+	return 0;
+#endif
 }
 
 void

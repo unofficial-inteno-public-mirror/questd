@@ -120,10 +120,8 @@ quest_ubus_init(const char *path)
 	quest_add_object(&usb_object);
 	quest_add_object(&net_object);
 	quest_add_object(&network_object);
-#if IOPSYS_BROADCOM
 	quest_add_object(&dsl_object);
 	quest_add_object(&wps_object);
-#endif
 	quest_add_object(&port_object);
 	quest_add_object(&wireless_object);
 
@@ -134,9 +132,7 @@ void *collect_router_info(void *arg)
 {
 	init_db_hw_config();
 	load_networks();
-#if IOPSYS_BROADCOM
 	load_wireless();
-#endif
 	collect_system_info();
 	while (true) {
 		pthread_mutex_lock(&lock);
