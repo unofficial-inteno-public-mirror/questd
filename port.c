@@ -72,6 +72,7 @@ get_port_stats(Port *port)
 void
 get_port_name(Port *port)
 {
+#if IOPSYS_BROADCOM
 	FILE *in;
 	char buf[32];
 	char cmnd[80];
@@ -98,6 +99,12 @@ get_port_name(Port *port)
 		remove_newline(buf);
 		strcpy(port->ssid, buf);
 	}
+#else IOPSYS_MEDIATEK
+	if (!strncmp(port->device, "eth", 3))
+		strcpy(port->name, "LAN");
+	else if (!strncmp(port->device, "ra", 2))
+		strcpy(port->name, "WLAN");
+#endif
 }
 
 int
@@ -193,7 +200,12 @@ get_bridge_ports(char *bridge, char **ports)
 	
 	*ports = "";
 
-	sprintf(cmnd, "brctl showbr %s | awk 'NR>1 {printf \"%%s \", $NF}'", bridge);
+#if IOPSYS_BROADCOM
+	sprintf(cmnd, "brctl showbr %s | awk '{print$NF}' | grep -v interfaces | tr '\n' ' '", bridge);
+#else
+	sprintf(cmnd, "brctl show %s | awk '{print$NF}' | grep -v interfaces | tr '\n' ' '", bridge);
+#endif
+
 	if (!(in = popen(cmnd, "r")))
 		exit(1);
 

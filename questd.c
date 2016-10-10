@@ -122,10 +122,10 @@ quest_ubus_init(const char *path)
 	quest_add_object(&network_object);
 #if IOPSYS_BROADCOM
 	quest_add_object(&dsl_object);
-	quest_add_object(&port_object);
-	quest_add_object(&wireless_object);
 	quest_add_object(&wps_object);
 #endif
+	quest_add_object(&port_object);
+	quest_add_object(&wireless_object);
 
 	return 0;
 }

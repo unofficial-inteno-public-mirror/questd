@@ -333,8 +333,10 @@ populate_ports(Network *network)
 	prt = strtok_r(theports, " ", &saveptr1);
 	while (prt != NULL)
 	{
+#if IOPSYS_BROADCOM
 		if(strncmp(prt, "wl", 2) && strchr(prt, '.'))
 			goto nextport;
+#endif
 
 		strncpy(port[i].device, prt, 32);
 		get_port_name(&port[i]);
@@ -391,9 +393,9 @@ nextmac:
 }
 
 static void dump_client(struct blob_buf *b, Client client)
-{
-#if IOPSYS_BROADCOM
+{	
 	static char linkspeed[64];
+#if IOPSYS_BROADCOM
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 
@@ -442,7 +444,9 @@ static void dump_client(struct blob_buf *b, Client client)
 		blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
 		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
-	} else if(client.connected) {
+	} else 
+#endif
+	if(client.connected) {
 		if(!strncmp(client.ethport, "eth", 3)) {
 			blobmsg_add_string(b, "ethport", client.ethport);
 			get_port_speed(linkspeed, client.ethport);
@@ -452,7 +456,8 @@ static void dump_client(struct blob_buf *b, Client client)
 		}
 	}
 
-	if(is_inteno_macaddr(client.macaddr)) {
+#if IOPSYS_BROADCOM
+	if(strstr(client.macaddr, "00:22:07")) {
 		void *a, *t;
 		int i = 0;
 		int j = 0;

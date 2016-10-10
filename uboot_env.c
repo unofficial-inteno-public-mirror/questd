@@ -25,7 +25,7 @@
 #include "uboot_env.h"
 
 /* -------------------------------------------------------------------------- */
-#if IOPSYS_MARVELL
+#if IOPSYS_MARVELL || IOPSYS_MEDIATEK
 /* -------------------------------------------------------------------------- */
 
 int uboot_env_get(const char *name, char **value)

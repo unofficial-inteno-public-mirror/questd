@@ -30,8 +30,6 @@
 #include "tools.h"
 #include "wireless.h"
 
-#if IOPSYS_BROADCOM
-
 enum {
 	VIF_NAME,
 	__WL_MAX,
@@ -588,5 +586,3 @@ struct ubus_object wireless_object = {
 	.methods = wireless_object_methods,
 	.n_methods = ARRAY_SIZE(wireless_object_methods),
 };
-
-#endif
