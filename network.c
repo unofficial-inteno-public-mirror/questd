@@ -383,21 +383,21 @@ get_clients:
 
 static void dump_client(struct blob_buf *b, Client client)
 {	
-	static char linkspeed[64];
 #if IOPSYS_BROADCOM
+	static char linkspeed[64];
 	struct wl_sta_info sta_info;
-#endif
 	int bandwidth, channel, noise, rssi, snr, htcaps;
-	int i;
+#endif
+	int cno;
 
 	blobmsg_add_string(b, "hostname", client.hostname);
 	blobmsg_add_string(b, "ipaddr", client.ipaddr);
 	blobmsg_add_string(b, "macaddr", client.macaddr);
 
-	for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
-		if(!strcasecmp(clients6[i].macaddr, client.macaddr)) {
-			blobmsg_add_string(b, "ip6addr", clients6[i].ip6addr);
-			blobmsg_add_string(b, "duid", clients6[i].duid);
+	for (cno = 0; cno < MAX_CLIENT && clients6[cno].exists; cno++) {
+		if(!strcasecmp(clients6[cno].macaddr, client.macaddr)) {
+			blobmsg_add_string(b, "ip6addr", clients6[cno].ip6addr);
+			blobmsg_add_string(b, "duid", clients6[cno].duid);
 			break;
 		}
 	}
@@ -472,7 +472,10 @@ static void
 router_dump_ports(struct blob_buf *b, char *interface)
 {
 	void *t, *c, *h, *s;
-	int pno, i, j, k, l;
+	int pno, i, j;
+#if IOPSYS_BROADCOM
+	int k, l;
+#endif
 	const char *ports[8];
 	bool found = false;
 
@@ -703,7 +706,6 @@ ipv4_clients()
 {
 	FILE *leases, *arpt;
 	char line[256];
-	int ano = 0;
 	int cno = 0;
 	int lno = 0;
 	int hw;
@@ -714,9 +716,10 @@ ipv4_clients()
 	int toms = 1000;
 #if IOPSYS_BROADCOM
 	char assoclist[1280];
+	int ano = 0;
+	char *token;
 #endif
 	char brindex[8];
-	char *token;
 
 	memset(clients_new, '\0', sizeof(clients));
 
@@ -835,8 +838,9 @@ ipv4_clients()
 					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 						recalc_sleep_time(true, toms);
 				}
-
+#if IOPSYS_BROADCOM
 inc:
+#endif
 				cno++;
 			}
 		}
