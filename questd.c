@@ -879,6 +879,8 @@ populate_clients()
 static void
 populate_ports(Network *network)
 {
+	struct stat s;
+	char syspath[32];
 	char bridge[32];
 	char macaddr[2400];
 	char *theports;
@@ -888,6 +890,11 @@ populate_ports(Network *network)
 	Port *port = (Port*)&network->port;
 	
 	sprintf(bridge, "br-%s", network->name);
+
+
+	snprintf(syspath, 32, "/sys/class/net/%s", bridge);
+	if (stat(syspath, &s))
+		return;
 
 	if (network->ports_populated)
 		goto get_clients;
