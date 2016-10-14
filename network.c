@@ -391,13 +391,11 @@ nextmac:
 static void dump_client(struct blob_buf *b, Client client)
 {	
 	static char linkspeed[64];
-#if IOPSYS_BROADCOM
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 
 	if(client.wireless && !wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps))
 		return;
-#endif
 	int cno;
 
 	blobmsg_add_string(b, "hostname", client.hostname);
@@ -419,7 +417,6 @@ static void dump_client(struct blob_buf *b, Client client)
 	if(client.connected)
 		blobmsg_add_u32(b, "active_connections", active_connections(client.ipaddr));
 	blobmsg_add_u8(b, "wireless", client.wireless);
-#if IOPSYS_BROADCOM
 	if(client.wireless) {
 		wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps);
 		wl_get_bssinfo(client.wdev, &bandwidth, &channel, &noise);
@@ -441,7 +438,6 @@ static void dump_client(struct blob_buf *b, Client client)
 		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
 	} else 
-#endif
 	if(client.connected) {
 		if(!strncmp(client.ethport, "eth", 3)) {
 			blobmsg_add_string(b, "ethport", client.ethport);
@@ -529,7 +525,11 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			if(strcmp(port[i].name, ports[pno]))
 				continue;
 			t = blobmsg_open_table(b, port[i].device);
+		#if IOPSYS_BROADCOM
 			if(!strncmp(port[i].device, "wl", 2) && strlen(port[i].ssid) > 0)
+		#elif IOPSYS_MEDIATEK
+			if(!strncmp(port[i].device, "ra", 2) && strlen(port[i].ssid) > 0)
+		#endif
 				blobmsg_add_string(b, "ssid", port[i].ssid);
 			else {
 				blobmsg_add_string(b, "name", port[i].name);
@@ -550,7 +550,11 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			#endif
 
 				port[i].client[j].connected = true;
+			#if IOPSYS_BROADCOM
 				if(!strncmp(port[i].device, "wl", 2)) {
+			#elif IOPSYS_MEDIATEK
+				if(!strncmp(port[i].device, "ra", 2)) {
+			#endif
 					strncpy(port[i].client[j].wdev, port[i].device, 8);
 					port[i].client[j].wireless = true;
 				} else {
@@ -783,7 +787,9 @@ ipv4_clients()
 						#endif
 					}
 
-					if(!strncmp(clients[cno].ethport, "eth", 3)) {
+					if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
+						if(!strncmp(clients[cno].ethport, "ra", 2))
+							clients[cno].wireless = true;
 						clients[cno].connected = true;
 						clients[cno].repeated = false;
 					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
@@ -858,11 +864,18 @@ ipv4_clients()
 						#if IOPSYS_BROADCOM
 							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 						#else
+						{
 							strncpy(clients[cno].ethport, chrCmd("brctl show %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+						}
 						#endif
 					}
 
-					if(!strncmp(clients[cno].ethport, "eth", 3)) {
+					if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
+						if(!strncmp(clients[cno].ethport, "ra", 2)) {
+							clients[cno].wireless = true;
+							strcpy(clients[cno].wdev, clients[cno].ethport);
+							memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
+						}
 						clients[cno].connected = true;
 						clients[cno].repeated = false;
 					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
@@ -927,7 +940,9 @@ inc:
 								#endif
 							}
 
-							if(!strncmp(clients[cno].ethport, "eth", 3)) {
+							if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
+								if(!strncmp(clients[cno].ethport, "ra", 2))
+									clients[cno].wireless = true;
 								clients[cno].connected = true;
 								clients[cno].repeated = false;
 							} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))

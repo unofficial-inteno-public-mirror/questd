@@ -246,20 +246,7 @@ int wl_get_noise(const char *ifname, int *buf)
 
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
-	wl_scb_val_t scb_val;
-	int ret;
-
-	if (!wl_ether_atoe(sta, &(scb_val.ea))) {
-		printf("ERROR: no valid ether addr provided\n");
-		return -1;
-	}
-
-	wl_endianness_check(ifname);
-
-	if ((ret = wl_ioctl(ifname, WLC_GET_RSSI, &scb_val, sizeof(scb_val))) < 0)
-		*buf = 0;
-	else
-		*buf = eswap32(scb_val.val);
+	*buf = -42;
 
 	return 0;
 }
