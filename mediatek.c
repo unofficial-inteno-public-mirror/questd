@@ -522,59 +522,12 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 
 void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
-	FILE *stainfo;
-	char cmnd[64];
-	char line[256];
-
-	sprintf(cmnd, "wlctl -i %s sta_info %s 2>/dev/null", ifname, bssid);
-	if ((stainfo = popen(cmnd, "r"))) {
-		while(fgets(line, sizeof(line), stainfo) != NULL)
-		{
-			remove_newline(line);
-			//sscanf(line, "[VER %d] STA %s:\n", &(sta_info->ver));
-			//sscanf(line, "\t aid:%d ", &(sta_info->aid));
-			//sscanf(line, "\t rateset");
-			sscanf(line, "\t idle %d seconds", &(sta_info->idle));
-			sscanf(line, "\t in network %d seconds", &(sta_info->in));
-			//sscanf(line, "\t state: AUTHENTICATED ASSOCIATED AUTHORIZED");
-			sscanf(line, "\t flags 0x%x:", &(sta_info->flags));
-			sscanf(line, "\t HT caps 0x%x:", htcaps);
-			sscanf(line, "\t VHT caps 0x%hu:", &(sta_info->vht_flags));
-			sscanf(line, "\t tx total pkts: %u", &(sta_info->tx_tot_pkts));
-			sscanf(line, "\t tx total bytes: %llu\n", &(sta_info->tx_tot_bytes));
-			sscanf(line, "\t tx ucast pkts: %u", &(sta_info->tx_pkts));
-			sscanf(line, "\t tx ucast bytes: %llu", &(sta_info->tx_ucast_bytes));
-			sscanf(line, "\t tx mcast/bcast pkts: %u", &(sta_info->tx_mcast_pkts));
-			sscanf(line, "\t tx mcast/bcast bytes: %llu", &(sta_info->tx_mcast_bytes));
-			sscanf(line, "\t tx failures: %u", &(sta_info->tx_failures));
-			sscanf(line, "\t rx data pkts: %u", &(sta_info->rx_tot_pkts));
-			sscanf(line, "\t rx data bytes: %llu", &(sta_info->rx_tot_bytes));
-			sscanf(line, "\t rx ucast pkts: %u", &(sta_info->rx_ucast_pkts));
-			sscanf(line, "\t rx ucast bytes: %llu", &(sta_info->rx_ucast_bytes));
-			sscanf(line, "\t rx mcast/bcast pkts: %u", &(sta_info->rx_mcast_pkts));
-			sscanf(line, "\t rx mcast/bcast bytes: %llu", &(sta_info->rx_mcast_bytes));
-			sscanf(line, "\t rate of last tx pkt: %u kbps - %u kbps", &(sta_info->tx_rate), &(sta_info->tx_rate_fallback));
-			sscanf(line, "\t rate of last rx pkt: %u kbps", &(sta_info->rx_rate));
-			sscanf(line, "\t rx decrypt succeeds: %u", &(sta_info->rx_decrypt_succeeds));
-			sscanf(line, "\t rx decrypt failures: %u", &(sta_info->rx_decrypt_failures));
-			sscanf(line, "\t tx data pkts retried: %u", &(sta_info->tx_pkts_retried));
-			sscanf(line, "\t per antenna rssi of last rx data frame: %hhd %hhd %hhd %hhd", &(sta_info->rx_lastpkt_rssi[0]),
-					&(sta_info->rx_lastpkt_rssi[1]), &(sta_info->rx_lastpkt_rssi[2]), &(sta_info->rx_lastpkt_rssi[3]));
-			sscanf(line, "\t per antenna average rssi of rx data frames: %hhd %hhd %hhd %hhd", &(sta_info->rssi[0]), &(sta_info->rssi[1]),
-					&(sta_info->rssi[2]), &(sta_info->rssi[3]));
-			sscanf(line, "\t per antenna noise floor: %hhd %hhd %hhd %hhd", &(sta_info->nf[0]), &(sta_info->nf[1]),
-					&(sta_info->nf[2]), &(sta_info->nf[3]));
-			sscanf(line, "\t tx total pkts sent: %u", &(sta_info->tx_pkts_total));
-			sscanf(line, "\t tx pkts retries: %u", &(sta_info->tx_pkts_retries));
-			sscanf(line, "\t tx pkts retry exhausted: %u", &(sta_info->tx_pkts_retry_exhausted));
-			sscanf(line, "\t tx FW total pkts sent: %u", &(sta_info->tx_pkts_fw_total));
-			sscanf(line, "\t tx FW pkts retries: %u", &(sta_info->tx_pkts_fw_retries));
-			sscanf(line, "\t tx FW pkts retry exhausted: %u", &(sta_info->tx_pkts_fw_retry_exhausted));
-			sscanf(line, "\t rx total pkts retried: %u", &(sta_info->rx_pkts_retried));
-
-		}
-		pclose(stainfo);
-	}
+	sta_info->in = 20;
+	sta_info->tx_tot_bytes = 1234;
+	sta_info->rx_tot_bytes = 5678;
+	sta_info->tx_rate_fallback = 0;
+	sta_info->tx_rate = 866;
+	sta_info->rx_rate = 458;
 }
 
 /* -------------------------------------------------------------------------- */
