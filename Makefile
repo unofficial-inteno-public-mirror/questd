@@ -7,10 +7,16 @@ SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c
 LIBSRCS		= 
 ISRCS		= questd.h network.h port.h wireless.h dsl.h tools.h broadcom.h
 
-all: questd wificontrol netcheck
+all: questd wificontrol netcheck uproxyd
 
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
+
+UPOBJS		= uproxy.o tools.o
+UPSRCS		= uproxy.c tools.c
+
+uproxyd: ${UPOBJS}
+	${CC} ${LDFLAGS} -o uproxyd ${UPOBJS} ${LIBS}
 
 EOBJS		= eventd.o
 ESRCS		= eventd.c

@@ -9,6 +9,7 @@ ipkg-*
 questd
 uscriptd
 ueventd
+uproxyd
 wificontrol
 netcheck
 .configured_*

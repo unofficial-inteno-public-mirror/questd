@@ -40,35 +40,17 @@
 static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
 
-enum {
-	METHOD,
-	ARGS,
-	__UPROXY_MAX,
-};
-
-static const struct blobmsg_policy uproxy_policy[__UPROXY_MAX] = {
-	[METHOD] = { .name = "method", .type = BLOBMSG_TYPE_STRING },
-	[ARGS] = { .name = "args", .type = BLOBMSG_TYPE_STRING },
-};
-
 static int
 uproxy_run(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	struct blob_attr *tb[__UPROXY_MAX];
-	const char *result = "";
+	const char *str = blobmsg_format_json(msg, true);
 
-	blobmsg_parse(uproxy_policy, __UPROXY_MAX, tb, blob_data(msg), blob_len(msg));
-
-	if (!(tb[METHOD]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if (tb[ARGS])
-		result = "RESULT";
+	printf("ubus call %s %s %s\n", obj->name, method, str);
 
 	blob_buf_init(&bb, 0);
-	blobmsg_add_json_from_string(&bb, result);
+	blobmsg_add_json_from_string(&bb, str);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
@@ -171,9 +153,9 @@ int main(int argc, char **argv)
         ctx->connection_lost = uproxy_ubus_connection_lost;
         uproxy_ubus_add_fd();
 
-        struct ubus_method *jobj_methods;
+	struct ubus_method *jobj_methods;
 	struct ubus_object_type jobj_type;
-        struct ubus_object *jobj;
+	struct ubus_object *jobj;
         FILE *ulist;
         int i = 0;
         char name[64];
@@ -182,7 +164,7 @@ int main(int argc, char **argv)
         char method[64];
         char args[128];
         char objid[32];
-	const char *mthd;
+	char mthd[64];
 
         if ((ulist = popen("ubus list -v | tail -58 | head -17", "r"))) {
                 while(fgets(line, sizeof(line), ulist) != NULL)
@@ -199,6 +181,10 @@ int main(int argc, char **argv)
 				memset(jobj, 0, sizeof(struct ubus_object));
 				memset(&jobj_type, 0, sizeof(struct ubus_object_type));
 
+
+				//printf("METHOD %d OF OBJECT %s is %s\n", 1, name, jobj_methods[0].name);
+				//printf("METHOD %d OF OBJECT %s is %s\n", 2, name, jobj_methods[1].name);
+
 				jobj_type.name = "remote";
 				jobj_type.id = 0;
 				jobj_type.n_methods = i;
@@ -207,7 +193,7 @@ int main(int argc, char **argv)
 /*				jobj_type = (struct ubus_object_type) UBUS_OBJECT_TYPE("remote", jobj_methods);*/
 
 				jobj->name      = strdup(name);
-				jobj->methods   = jobj_methods;
+				jobj->methods	= jobj_methods;
 				jobj->n_methods = i;
 				jobj->type = &jobj_type;
 
@@ -223,13 +209,13 @@ name_object:
                                 i = 0;
 
                         } else if (sscanf(line, "%s:%s", method, args) > 0) {
-				mthd = "";
-				mthd = chrCmd("echo %s | awk -F'[\",:]' '{print$1}'", method);
+				snprintf(mthd, 64, chrCmd("echo %s | awk -F'[\",:]' '{print$1}'", method));
 				if(strlen(mthd)) {
                                 	printf("%d. method of object %s is %s\n", (i+1), name, mthd);
-		                        jobj_methods[i].name = mthd;
-					jobj_methods[i].handler = uproxy_run;
-/*					jobj_methods[i] = (struct ubus_method) UBUS_METHOD(mthd, uproxy_run, uproxy_policy);*/
+/*		                        jobj_methods[i].name = mthd;*/
+/*					jobj_methods[i].handler = uproxy_run;*/
+					jobj_methods[i] = (struct ubus_method) UBUS_METHOD_NOARG(mthd, uproxy_run);
+
 		                        i++;
 				}
                         }
