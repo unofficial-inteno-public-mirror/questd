@@ -20,6 +20,7 @@
  * 02110-1301 USA
  */
 
+
 #include <libubox/blobmsg.h>
 #include <libubus.h>
 
@@ -237,7 +238,7 @@ ipv6_neigh_table(struct ubus_context *ctx, struct ubus_object *obj,
 			remove_newline(line);
 			memset(router, '\0', sizeof(router));
 			if(sscanf(single_space(line), "%s dev %s lladdr %s %s %s", ip6addr, device, macaddr, router, ip6status) == 5 ||
-				sscanf(single_space(line), "%s dev %s lladdr %s %s %s", ip6addr, device, macaddr, ip6status) == 4)
+				sscanf(single_space(line), "%s dev %s lladdr %s %s", ip6addr, device, macaddr, ip6status) == 4)
 			{
 				t = blobmsg_open_table(&bb, NULL);
 				blobmsg_add_string(&bb,"ip6addr", ip6addr);
