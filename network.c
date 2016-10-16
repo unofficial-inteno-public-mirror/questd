@@ -510,7 +510,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			if(strcmp(port[i].name, ports[pno]))
 				continue;
 			t = blobmsg_open_table(b, port[i].device);
-			if(!strncmp(port[i].device, "wl", 2) && strlen(port[i].ssid) > 2)
+			if(!strncmp(port[i].device, "wl", 2) && strlen(port[i].ssid) > 0)
 				blobmsg_add_string(b, "ssid", port[i].ssid);
 			else {
 				blobmsg_add_string(b, "name", port[i].name);
