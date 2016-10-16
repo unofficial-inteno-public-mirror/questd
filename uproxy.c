@@ -146,17 +146,24 @@ int main(int argc, char **argv)
 {
         int ret;
 	char ipaddr[32] = {0};
+	char gateway[32] = {0};
+	char path[32] = {0};
+	int port = 0;
 
 get_ip:
+	strncpy(gateway, chrCmd(". /lib/functions/network.sh && network_get_gateway gateway wan && echo $gateway"), 32);
 	strncpy(ipaddr, chrCmd(". /lib/functions/network.sh && network_get_ipaddr ipaddr wan && echo $ipaddr"), 32);
-	while(strlen(ipaddr) < 4) {
+	while(strlen(ipaddr) < 4 || strlen(gateway) < 4) {
 		usleep(2000000);
 		goto get_ip;
 	}
 
+	port = 6789;
+	snprintf(path, 32, "%s:%d", gateway, port);
+
         uloop_init();
 
-        ctx = ubus_connect(NULL);
+        ctx = ubus_connect(path);
         if (!ctx)
                 return -EIO;
 
@@ -178,7 +185,7 @@ get_ip:
 	char mthd[64];
 	struct ubus_method *jmthd;
 
-        if ((ulist = popen("ubus list -v | tail -58 | head -17", "r"))) {
+        if ((ulist = popen("ubus list -v | tail -58 | head -41", "r"))) {
                 while(fgets(line, sizeof(line), ulist) != NULL)
                 {
                         remove_newline(line);
@@ -217,7 +224,7 @@ name_object:
                                 i = 0;
 
                         } else if (sscanf(line, "%s:%s", method, args) > 0) {
-				snprintf(mthd, 64, chrCmd("echo %s | awk -F'[\",:]' '{print$1}'", method));
+				snprintf(mthd, 64, chrCmd("echo %s 2>/dev/null| awk -F'[\",:]' '{print$1}'", method));
 				if(strlen(mthd)) {
                                 	printf("%d. method of object %s is %s\n", (i+1), name, mthd);
 /*		                        jobj_methods[i].name = mthd;*/
