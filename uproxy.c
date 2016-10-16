@@ -46,12 +46,16 @@ uproxy_run(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct blob_attr *msg)
 {
 	const char *str = blobmsg_format_json(msg, true);
+	char objname[64];
+	const char *result;
 
-	printf("ubus call %s %s %s\n", obj->name, method, str);
+	if (sscanf(obj->name, "remote.%s", objname) == 1)
+		//result = chrCmd("ubus call %s %s '%s'", objname, method, str);
+		runCmd("ubus call %s %s '%s'", objname, method, str);
 
-	blob_buf_init(&bb, 0);
-	blobmsg_add_json_from_string(&bb, str);
-	ubus_send_reply(ctx, req, bb.head);
+/*	blob_buf_init(&bb, 0);*/
+/*	blobmsg_add_json_from_string(&bb, result);*/
+/*	ubus_send_reply(ctx, req, bb.head);*/
 
 	return 0;
 }
@@ -165,6 +169,7 @@ int main(int argc, char **argv)
         char args[128];
         char objid[32];
 	char mthd[64];
+	struct ubus_method *jmthd;
 
         if ((ulist = popen("ubus list -v | tail -58 | head -17", "r"))) {
                 while(fgets(line, sizeof(line), ulist) != NULL)
@@ -180,10 +185,6 @@ int main(int argc, char **argv)
 				jobj = malloc(sizeof(struct ubus_object));
 				memset(jobj, 0, sizeof(struct ubus_object));
 				memset(&jobj_type, 0, sizeof(struct ubus_object_type));
-
-
-				//printf("METHOD %d OF OBJECT %s is %s\n", 1, name, jobj_methods[0].name);
-				//printf("METHOD %d OF OBJECT %s is %s\n", 2, name, jobj_methods[1].name);
 
 				jobj_type.name = "remote";
 				jobj_type.id = 0;
@@ -214,12 +215,16 @@ name_object:
                                 	printf("%d. method of object %s is %s\n", (i+1), name, mthd);
 /*		                        jobj_methods[i].name = mthd;*/
 /*					jobj_methods[i].handler = uproxy_run;*/
-					jobj_methods[i] = (struct ubus_method) UBUS_METHOD_NOARG(mthd, uproxy_run);
+					jmthd = (struct ubus_method*)&jobj_methods[i];
+					jmthd->name = strdup(mthd);
+					jmthd->handler = uproxy_run;
+/*					jobj_methods[i] = (struct ubus_method) UBUS_METHOD_NOARG(mthd, uproxy_run);*/
 
 		                        i++;
 				}
                         }
                 }
+		memset(jobj_methods, 0, sizeof(jobj_methods));
                 pclose(ulist);
         }
 
