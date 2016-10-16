@@ -27,14 +27,12 @@
 
 typedef enum {
 	WL0,
-	WL0_1,
-	WL1,
-	WL1_1
+	WL1
 } WL;
 
 static int iosocket = -1;
 static int e_swap = 0;
-static int wl_swap[sizeof(WL)] = { -1, -1, -1, -1 };
+static int wl_swap[sizeof(WL)] = { -1, -1 };
 
 #define eswap64(val) (e_swap)?BCMSWAP64(val):val
 #define eswap32(val) (e_swap)?BCMSWAP32(val):val
@@ -66,23 +64,13 @@ static int wl_endianness_check(const char *wl)
 	int ret;
 	int val;
 
-	if(!strcmp(wl, "wl0") && wl_swap[WL0] != -1) {
+	if(!strncmp(wl, "wl0", 2) && wl_swap[WL0] != -1) {
 		e_swap = wl_swap[WL0];
 		return 0;
 	}
 
-	if (!strcmp(wl, "wl1") && wl_swap[WL1] != -1) {
+	if (!strncmp(wl, "wl1", 2) && wl_swap[WL1] != -1) {
 		e_swap = wl_swap[WL1];
-		return 0;
-	}
-
-	if(!strcmp(wl, "wl0.1") && wl_swap[WL0_1] != -1) {
-		e_swap = wl_swap[WL0_1];
-		return 0;
-	}
-
-	if(!strcmp(wl, "wl1.1") && wl_swap[WL1_1] != -1) {
-		e_swap = wl_swap[WL1_1];
 		return 0;
 	}
 
@@ -93,16 +81,12 @@ static int wl_endianness_check(const char *wl)
 	if (val == (int)BCMSWAP32(WLC_IOCTL_MAGIC))
 		e_swap = 1;
 	else
-		e_swap = 0; /*retore it back in case it is called multiple times on different wl instance */
+		e_swap = 0; /* restore it back in case it is called multiple times on different wl instance */
 
-	if(!strcmp(wl, "wl0"))
+	if(!strncmp(wl, "wl0", 2))
 		wl_swap[WL0] = e_swap;
-	else if (!strcmp(wl, "wl1"))
+	else if (!strncmp(wl, "wl1", 2))
 		wl_swap[WL1] = e_swap;
-	else if (!strcmp(wl, "wl0.1"))
-		wl_swap[WL0_1] = e_swap;
-	else if (!strcmp(wl, "wl1.1"))
-		wl_swap[WL1_1] = e_swap;
 
 	return 0;
 }
