@@ -28,9 +28,6 @@
 
 #include <libubus.h>
 
-#include <fcntl.h>
-#include <dirent.h>
-
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -46,10 +43,12 @@ uproxy_run(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct blob_attr *msg)
 {
 	const char *str = blobmsg_format_json(msg, true);
-	char objname[64];
-	const char *result;
+	char objname[64] = {0};
+	//const char *result;
 
-	if (sscanf(obj->name, "remote.%s", objname) == 1)
+	strncpy(objname, chrCmd("echo %s | awk -F'/' '{print$NF}'", obj->name), 64);
+
+	if(strlen(objname))
 		//result = chrCmd("ubus call %s %s '%s'", objname, method, str);
 		runCmd("ubus call %s %s '%s'", objname, method, str);
 
@@ -146,6 +145,14 @@ remove_tab(char *buf)
 int main(int argc, char **argv)
 {
         int ret;
+	char ipaddr[32] = {0};
+
+get_ip:
+	strncpy(ipaddr, chrCmd(". /lib/functions/network.sh && network_get_ipaddr ipaddr wan && echo $ipaddr"), 32);
+	while(strlen(ipaddr) < 4) {
+		usleep(2000000);
+		goto get_ip;
+	}
 
         uloop_init();
 
@@ -202,7 +209,7 @@ int main(int argc, char **argv)
 				uproxy_add_object(jobj);
 
 name_object:
-				snprintf(name, 64, "remote.%s", objname);
+				snprintf(name, 64, "%s/%s", ipaddr, objname);
 				printf("Object name is %s\n", name);
 
 				memset(jobj_methods, 0, sizeof(jobj_methods));
