@@ -780,11 +780,7 @@ ipv4_clients()
 					if(strstr(clients[cno].device, "br-")) {
 						strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
 						if(strlen(brindex))
-						#if IOPSYS_BROADCOM
 							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
-						#else
-							strncpy(clients[cno].ethport, chrCmd("brctl show %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
-						#endif
 					}
 
 					if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
@@ -861,13 +857,7 @@ ipv4_clients()
 					if(strstr(clients[cno].device, "br-")) {
 						strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
 						if(strlen(brindex))
-						#if IOPSYS_BROADCOM
 							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
-						#else
-						{
-							strncpy(clients[cno].ethport, chrCmd("brctl show %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
-						}
-						#endif
 					}
 
 					if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
@@ -933,11 +923,7 @@ inc:
 							if(strstr(clients[cno].device, "br-")) {
 								strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
 								if(strlen(brindex))
-								#if IOPSYS_BROADCOM
 									strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
-								#else
-									strncpy(clients[cno].ethport, chrCmd("brctl show %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
-								#endif
 							}
 
 							if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
