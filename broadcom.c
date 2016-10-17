@@ -22,7 +22,7 @@
 #include "bcmwifi_channels.h"
 
 /* -------------------------------------------------------------------------- */
-#ifdef IOPSYS_BROADCOM
+#if IOPSYS_BROADCOM
 /* -------------------------------------------------------------------------- */
 
 typedef enum {
@@ -64,12 +64,12 @@ static int wl_endianness_check(const char *wl)
 	int ret;
 	int val;
 
-	if(!strncmp(wl, "wl0", 2) && wl_swap[WL0] != -1) {
+	if(!strncmp(wl, "wl0", 3) && wl_swap[WL0] != -1) {
 		e_swap = wl_swap[WL0];
 		return 0;
 	}
 
-	if (!strncmp(wl, "wl1", 2) && wl_swap[WL1] != -1) {
+	if (!strncmp(wl, "wl1", 3) && wl_swap[WL1] != -1) {
 		e_swap = wl_swap[WL1];
 		return 0;
 	}
@@ -83,9 +83,9 @@ static int wl_endianness_check(const char *wl)
 	else
 		e_swap = 0; /* restore it back in case it is called multiple times on different wl instance */
 
-	if(!strncmp(wl, "wl0", 2))
+	if(!strncmp(wl, "wl0", 3))
 		wl_swap[WL0] = e_swap;
-	else if (!strncmp(wl, "wl1", 2))
+	else if (!strncmp(wl, "wl1", 3))
 		wl_swap[WL1] = e_swap;
 
 	return 0;
