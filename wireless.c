@@ -133,7 +133,7 @@ void
 load_wireless()
 {
 	struct uci_element *e;
-	char device[16] = {};
+	char device[16] = {0};
 	const char *network = NULL;
 	const char *ssid = NULL;
 	char wdev[16];
