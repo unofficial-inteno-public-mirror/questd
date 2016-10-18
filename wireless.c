@@ -559,7 +559,11 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		blobmsg_add_string(&bb, "bandwidth", bandwidth);
 		blobmsg_add_u32(&bb, "channel", channel);
 		blobmsg_add_u32(&bb, "noise", noise);
+#if IOPSYS_BROADCOM
 		blobmsg_add_string(&bb, "rate", maxrate);
+#else
+		blobmsg_add_string(&bb, "rate", bitrate);
+#endif
 		c = blobmsg_open_array(&bb, "hwmodes");
 		for(j=0; radio[i].hwmodes[j]; j++) {
 			blobmsg_add_string(&bb, "", radio[i].hwmodes[j]);
