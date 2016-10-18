@@ -40,6 +40,8 @@ static int wl_swap[sizeof(WL)] = { -1, -1, -1, -1 };
 #define eswap32(val) (e_swap)?BCMSWAP32(val):val
 #define eswap16(val) (e_swap)?BCMSWAP16(val):val
 
+#define confile(val) (!strncmp(val, "rai", 3)) ? "/etc/Wireless/iNIC/iNIC_ap.dat" : "/etc/Wireless/RT2860/RT2860.dat"
+
 static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 {
 	struct ifreq ifr;
@@ -176,41 +178,8 @@ int wl_get_bssid(const char *ifname, char *buf)
 int wl_get_wpa_auth(const char *ifname, char *wpa)
 {
 	int ret = 0;
-/*	unsigned int wpa_auth;*/
 
-/*	wl_endianness_check(ifname);*/
-
-/*	if ((ret = wl_ioctl(ifname, WLC_GET_WPA_AUTH, &wpa_auth, sizeof(wpa_auth))) < 0)*/
-/*		return ret;*/
-
-/*	wpa_auth = eswap32(wpa_auth);*/
-
-/*	if (wpa_auth == WPA_AUTH_DISABLED)*/
-/*		strcpy(wpa, "Disabled");*/
-/*	else if ((wpa_auth & WPA_AUTH_PSK) && (wpa_auth & WPA2_AUTH_PSK))*/
-/*		strcpy(wpa, "WPA/WPA2 PSK");*/
-/*	else if (wpa_auth & WPA2_AUTH_PSK)*/
-/*		strcpy(wpa, "WPA2 PSK");*/
-/*	else if (wpa_auth & WPA_AUTH_PSK)*/
-/*		strcpy(wpa, "WPA PSK");*/
-/*	else if ((wpa_auth & WPA_AUTH_UNSPECIFIED) && (wpa_auth & WPA2_AUTH_UNSPECIFIED))*/
-/*		strcpy(wpa, "WPA/WPA2 802.1x");*/
-/*	else if (wpa_auth & WPA2_AUTH_UNSPECIFIED)*/
-/*		strcpy(wpa, "WPA2 802.1x");*/
-/*	else if (wpa_auth & WPA_AUTH_UNSPECIFIED)*/
-/*		strcpy(wpa, "WPA 802.1x");*/
-/*	else if (wpa_auth & WPA_AUTH_NONE)*/
-/*		strcpy(wpa, "WPA-NONE");*/
-/*	else if (wpa_auth & WPA2_AUTH_1X_SHA256)*/
-/*		strcpy(wpa, "1X-SHA256");*/
-/*	else if (wpa_auth & WPA2_AUTH_FT)*/
-/*		strcpy(wpa, "FT");*/
-/*	else if (wpa_auth & WPA2_AUTH_PSK_SHA256)*/
-/*		strcpy(wpa, "PSK-SHA256");*/
-/*	else*/
-/*		strcpy(wpa, "Unknown");*/
-
-	strcpy(wpa, "Disabled");
+	strcpy(wpa, chrCmd("grep -w AuthMode %s | head -1 | cut -d'=' -f2", confile(ifname)));
 
 	return ret;
 }
