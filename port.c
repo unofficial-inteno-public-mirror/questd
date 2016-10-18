@@ -76,7 +76,6 @@ get_port_name(Port *port)
 	char buf[32];
 	char cmnd[80];
 
-#if IOPSYS_BROADCOM
 	sprintf(cmnd, ". /lib/network/config.sh && interfacename %s 2>/dev/null", port->device);
 	if (!(in = popen(cmnd, "r")))
 		exit(1);
@@ -89,8 +88,13 @@ get_port_name(Port *port)
 	memset(cmnd, '\0', sizeof(cmnd));
 	memset(buf, '\0', sizeof(buf));
 
+#if IOPSYS_BROADCOM
 	if(!strncmp(port->device, "wl", 2)) {
 		sprintf(cmnd, "wlctl -i %s ssid | awk '{print$3}' | sed 's/\"//g' 2>/dev/null", port->device);
+#elif IOPSYS_MEDIATEK
+	if(!strncmp(port->device, "ra", 2)) {
+		sprintf(cmnd, "iwinfo %s info 2>/dev/null| grep ESSID | awk '{print$NF}' | tr -d '\"'", port->device);
+#endif
 		if (!(in = popen(cmnd, "r")))
 			exit(1);
 
@@ -99,20 +103,6 @@ get_port_name(Port *port)
 		remove_newline(buf);
 		strcpy(port->ssid, buf);
 	}
-#else IOPSYS_MEDIATEK
-	if(!strncmp(port->device, "ra", 2)) {
-		sprintf(cmnd, "iwinfo %s info 2>/dev/null| grep ESSID | awk '{print$NF}' | tr -d '\"'", port->device);
-		if (!(in = popen(cmnd, "r")))
-			exit(1);
-
-		fgets(buf, sizeof(buf), in);
-		pclose(in);
-		remove_newline(buf);
-		strcpy(port->ssid, buf);
-		strcpy(port->name, "WLAN");
-	} else if (!strncmp(port->device, "eth", 3))
-		strcpy(port->name, "LAN");
-#endif
 }
 
 int
