@@ -133,7 +133,7 @@ void
 load_wireless()
 {
 	struct uci_element *e;
-	const char *device = NULL;
+	char device[16] = {};
 	const char *network = NULL;
 	const char *ssid = NULL;
 	char wdev[16];
@@ -156,11 +156,11 @@ load_wireless()
 			struct uci_section *s = uci_to_section(e);
 
 			if (!strcmp(s->type, "wifi-iface")) {
-				device = uci_lookup_option_string(uci_ctx, s, "device");
+				strncpy(device, uci_lookup_option_string(uci_ctx, s, "device"), 16);
 				network = uci_lookup_option_string(uci_ctx, s, "network");
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
-				if (device && wno < MAX_VIF) {
-					wireless[wno].device = device;
+				if (strlen(device) && wno < MAX_VIF) {
+					wireless[wno].device = (const char *)device;
 					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
 					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
 				#if IOPSYS_BROADCOM
@@ -176,16 +176,17 @@ load_wireless()
 					else
 						strcpy(wdev, device);
 				#elif IOPSYS_MEDIATEK
-					if (!strncmp(device, "rai", 3)) {
+					if (!strncmp(device, "ra0", 3)) {
 						vif = vif0;
 						vif0++;
 					} else {
 						vif = vif1;
 						vif1++;
 					}
-					if (vif > 0)
+					if (vif > 0) {
+						device[strlen(device)-1] = '\0';
 						sprintf(wdev, "%s%d", device, vif);
-					else
+					} else
 						strcpy(wdev, device);
 				#endif
 
