@@ -213,11 +213,7 @@ get_bridge_ports(char *bridge, char **ports)
 	
 	*ports = "";
 
-#if IOPSYS_BROADCOM
 	sprintf(cmnd, "brctl showbr %s | awk '{print$NF}' | grep -v interfaces | tr '\n' ' '", bridge);
-#else
-	sprintf(cmnd, "brctl show %s | awk '{print$NF}' | grep -v interfaces | tr '\n' ' '", bridge);
-#endif
 
 	if (!(in = popen(cmnd, "r")))
 		exit(1);
