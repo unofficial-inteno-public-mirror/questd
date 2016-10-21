@@ -348,7 +348,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 			blobmsg_close_table(&bb, s);
 
 			r = blobmsg_open_array(&bb, "rssi_per_antenna");
-			for (j = 0; sta_info.rssi[j]; j++)
+			for (j = 0; sta_info.rssi[j] && j < WL_STA_ANT_MAX; j++)
 				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);			
 			blobmsg_close_array(&bb, r);
 		}
