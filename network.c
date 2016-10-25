@@ -200,7 +200,7 @@ load_networks()
 
 			if(nno >= MAX_NETWORK) return;
 			network[nno].exists = false;
-			network[nno].ports_populated = false;
+			network[nno].ports_populated = 0;
 			if (!strcmp(s->type, "interface")) {
 				is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
 				defaultroute = uci_lookup_option_string(uci_ctx, s, "defaultroute");
@@ -323,7 +323,7 @@ populate_ports(Network *network)
 	
 	sprintf(bridge, "br-%s", network->name);
 
-	if (network->ports_populated)
+	if (network->ports_populated > 15)
 		goto get_clients;
 
 	get_bridge_ports(bridge, &theports);
@@ -345,7 +345,7 @@ nextport:
 		i++;
 	}
 	
-	network->ports_populated = true;
+	network->ports_populated++;
 		
 get_clients:	
 	for(i=1; i < MAX_PORT; i++)

@@ -69,7 +69,7 @@ typedef struct {
 	const char *netmask;
 	char ifname[128];
 	Port port[MAX_PORT];
-	bool ports_populated;
+	int ports_populated;
 } Network;
 
 void populate_clients();
