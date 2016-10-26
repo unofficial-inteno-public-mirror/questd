@@ -113,17 +113,18 @@ wdev_already_there(const char *ifname, char *wdev)
 	bool ret = false;
 	char *token;
 	char ifbuf[128];
+	char *saveptr;
 
 	strcpy(ifbuf, ifname);
 
-	token = strtok(ifbuf, " ");
+	token = strtok_r(ifbuf, " ", &saveptr);
 	while (token != NULL)
 	{
 		if(!strcmp(token, wdev)) {
 			ret = true;
 			break;
 		}
-		token = strtok (NULL, " ");
+		token = strtok_r (NULL, " ", &saveptr);
 	}
 
 	return ret;
@@ -244,13 +245,14 @@ active_connections(char *ipaddr)
 	FILE *f;
 	int i;
 	char *p, line[512];
+	char *saveptr;
 	int connum = 0;
 
 	if ((f = fopen("/proc/net/nf_conntrack", "r")) != NULL)
 	{
 		while (fgets(line, sizeof(line) - 1, f))
 		{
-			for (i = 0, p = strtok(line, " "); p; i++, p = strtok(NULL, " "))
+			for (i = 0, p = strtok_r(line, " ", &saveptr); p; i++, p = strtok(NULL, " ", &saveptr))
 			{
 				if (i == 6 && !strcmp(p+4, ipaddr))
 					connum++;
@@ -314,6 +316,7 @@ populate_ports(Network *network)
 	char macaddr[2400];
 	char *theports;
 	char *prt, *mac;
+	char *saveptr1, *saveptr2;
 	int i = 1;
 	int j, k, l;
 	Port *port = (Port*)&network->port;
@@ -326,7 +329,7 @@ populate_ports(Network *network)
 	get_bridge_ports(bridge, &theports);
 	memset(port, '\0', sizeof(Port));
 
-	prt = strtok(theports, " ");
+	prt = strtok_r(theports, " ", &saveptr1);
 	while (prt != NULL)
 	{
 		if(strncmp(prt, "wl", 2) && strchr(prt, '.'))
@@ -337,7 +340,7 @@ populate_ports(Network *network)
 		if(strstr(port[i].device, "eth"))
 			get_port_speed(port[i].linkspeed, port[i].device);
 nextport:
-		prt = strtok (NULL, " ");
+		prt = strtok_r (NULL, " ", &saveptr1);
 		i++;
 	}
 	
@@ -368,13 +371,13 @@ get_clients:
 				}
 			}
 		} else {
-			mac = strtok(macaddr, " ");
+			mac = strtok_r(macaddr, " ", &saveptr2);
 			while (mac != NULL)
 			{
 				if(l >= MAX_CLIENT) break;
 				port[i].client[l].exists = true;
 				strcpy(port[i].client[l].macaddr, mac);
-				mac = strtok (NULL, " ");
+				mac = strtok_r (NULL, " ", &saveptr2);
 				l++;
 			}	
 		}
@@ -716,6 +719,7 @@ ipv4_clients()
 	int toms = 1000;
 #if IOPSYS_BROADCOM
 	char assoclist[1280];
+	char *saveptr1, *saveptr2;
 	int ano = 0;
 	char *token;
 #endif
@@ -770,11 +774,11 @@ ipv4_clients()
 					strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
 
 					ano = 0;
-					token = strtok(assoclist, " ");
+					token = strtok_r(assoclist, " ", &saveptr1);
 					while (token != NULL)
 					{
 						wl_ether_atoe(token, &(clients[cno].assoclist[ano]));
-						token = strtok (NULL, " ");
+						token = strtok_r (NULL, " ", &saveptr1);
 						ano++;
 					}
 				}
@@ -906,11 +910,11 @@ inc:
 							strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
 
 							ano = 0;
-							token = strtok(assoclist, " ");
+							token = strtok_r(assoclist, " ", &saveptr2);
 							while (token != NULL)
 							{
 								wl_ether_atoe(token, &(clients[cno].assoclist[ano]));
-								token = strtok (NULL, " ");
+								token = strtok_r (NULL, " ", &saveptr2);
 								ano++;
 							}
 						}

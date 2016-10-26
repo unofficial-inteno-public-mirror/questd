@@ -285,15 +285,16 @@ init_package(const char *config)
 /*	char islocal[24];*/
 /*	char ageing[24];*/
 /*	char cmnd[256];*/
+/*	char *saveptr;*/
 
 /*	char *spl, ports[6][10];*/
 /*	int i = 1;*/
 
-/*	spl = strtok (ifname, " ");*/
+/*	spl = strtok_r (ifname, " ", &saveptr);*/
 /*	while (spl != NULL)*/
 /*	{*/
 /*	    strcpy(ports[i], spl);*/
-/*	    spl = strtok (NULL, " ");*/
+/*	    spl = strtok_r (NULL, " ", &saveptr);*/
 /*	    i++;*/
 /*	}*/
 
