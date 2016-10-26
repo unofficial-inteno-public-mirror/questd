@@ -327,7 +327,8 @@ populate_ports(Network *network)
 		goto get_clients;
 
 	get_bridge_ports(bridge, &theports);
-	memset(port, '\0', sizeof(Port));
+	for (j = 0; j < MAX_PORT; j++)
+		memset(&port[j], 0, sizeof(Port));
 
 	prt = strtok_r(theports, " ", &saveptr1);
 	while (prt != NULL)
