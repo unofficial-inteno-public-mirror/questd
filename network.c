@@ -366,7 +366,7 @@ get_clients:
 		if(network->is_lan) {
 			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 				if(l >= MAX_CLIENT) break;
-				if (strstr(macaddr, clients[k].macaddr) && clients[k].connected) {
+				if (clients[k].connected && strstr(macaddr, clients[k].macaddr)) {
 					port[i].client[l] = clients[k];
 					l++;
 				}
