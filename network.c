@@ -604,7 +604,8 @@ static void
 router_dump_clients(struct blob_buf *b, bool connected, const char *mac)
 {
 	void *t;
-	char clientnum[10];
+	size_t len = strlen("client-") + strlen("4294967295") + 1;
+	char clientnum[len];
 	int num = 1;
 	int i;
 
@@ -623,7 +624,7 @@ router_dump_clients(struct blob_buf *b, bool connected, const char *mac)
 		if (connected && !(clients[i].connected))
 			continue;
 
-		sprintf(clientnum, "client-%d", num);
+		snprintf(clientnum, len, "client-%d", num);
 		t = blobmsg_open_table(b, clientnum);
 		dump_client(b, clients[i]);
 		blobmsg_close_table(b, t);
@@ -635,7 +636,8 @@ static void
 router_dump_clients6(struct blob_buf *b, bool connected)
 {
 	void *t;
-	char clientnum[10];
+	size_t len = strlen("client-") + strlen("4294967295") + 1;
+	char clientnum[len];
 	int num = 1;
 	int i;
 
@@ -643,7 +645,7 @@ router_dump_clients6(struct blob_buf *b, bool connected)
 		if (connected && !(clients6[i].connected))
 			continue;
 
-		sprintf(clientnum, "client-%d", num);
+		snprintf(clientnum, len, "client-%d", num);
 		t = blobmsg_open_table(b, clientnum);
 		blobmsg_add_string(b, "hostname", clients6[i].hostname);
 		blobmsg_add_string(b, "ip6addr", clients6[i].ip6addr);
