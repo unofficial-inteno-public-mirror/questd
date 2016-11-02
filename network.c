@@ -1122,10 +1122,11 @@ quest_router_ports(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 		
 	for (i=0; i < MAX_NETWORK && network[i].exists; i++) {
-		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
-			if(!strcmp(network[i].type, "bridge")) {
-			nthere = true;
-			break;
+		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME]))) {
+			if(!strcmp(network[i].type, "bridge") && strcmp(network[i].proto, "dhcp")) {
+				nthere = true;
+				break;
+			 }
 		}
 	}
 
