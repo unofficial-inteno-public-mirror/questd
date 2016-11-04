@@ -73,6 +73,7 @@ static struct uci_package *uci_network, *uci_wireless;
 static struct blob_buf bb;
 
 static pthread_mutex_t network_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static Network network[MAX_NETWORK];
 static Client clients[MAX_CLIENT];
@@ -372,6 +373,7 @@ get_clients:
 
 		l = 0;
 		if(network->is_lan) {
+			pthread_mutex_lock(&clients_lock);
 			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 				if(l >= MAX_CLIENT) break;
 				if (clients[k].connected && strstr(macaddr, clients[k].macaddr)) {
@@ -379,6 +381,7 @@ get_clients:
 					l++;
 				}
 			}
+			pthread_mutex_unlock(&clients_lock);
 		} else {
 			mac = strtok_r(macaddr, " ", &saveptr2);
 			while (mac != NULL)
@@ -463,6 +466,7 @@ static void dump_client(struct blob_buf *b, Client client)
 			strncpy(stamac, (char*) wl_ether_etoa(&(client.assoclist[i])), 24);
 			t = blobmsg_open_table(b, "");
 			blobmsg_add_string(b, "macaddr", stamac);
+			pthread_mutex_lock(&clients_lock);
 			for (j=0; j < MAX_CLIENT && clients[j].exists; j++) {
 				if(!strcasecmp(clients[j].macaddr, (const char*) stamac)) {
 					blobmsg_add_string(b, "hostname", clients[j].hostname);
@@ -470,6 +474,7 @@ static void dump_client(struct blob_buf *b, Client client)
 					break;
 				}
 			}
+			pthread_mutex_unlock(&clients_lock);
 			blobmsg_close_table(b, t);
 
 			i++;
@@ -534,6 +539,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
 
 			#if IOPSYS_BROADCOM
+				pthread_mutex_lock(&clients_lock);
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (strstr(clients[k].macaddr, "00:22:07")) {
 						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
@@ -542,6 +548,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 						}
 					}
 				}
+				pthread_mutex_unlock(&clients_lock);
 			#endif
 
 				port[i].client[j].connected = true;
@@ -579,6 +586,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 	int i;
 
 	if (family == 4) {
+		pthread_mutex_lock(&clients_lock);
 		for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 			if (clients[i].dhcp && (leasenet == NULL || !strcmp(clients[i].network, leasenet))) {
 				sprintf(leasenum, "lease-%d", i + 1);
@@ -592,6 +600,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 				blobmsg_close_table(b, t);
 			}
 		}
+		pthread_mutex_unlock(&clients_lock);
 	}
 	else if (family == 6)
 		for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
@@ -621,6 +630,7 @@ router_dump_clients(struct blob_buf *b, bool connected, const char *mac)
 	int i;
 
 	if(mac){
+		//the mutex clieents_lock MUST already be locked here
 		for(i = 0; i < MAX_CLIENT; i++){
 			if(!clients[i].exists)
 				return;
@@ -678,6 +688,7 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 {
 	int i;
 
+	pthread_mutex_lock(&clients_lock);
 	if(byIP) {
 		for (i=0; i < MAX_CLIENT && clients[i].exists; i++)
 			if(!strcmp(clients[i].ipaddr, addr)) {
@@ -692,6 +703,7 @@ host_dump_status(struct blob_buf *b, char *addr, bool byIP)
 				break;
 			}
 	}
+	pthread_mutex_unlock(&clients_lock);
 }
 static void
 get_hostname_from_config(const char *mac_in, char *hostname)
@@ -866,6 +878,7 @@ inc:
 	}
 
 	if ((arpt = fopen("/proc/net/arp", "r"))) {
+		pthread_mutex_lock(&clients_lock);
 		while(fgets(line, sizeof(line), arpt) != NULL)
 		{
 			if(cno >= MAX_CLIENT) break;
@@ -940,10 +953,13 @@ inc:
 			}
 			lno++;
 		}
+		pthread_mutex_unlock(&clients_lock);
 		fclose(arpt);
 	}
 
+	pthread_mutex_lock(&clients_lock);
 	memcpy(&clients_new, &clients, sizeof(clients));
+	pthread_mutex_unlock(&clients_lock);
 
 	bool still_there;
 	for(i=0; i < MAX_CLIENT && clients_old[i].exists; i++) {
@@ -1087,7 +1103,9 @@ quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
 	if (tb[FAMILY] && blobmsg_get_u32(tb[FAMILY]) == 6)
 		router_dump_clients6(&bb, false);
 	else{
+		pthread_mutex_lock(&clients_lock);
 		router_dump_clients(&bb, false, NULL);
+		pthread_mutex_unlock(&clients_lock);
 	 }
 	ubus_send_reply(ctx, req, bb.head);
 
