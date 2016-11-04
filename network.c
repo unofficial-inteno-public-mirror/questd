@@ -989,7 +989,7 @@ ipv6_clients()
 			remove_newline(line);
 			clients6[cno].exists = false;
 			clients6[cno].wireless = false;
-			memset(clients6[cno].hostname, '\0', sizeof(clients[cno].hostname));
+			memset(clients6[cno].hostname, '\0', sizeof(clients6[cno].hostname));
 			if (sscanf(line, "# %s %s %x %s %s %x %d %s", clients6[cno].device, clients6[cno].duid, &iaid, clients6[cno].hostname, clients6[cno].leasetime, &id, &length, clients6[cno].ip6addr)) {
 				clients6[cno].exists = true;
 				clear_macaddr();
