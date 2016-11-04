@@ -72,6 +72,8 @@ static struct uci_context *uci_ctx;
 static struct uci_package *uci_network, *uci_wireless;
 static struct blob_buf bb;
 
+static pthread_mutex_t network_lock = PTHREAD_MUTEX_INITIALIZER;
+
 static Network network[MAX_NETWORK];
 static Client clients[MAX_CLIENT];
 static Client clients_old[MAX_CLIENT];
@@ -192,6 +194,7 @@ load_networks()
 	char *wifs;
 	int nno = 0;
 
+	pthread_mutex_lock(&network_lock);
 	memset(network, '\0', sizeof(network));
 
 	if((uci_network = init_package("network"))) {
@@ -238,6 +241,7 @@ load_networks()
 		}
 	}
 out:
+	pthread_mutex_unlock(&network_lock);
 }
 
 #if 0 /* Unused */
@@ -301,6 +305,7 @@ handle_client(Client *clnt)
 
 	clnt->local = false;
 	if (sscanf(clnt->ipaddr, "%d.%d.%d.%d", &ip[0], &ip[1], &ip[2], &ip[3]) == 4) {
+		pthread_mutex_lock(&network_lock);
 		for (netno=0; netno < MAX_NETWORK && network[netno].exists; netno++) {
 			if (network[netno].is_lan) {
 				match_client_to_network(&network[netno], clnt->ipaddr, &clnt->local, clnt->network, clnt->device);
@@ -308,6 +313,7 @@ handle_client(Client *clnt)
 					break;
 			}
 		}
+		pthread_mutex_unlock(&network_lock);
 	}
 }
 
@@ -496,6 +502,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 
 	Port *port;
 	
+	pthread_mutex_lock(&network_lock);
 	for (i = 0; i < MAX_NETWORK; i++) {
 		if (network[i].exists && !strcmp(network[i].name, interface)) {
 			populate_ports(&network[i]);
@@ -504,6 +511,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			break;
 		}
 	}
+	pthread_mutex_unlock(&network_lock);
 	
 	if (!found)
 		return;
@@ -1045,6 +1053,7 @@ quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 	int i;
 
 	blob_buf_init(&bb, 0);
+	pthread_mutex_lock(&network_lock);
 	for (i = 0; i < MAX_NETWORK && network[i].exists; i++) {
 		t = blobmsg_open_table(&bb, network[i].name);
 		blobmsg_add_u8(&bb, "is_lan", network[i].is_lan);
@@ -1058,6 +1067,7 @@ quest_router_networks(struct ubus_context *ctx, struct ubus_object *obj,
 		blobmsg_add_string(&bb, "ifname", network[i].ifname);
 		blobmsg_close_table(&bb, t);
 	}
+	pthread_mutex_unlock(&network_lock);
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
@@ -1096,10 +1106,12 @@ quest_network_leases(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_parse(lease_policy, __NETWORK_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (tb[NETWORK_NAME]) {
+		pthread_mutex_lock(&network_lock);
 		for (i=0; i < MAX_NETWORK && network[i].is_lan; i++)
 			if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME])))
 				nthere = true;
 
+		pthread_mutex_unlock(&network_lock);
 		if (!(nthere))
 			return UBUS_STATUS_INVALID_ARGUMENT;
 	}
@@ -1125,6 +1137,7 @@ quest_router_ports(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[NETWORK_NAME]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 		
+	pthread_mutex_lock(&network_lock);
 	for (i=0; i < MAX_NETWORK && network[i].exists; i++) {
 		if(!strcmp(network[i].name, blobmsg_data(tb[NETWORK_NAME]))) {
 			if(!strcmp(network[i].type, "bridge") && strcmp(network[i].proto, "dhcp")) {
@@ -1133,6 +1146,7 @@ quest_router_ports(struct ubus_context *ctx, struct ubus_object *obj,
 			 }
 		}
 	}
+	pthread_mutex_unlock(&network_lock);
 
 	if (!(nthere))
 		return UBUS_STATUS_INVALID_ARGUMENT;
