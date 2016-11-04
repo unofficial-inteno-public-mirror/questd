@@ -74,6 +74,7 @@ static struct blob_buf bb;
 
 static pthread_mutex_t network_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t clients6_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static Network network[MAX_NETWORK];
 static Client clients[MAX_CLIENT];
@@ -409,6 +410,7 @@ static void dump_client(struct blob_buf *b, Client client)
 	blobmsg_add_string(b, "ipaddr", client.ipaddr);
 	blobmsg_add_string(b, "macaddr", client.macaddr);
 
+	pthread_mutex_lock(&clients6_lock);
 	for (cno = 0; cno < MAX_CLIENT && clients6[cno].exists; cno++) {
 		if(!strcasecmp(clients6[cno].macaddr, client.macaddr)) {
 			blobmsg_add_string(b, "ip6addr", clients6[cno].ip6addr);
@@ -416,6 +418,7 @@ static void dump_client(struct blob_buf *b, Client client)
 			break;
 		}
 	}
+	pthread_mutex_unlock(&clients6_lock);
 
 	blobmsg_add_string(b, "network", client.network);
 	blobmsg_add_string(b, "device", client.device);
@@ -603,6 +606,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 		pthread_mutex_unlock(&clients_lock);
 	}
 	else if (family == 6)
+		pthread_mutex_lock(&clients6_lock);
 		for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
 			//if (clients[i].dhcp && !strcmp(clients[i].network, leasenet)) {
 				sprintf(leasenum, "lease-%d", i + 1);
@@ -617,6 +621,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 				blobmsg_close_table(b, t);
 			//}
 		}
+		pthread_mutex_unlock(&clients6_lock);
 }
 
 
@@ -662,6 +667,7 @@ router_dump_clients6(struct blob_buf *b, bool connected)
 	int num = 1;
 	int i;
 
+	pthread_mutex_lock(&clients6_lock);
 	for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
 		if (connected && !(clients6[i].connected))
 			continue;
@@ -681,6 +687,7 @@ router_dump_clients6(struct blob_buf *b, bool connected)
 		blobmsg_close_table(b, t);
 		num++;
 	}
+	pthread_mutex_unlock(&clients6_lock);
 }
 
 static void
@@ -1007,6 +1014,7 @@ ipv6_clients()
 	char *p;
 
 	if ((hosts6 = fopen("/tmp/hosts/odhcpd", "r"))) {
+		pthread_mutex_lock(&clients6_lock);
 		while(fgets(line, sizeof(line), hosts6) != NULL)
 		{
 			if(cno >= MAX_CLIENT) break;
@@ -1032,6 +1040,7 @@ ipv6_clients()
 				cno++;
 			}
 		}
+		pthread_mutex_unlock(&clients6_lock);
 		fclose(hosts6);
 	}
 }
