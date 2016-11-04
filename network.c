@@ -198,7 +198,8 @@ load_networks()
 		uci_foreach_element(&uci_network->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 
-			if(nno >= MAX_NETWORK) return;
+			if(nno >= MAX_NETWORK)
+				goto out;
 			network[nno].exists = false;
 			network[nno].ports_populated = false;
 			if (!strcmp(s->type, "interface")) {
@@ -236,6 +237,7 @@ load_networks()
 			}
 		}
 	}
+out:
 }
 
 #if 0 /* Unused */
@@ -568,7 +570,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 	char leasenum[16];
 	int i;
 
-	if (family == 4)
+	if (family == 4) {
 		for (i = 0; i < MAX_CLIENT && clients[i].exists; i++) {
 			if (clients[i].dhcp && (leasenet == NULL || !strcmp(clients[i].network, leasenet))) {
 				sprintf(leasenum, "lease-%d", i + 1);
@@ -582,6 +584,7 @@ network_dump_leases(struct blob_buf *b, char *leasenet, int family)
 				blobmsg_close_table(b, t);
 			}
 		}
+	}
 	else if (family == 6)
 		for (i = 0; i < MAX_CLIENT && clients6[i].exists; i++) {
 			//if (clients[i].dhcp && !strcmp(clients[i].network, leasenet)) {
@@ -1073,8 +1076,9 @@ quest_router_clients(struct ubus_context *ctx, struct ubus_object *obj,
 
 	if (tb[FAMILY] && blobmsg_get_u32(tb[FAMILY]) == 6)
 		router_dump_clients6(&bb, false);
-	else
+	else{
 		router_dump_clients(&bb, false, NULL);
+	 }
 	ubus_send_reply(ctx, req, bb.head);
 
 	return 0;
