@@ -238,7 +238,6 @@ load_networks()
 	}
 }
 
-#if 0 /* Unused */
 static int
 active_connections(char *ipaddr)
 {
@@ -252,7 +251,7 @@ active_connections(char *ipaddr)
 	{
 		while (fgets(line, sizeof(line) - 1, f))
 		{
-			for (i = 0, p = strtok_r(line, " ", &saveptr); p; i++, p = strtok(NULL, " ", &saveptr))
+			for (i = 0, p = strtok_r(line, " ", &saveptr); p; i++, p = strtok_r(NULL, " ", &saveptr))
 			{
 				if (i == 6 && !strcmp(p+4, ipaddr))
 					connum++;
@@ -264,7 +263,6 @@ active_connections(char *ipaddr)
 
 	return connum;
 }
-#endif
 
 static void
 match_client_to_network(Network *lan, char *ipaddr, bool *local, char *net, char *dev)
@@ -410,6 +408,8 @@ static void dump_client(struct blob_buf *b, Client client)
 	blobmsg_add_string(b, "device", client.device);
 	blobmsg_add_u8(b, "dhcp", client.dhcp);
 	blobmsg_add_u8(b, "connected", client.connected);
+	if(client.connected)
+		blobmsg_add_u32(b, "active_connections", active_connections(client.ipaddr));
 	blobmsg_add_u8(b, "wireless", client.wireless);
 #if IOPSYS_BROADCOM
 	if(client.wireless) {
