@@ -122,7 +122,8 @@ dump_usb_info(USB *usb, char *usbno)
 			sprintf(usb->mount, "%s%s", usb->product, usb->serial);
 			remove_space(usb->mount);
 		}
-		strncpy(usb->netdevice, chrCmd("ls /sys/devices/platform/ehci-platform.*/*/driver/%s*/*/net/", usbno), 32);
+
+		strncpy(usb->netdevice, chrCmd("ls /sys/devices/platform/ehci-platform.*/*/driver/%s*/*/net/ 2>/dev/null || ls /sys/devices/pci*/0*/usb*/%s/*/net/ 2>/dev/null", usbno, usbno), 32);
 		strncpy(usb->desc, chrCmd("cat /lib/network/wwan/%s:%s 2>/dev/null | grep desc | awk -F'[:,]' '{print$2}' | cut -d'\"' -f2", usb->idvendor, usb->idproduct), 128);
 		strncpy(usb->device, get_usb_device(usb->mount), 64);
 		usb->size = get_usb_size(usb->device);
