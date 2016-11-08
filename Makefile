@@ -24,8 +24,8 @@ SSRCS		= scriptd.c tools.c
 uscriptd: ${SOBJS}
 	${CC} ${LDFLAGS} -o uscriptd ${SOBJS} ${LIBS}
 
-WOBJS		= wificontrol.o arping.o
-WSRCS		= wificontrol.c arping.c
+WOBJS		= wificontrol.o arping.o tools.o
+WSRCS		= wificontrol.c arping.c tools.c
 
 wificontrol: ${WOBJS}
 	${CC} ${LDFLAGS} -o wificontrol ${WOBJS} -lpthread

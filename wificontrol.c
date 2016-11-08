@@ -35,6 +35,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "tools.h"
+
 #define PORT 9876
 #define BUF_SIZE 2000
 #define CLADDR_LEN 100
@@ -44,34 +46,6 @@ extern bool arping(const char *targetIP, char *device, int toms);
 static int client_connected = 0;
 static pthread_t tid;
 pthread_mutex_t lock;
-
-static void 
-removeNewline(char *buf)
-{
-	int len;
-	len = strlen(buf) - 1;
-	if (buf[len] == '\n') 
-		buf[len] = 0;
-}
-
-static const char*
-chrCmd(char *cmd)
-{
-	FILE *pipe = 0;
-	static char buffer[BUF_SIZE] = {0};
-	if ((pipe = popen(cmd, "r"))){
-		fgets(buffer, sizeof(buffer), pipe);
-		pclose(pipe);
-
-		removeNewline(buffer);
-		if (strlen(buffer))
-			return (const char*)buffer;
-		else
-			return "";
-	} else {
-		return "";
-	}
-}
 
 static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 {
@@ -330,9 +304,9 @@ int wificlient(void) {
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
 		while(fgets(line, sizeof(line), leases) != NULL)
 		{
-			removeNewline(line);
+			remove_newline(line);
 			if (sscanf(line, "%s %s %s %s %s", leaseno, macaddr, ipaddr, hostname, mask) == 5) {
-				if(!strncmp(macaddr, "00:22:07", 8) || !strncmp(macaddr, "44:D4:37", 8)) {
+				if(is_inteno_macaddr(macaddr)) {
 					connectAndRunCmd(ipaddr, ssid, key);
 					strcat(ripaddr, ipaddr);
 					strcat(ripaddr, " ");
@@ -348,9 +322,9 @@ int wificlient(void) {
 	if ((arpt = fopen("/proc/net/arp", "r"))) {
 		while(fgets(line, sizeof(line), arpt) != NULL)
 		{
-			removeNewline(line);
+			remove_newline(line);
 			if (sscanf(line, "%s 0x%d 0x%d %s %s %s", ipaddr, &hw, &flag, macaddr, mask, device) == 6) {
-				if((!strncmp(macaddr, "00:22:07", 8) || !strncmp(macaddr, "44:D4:37", 8)) && !strstr(ripaddr, ipaddr)) {
+				if(is_inteno_macaddr(macaddr)) {
 					connectAndRunCmd(ipaddr, ssid, key);
 				}
 			}
