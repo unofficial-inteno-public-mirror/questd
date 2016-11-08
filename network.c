@@ -374,9 +374,12 @@ get_clients:
 			while (mac != NULL)
 			{
 				if(l >= MAX_CLIENT) break;
+				if(!strncmp(mac, "02:22:07", 8) || !strncmp(mac, "46:D4:37", 8))
+					goto nextmac;
 				port[i].client[l].exists = true;
 				strcpy(port[i].client[l].macaddr, mac);
 				mac = strtok_r (NULL, " ", &saveptr2);
+nextmac:
 				l++;
 			}	
 		}
@@ -442,7 +445,7 @@ static void dump_client(struct blob_buf *b, Client client)
 		}
 	}
 
-	if(strstr(client.macaddr, "00:22:07")) {
+	if(!strncmp(client.macaddr, "00:22:07", 8) || !strncmp(client.macaddr, "44:D4:37", 8)) {
 		void *a, *t;
 		int i = 0;
 		int j = 0;
@@ -529,7 +532,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 
 			#if IOPSYS_BROADCOM
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
-					if (strstr(clients[k].macaddr, "00:22:07")) {
+					if (!strncmp(clients[k].macaddr, "00:22:07", 8) || !strncmp(clients[k].macaddr, "44:D4:37", 8)) {
 						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
 							if (!strcasecmp((char*) wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
 								continue;
@@ -745,7 +748,7 @@ ipv4_clients()
 			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
 
-				if(!strstr(clients[cno].macaddr, "00:22:07"))
+				if(strncmp(clients[cno].macaddr, "00:22:07", 8) && strncmp(clients[cno].macaddr, "44:D4:37", 8))
 					continue;
 
 				get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
@@ -808,7 +811,7 @@ ipv4_clients()
 			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
 
-				if(strstr(clients[cno].macaddr, "00:22:07"))
+				if(!strncmp(clients[cno].macaddr, "00:22:07", 8) || !strncmp(clients[cno].macaddr, "44:D4:37", 8))
 					continue;
 
 				get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
@@ -912,7 +915,7 @@ inc:
 						}
 
 					#if IOPSYS_BROADCOM
-						if(clients[cno].connected && strstr(clients[cno].macaddr, "00:22:07")) {
+						if(clients[cno].connected && (!strncmp(clients[cno].macaddr, "00:22:07", 8) || !strncmp(clients[cno].macaddr, "44:D4:37", 8))) {
 							memset(clients[cno].assoclist, '\0', 128);
 							strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
 

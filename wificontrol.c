@@ -332,7 +332,7 @@ int wificlient(void) {
 		{
 			removeNewline(line);
 			if (sscanf(line, "%s %s %s %s %s", leaseno, macaddr, ipaddr, hostname, mask) == 5) {
-				if(strstr(macaddr, "00:22:07")) {
+				if(!strncmp(macaddr, "00:22:07", 8) || !strncmp(macaddr, "44:D4:37", 8)) {
 					connectAndRunCmd(ipaddr, ssid, key);
 					strcat(ripaddr, ipaddr);
 					strcat(ripaddr, " ");
@@ -350,7 +350,7 @@ int wificlient(void) {
 		{
 			removeNewline(line);
 			if (sscanf(line, "%s 0x%d 0x%d %s %s %s", ipaddr, &hw, &flag, macaddr, mask, device) == 6) {
-				if(strstr(macaddr, "00:22:07") && !strstr(ripaddr, ipaddr)) {
+				if((!strncmp(macaddr, "00:22:07", 8) || !strncmp(macaddr, "44:D4:37", 8)) && !strstr(ripaddr, ipaddr)) {
 					connectAndRunCmd(ipaddr, ssid, key);
 				}
 			}
