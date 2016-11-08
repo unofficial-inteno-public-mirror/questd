@@ -475,6 +475,10 @@ static void dump_client(struct blob_buf *b, Client client)
 static void
 router_dump_ports(struct blob_buf *b, char *interface)
 {
+
+	if (!strlen(chrCmd("uci -q get network.%s.ifname", interface)))
+		return;
+
 	void *t, *c, *h, *s;
 	int pno, i, j;
 #if IOPSYS_BROADCOM
