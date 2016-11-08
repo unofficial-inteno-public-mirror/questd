@@ -386,11 +386,14 @@ get_clients:
 }
 
 static void dump_client(struct blob_buf *b, Client client)
-{	
+{
 #if IOPSYS_BROADCOM
 	static char linkspeed[64];
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
+
+	if(client.wireless && !wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps))
+		return;
 #endif
 	int cno;
 
