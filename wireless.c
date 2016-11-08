@@ -456,7 +456,9 @@ quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 	blob_buf_init(&bb, 0);
 
 	for (i = 0; i < MAX_CLIENT && stas[i].exists; i++) {
-		wl_get_stas_info(stas[i].wdev, stas[i].macaddr, &sta_info, &htcaps);
+		if(!wl_get_stas_info(stas[i].wdev, stas[i].macaddr, &sta_info, &htcaps))
+			continue;
+
 		wl_get_bssinfo(stas[i].wdev, &bandwidth, &channel, &noise);
 		wl_get_rssi(stas[i].wdev, stas[i].macaddr, &rssi);
 		snr = rssi - noise;

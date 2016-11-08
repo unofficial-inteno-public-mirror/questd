@@ -532,16 +532,18 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 	return 0;
 }
 
-void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
+int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
 	FILE *stainfo;
 	char cmnd[64];
 	char line[256];
+	int assoced = 0;
 
 	sprintf(cmnd, "wlctl -i %s sta_info %s 2>/dev/null", ifname, bssid);
 	if ((stainfo = popen(cmnd, "r"))) {
 		while(fgets(line, sizeof(line), stainfo) != NULL)
 		{
+			assoced = 1;
 			remove_newline(line);
 			//sscanf(line, "[VER %d] STA %s:\n", &(sta_info->ver));
 			//sscanf(line, "\t aid:%d ", &(sta_info->aid));
@@ -587,6 +589,8 @@ void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_i
 		}
 		pclose(stainfo);
 	}
+
+	return assoced;
 }
 
 /* -------------------------------------------------------------------------- */
