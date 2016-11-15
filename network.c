@@ -342,8 +342,10 @@ populate_ports(Network *network)
 		get_port_name(&port[i]);
 		if(strstr(port[i].device, "eth"))
 			get_port_speed(port[i].linkspeed, port[i].device);
+#if IOPSYS_BROADCOM
 nextport:
 		prt = strtok_r (NULL, " ", &saveptr1);
+#endif
 		i++;
 	}
 	if (theports)
@@ -1071,9 +1073,7 @@ populate_clients()
 	}
 
 	if (popc) {
-	#if IOPSYS_BROADCOM
 		wireless_assoclist();
-	#endif
 		ipv4_clients();
 		ipv6_clients();
 		popc = false;
