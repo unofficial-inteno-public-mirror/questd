@@ -17,6 +17,8 @@
 #include <linux/if.h>
 #include <errno.h>
 
+#include <linux/wireless.h>
+
 #include "tools.h"
 #include "mediatek.h"
 
@@ -25,6 +27,37 @@
 /* -------------------------------------------------------------------------- */
 
 #define confile(val) (!strncmp(val, "rai", 3)) ? "/etc/Wireless/iNIC/iNIC_ap.dat" : "/etc/Wireless/RT2860/RT2860.dat"
+
+int
+wl_ether_atoe(const char *a, struct wl_ether_addr *n)
+{
+	char *c = NULL;
+	int i = 0;
+
+	memset(n, 0, ETHER_ADDR_LEN);
+	for (;;) {
+		n->octet[i++] = (uint8)strtoul(a, &c, 16);
+		if (!*c++ || i == ETHER_ADDR_LEN)
+			break;
+		a = c;
+	}
+	return (i == ETHER_ADDR_LEN);
+}
+
+char *
+wl_ether_etoa(const struct wl_ether_addr *n)
+{
+	static char etoa_buf[ETHER_ADDR_LEN * 3];
+	char *c = etoa_buf;
+	int i;
+
+	for (i = 0; i < ETHER_ADDR_LEN; i++) {
+		if (i)
+			*c++ = ':';
+		c += sprintf(c, "%02X", n->octet[i] & 0xff);
+	}
+	return etoa_buf;
+}
 
 int wl_get_channel(const char *ifname, int *buf)
 {
@@ -184,7 +217,7 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 	sprintf(name, ifname);
 	strcpy(data, "get_mac_table");
 	strcpy(wrq.ifr_name, name);
-	wrq.u.data.length = 2048;
+	wrq.u.data.length = strlen(data);
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 
@@ -196,6 +229,34 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 	printf("------------------\n");
 	printf("%s", data);
 	printf("\n------------------");
+
+	if(1)
+		return NULL;
+
+	RT_802_11_MAC_TABLE *mp;
+	int i;
+
+	mp = (RT_802_11_MAC_TABLE*) wrq.u.data.pointer;
+
+
+	printf("\n%-4s%-20s%-4s%-10s%-10s%-10s\n", "AID", "MAC_Address", "PSM", "LastTime", "RxByte", "TxByte");
+
+	for (i=0; i < mp->Num; i++) {
+		printf("%-4d", mp->Entry[i].Aid);
+		printf("%02X:%02X:%02X:%02X:%02X:%02X ",
+			mp->Entry[i].Addr[0], mp->Entry[i].Addr[1],
+			mp->Entry[i].Addr[2], mp->Entry[i].Addr[4],
+			mp->Entry[i].Addr[3], mp->Entry[i].Addr[5]);
+		printf("%-4d", mp->Entry[i].Psm);
+/*		printf("%-10u", (unsigned int)mp->Entry[i].HSCounter.LastDataPacketTime);*/
+/*		printf("%-10u", (unsigned int)mp->Entry[i].HSCounter.TotalRxByteCount);*/
+/*		printf("%-10u", (unsigned int)mp->Entry[i].HSCounter.TotalTxByteCount);*/
+
+		printf("%-10u", (unsigned int)mp->Entry[i].ConnectedTime);
+		printf("%-10u", (HTTRANSMIT_SETTING)mp->Entry[i].TxRate);
+		printf("%-10u", (unsigned int)mp->Entry[i].LastRxRate);
+		printf("\n");
+	}
 
 
 	return NULL;

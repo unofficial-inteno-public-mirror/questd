@@ -687,5 +687,3 @@ int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
-
-#endif
