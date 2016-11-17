@@ -178,14 +178,14 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 {
 	int socket_id;
 	char name[25];
-	char data[255];
+	char data[2048];
 	struct iwreq wrq;
 
 	sprintf(name, ifname);
 	strcpy(data, "get_mac_table");
 	strcpy(wrq.ifr_name, name);
-	wrq.u.data.length = strlen(data);
-	//wrq.u.data.pointer = data;
+	wrq.u.data.length = 2048;
+	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 
 	socket_id = socket(AF_INET, SOCK_DGRAM, 0);
@@ -193,7 +193,10 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 
 	ioctl(socket_id, RTPRIV_IOCTL_GET_MAC_TABLE, &wrq);
 
-	printf("DATA is %s\n", wrq.u.name);
+	printf("------------------\n");
+	printf("%s", data);
+	printf("\n------------------");
+
 
 	return NULL;
 }
