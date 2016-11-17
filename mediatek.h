@@ -1,7 +1,3 @@
-#include <linux/types.h>		/* for __u* and __s* typedefs */
-#include <linux/socket.h>		/* for "struct sockaddr" et al	*/
-#include <linux/if.h>			/* for IFNAMSIZ and co... */
-
 #include "typedefs.h"
 
 #define WL_STA_ANT_MAX		4	/**< max possible rx antennas */
@@ -199,14 +195,6 @@ typedef struct _RT_802_11_MAC_TABLE {
 
 
 
-
-
-
-
-
-
-
-//#define SIOCIWFIRSTPRIV								SIOCDEVPRIVATE
 
 /* Ralink defined OIDs */
 #define RT_PRIV_IOCTL								(SIOCIWFIRSTPRIV + 0x01)

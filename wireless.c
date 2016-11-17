@@ -307,6 +307,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u8(&bb, "dwds_active", (sta_info.flags & WL_STA_DWDS) ? true : false);
 		blobmsg_close_table(&bb, f);
 
+#if IOPSYS_BROADCOM
 		h = blobmsg_open_table(&bb, "htcaps");
 		blobmsg_add_u8(&bb, "ldpc", (sta_info.ht_capabilities & WL_STA_CAP_LDPC_CODING) ? true : false);
 		blobmsg_add_u8(&bb, "bw40", (sta_info.ht_capabilities & WL_STA_CAP_40MHZ) ? true : false);
@@ -370,6 +371,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);			
 			blobmsg_close_array(&bb, r);
 		}
+#endif
 		blobmsg_close_table(&bb, t);
 		num++;
 	}
