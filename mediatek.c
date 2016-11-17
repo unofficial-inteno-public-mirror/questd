@@ -1,3 +1,7 @@
+/* -------------------------------------------------------------------------- */
+#ifdef IOPSYS_MEDIATEK
+/* -------------------------------------------------------------------------- */
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -22,11 +26,31 @@
 #include "tools.h"
 #include "mediatek.h"
 
-/* -------------------------------------------------------------------------- */
-#ifdef IOPSYS_MEDIATEK
-/* -------------------------------------------------------------------------- */
-
 #define confile(val) (!strncmp(val, "rai", 3)) ? "/etc/Wireless/iNIC/iNIC_ap.dat" : "/etc/Wireless/RT2860/RT2860.dat"
+
+static int iosocket = -1;
+
+static int wl_ioctl(const char *ifname, int cmd, char *data, int len)
+{
+	int socket_id;
+	char name[25];
+	//char data[20480];
+	struct iwreq wrq;
+
+	sprintf(name, ifname);
+	//strcpy(data, "get_mac_table");
+	strcpy(wrq.ifr_name, name);
+	wrq.u.data.length = strlen(data);
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	if (iosocket == -1) {
+		socket_id = socket(AF_INET, SOCK_DGRAM, 0);
+		fcntl(socket_id, F_SETFD, fcntl(socket_id, F_GETFD) | FD_CLOEXEC);
+	}
+
+	return ioctl(socket_id, cmd, &wrq);
+}
 
 int
 wl_ether_atoe(const char *a, struct wl_ether_addr *n)
@@ -209,53 +233,30 @@ int wl_get_deviceid(const char *ifname, int *buf)
 
 struct wl_maclist * wl_read_assoclist(const char *ifname)
 {
-	int socket_id;
-	char name[25];
-	char data[2048];
-	struct iwreq wrq;
+	char data[20480];
 
-	sprintf(name, ifname);
-	strcpy(data, "get_mac_table");
-	strcpy(wrq.ifr_name, name);
-	wrq.u.data.length = strlen(data);
-	wrq.u.data.pointer = data;
-	wrq.u.data.flags = 0;
-
-	socket_id = socket(AF_INET, SOCK_DGRAM, 0);
-	fcntl(socket_id, F_SETFD, fcntl(socket_id, F_GETFD) | FD_CLOEXEC);
-
-	ioctl(socket_id, RTPRIV_IOCTL_GET_MAC_TABLE, &wrq);
-
-	printf("------------------\n");
-	printf("%s", data);
-	printf("\n------------------");
-
-	if(1)
-		return NULL;
+	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, data, strlen(data));
 
 	RT_802_11_MAC_TABLE *mp;
 	int i;
 
-	mp = (RT_802_11_MAC_TABLE*) wrq.u.data.pointer;
+	mp = (RT_802_11_MAC_TABLE*) data;
 
+	struct wl_maclist *macs;
+	int maclen = 4 + WL_MAX_STA_COUNT * 6;
 
-	printf("\n%-4s%-20s%-4s%-10s%-10s%-10s\n", "AID", "MAC_Address", "PSM", "LastTime", "RxByte", "TxByte");
+	if(mp->Num < 1)
+		return NULL;
 
-	for (i=0; i < mp->Num; i++) {
-		printf("%-4d", mp->Entry[i].Aid);
-		printf("%02X:%02X:%02X:%02X:%02X:%02X ",
-			mp->Entry[i].Addr[0], mp->Entry[i].Addr[1],
-			mp->Entry[i].Addr[2], mp->Entry[i].Addr[4],
-			mp->Entry[i].Addr[3], mp->Entry[i].Addr[5]);
-		printf("%-4d", mp->Entry[i].Psm);
-/*		printf("%-10u", (unsigned int)mp->Entry[i].HSCounter.LastDataPacketTime);*/
-/*		printf("%-10u", (unsigned int)mp->Entry[i].HSCounter.TotalRxByteCount);*/
-/*		printf("%-10u", (unsigned int)mp->Entry[i].HSCounter.TotalTxByteCount);*/
+	if ((macs = (struct wl_maclist *) malloc(maclen)) != NULL)
+	{
+		memset(macs, 0, maclen);
+		macs->count = mp->Num;
+		for (i=0; i < mp->Num; i++) {
+			memcpy(macs->ea[i].octet, mp->Entry[i].Addr, sizeof(mp->Entry[i].Addr));
+		}
 
-		printf("%-10u", (unsigned int)mp->Entry[i].ConnectedTime);
-		printf("%-10u", (HTTRANSMIT_SETTING)mp->Entry[i].TxRate);
-		printf("%-10u", (unsigned int)mp->Entry[i].LastRxRate);
-		printf("\n");
+		return macs;
 	}
 
 
@@ -264,12 +265,21 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 
 void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
-	sta_info->in = 20;
+	char data[20480];
+
+	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, data, strlen(data));
+
+	RT_802_11_MAC_TABLE *mp;
+	int i;
+
+	mp = (RT_802_11_MAC_TABLE*) data;
+
+	sta_info->in = (unsigned int)mp->Entry[i].ConnectedTime;
 	sta_info->tx_tot_bytes = 1234;
 	sta_info->rx_tot_bytes = 5678;
 	sta_info->tx_rate_fallback = 0;
-	sta_info->tx_rate = 866;
-	sta_info->rx_rate = 458;
+	//sta_info->tx_rate = (HTTRANSMIT_SETTING)mp->Entry[i].TxRate;
+	sta_info->rx_rate = (unsigned int)mp->Entry[i].LastRxRate;
 }
 
 /* -------------------------------------------------------------------------- */
