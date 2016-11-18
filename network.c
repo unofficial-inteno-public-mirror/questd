@@ -398,6 +398,7 @@ static void dump_client(struct blob_buf *b, Client client)
 
 	if(client.wireless && !wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps))
 		return;
+
 	int cno;
 
 	blobmsg_add_string(b, "hostname", client.hostname);
@@ -912,7 +913,6 @@ inc:
 								recalc_sleep_time(true, toms);
 						}
 
-					#if IOPSYS_BROADCOM
 						if(clients[cno].connected && is_inteno_macaddr(clients[cno].macaddr)) {
 							memset(clients[cno].assoclist, '\0', 128);
 							strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
