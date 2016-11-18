@@ -454,7 +454,6 @@ static void dump_client(struct blob_buf *b, Client client)
 		}
 	}
 
-#if IOPSYS_BROADCOM
 	if(strstr(client.macaddr, "00:22:07")) {
 		void *a, *t;
 		int i = 0;
@@ -482,7 +481,6 @@ static void dump_client(struct blob_buf *b, Client client)
 
 		blobmsg_close_array(b, a);
 	}
-#endif
 }
 
 static void
@@ -503,9 +501,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 
 	void *t, *c, *h, *s;
 	int pno, i, j;
-#if IOPSYS_BROADCOM
 	int k, l;
-#endif
 	const char *ports[8];
 	bool found = false;
 
@@ -552,8 +548,6 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			}
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
-
-			#if IOPSYS_BROADCOM
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (is_inteno_macaddr(clients[k].macaddr)) {
 						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
@@ -562,7 +556,6 @@ router_dump_ports(struct blob_buf *b, char *interface)
 						}
 					}
 				}
-			#endif
 
 				port[i].client[j].connected = true;
 			#if IOPSYS_BROADCOM
@@ -754,7 +747,6 @@ ipv4_clients()
 	int i, j;
 	bool there;
 	int toms = 1000;
-#if IOPSYS_BROADCOM
 	char assoclist[1280];
 	char *saveptr1, *saveptr2;
 	int ano = 0;
@@ -783,12 +775,11 @@ ipv4_clients()
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
-			#if IOPSYS_BROADCOM
+
 				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 					clients[cno].wireless = true;
 				}
 				else
-			#endif
 				{
 					clients[cno].connected = false;
 					clients[cno].repeated = true;
@@ -801,16 +792,13 @@ ipv4_clients()
 							strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 					}
 
-					if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
-						if(!strncmp(clients[cno].ethport, "ra", 2))
-							clients[cno].wireless = true;
+					if(!strncmp(clients[cno].ethport, "eth", 3)) {
 						clients[cno].connected = true;
 						clients[cno].repeated = false;
 					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 						recalc_sleep_time(true, toms);
 				}
 
-			#if IOPSYS_BROADCOM
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
 					memset(output, 0, 1280);
@@ -825,7 +813,6 @@ ipv4_clients()
 						ano++;
 					}
 				}
-			#endif
 
 				cno++;
 			}
@@ -852,7 +839,6 @@ ipv4_clients()
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
 
-			#if IOPSYS_BROADCOM
 				for (i=0; i < cno; i++) {
 					for(j=0; j < 32 && clients[i].assoclist[j].octet[0] != 0; j++) {
 						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
@@ -863,12 +849,10 @@ ipv4_clients()
 					}
 				}
 
-
 				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 					clients[cno].wireless = true;
 				}
 				else
-			#endif
 				{
 					clients[cno].connected = false;
 					clients[cno].repeated = true;
@@ -884,20 +868,15 @@ ipv4_clients()
 						}
 					}
 
-					if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
-						if(!strncmp(clients[cno].ethport, "ra", 2)) {
-							clients[cno].wireless = true;
-							strcpy(clients[cno].wdev, clients[cno].ethport);
-							memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
-						}
+					if(!strncmp(clients[cno].ethport, "eth", 3)) {
 						clients[cno].connected = true;
 						clients[cno].repeated = false;
 					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 						recalc_sleep_time(true, toms);
 				}
-#if IOPSYS_BROADCOM
+
 inc:
-#endif
+
 				cno++;
 			}
 		}
@@ -935,11 +914,10 @@ inc:
 						get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
 						clients[cno].exists = true;
 						clients[cno].dhcp = false;
-					#if IOPSYS_BROADCOM
+
 						if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 							clients[cno].wireless = true;
 						} else
-					#endif
 						{
 							clients[cno].connected = false;
 							clients[cno].repeated = true;
@@ -950,9 +928,7 @@ inc:
 									strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 							}
 
-							if(!strncmp(clients[cno].ethport, "eth", 3) || !strncmp(clients[cno].ethport, "ra", 2)) {
-								if(!strncmp(clients[cno].ethport, "ra", 2))
-									clients[cno].wireless = true;
+							if(!strncmp(clients[cno].ethport, "eth", 3)) {
 								clients[cno].connected = true;
 								clients[cno].repeated = false;
 							} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
@@ -973,7 +949,6 @@ inc:
 								ano++;
 							}
 						}
-					#endif
 
 						cno++;
 					}
@@ -1046,11 +1021,11 @@ ipv6_clients()
 				//if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
 				if((clients6[cno].connected = ndisc6 (clients6[cno].ip6addr, clients6[cno].device, clients6[cno].macaddr))) {
 					//sprintf(clients6[cno].macaddr, get_macaddr());
-				#if IOPSYS_BROADCOM
+
 					if (wireless_sta6(&clients6[cno])) {
 						clients6[cno].wireless = true;
 					}
-				#endif
+
 				} else
 					recalc_sleep_time(true, toms);
 
