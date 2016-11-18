@@ -30,13 +30,14 @@
 
 static int iosocket = -1;
 
-static int wl_ioctl(const char *ifname, int cmd, char *data, int len)
+static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 {
 	int socket_id;
 	char name[25];
 	struct iwreq wrq;
 
 	sprintf(name, ifname);
+	if (arg) strcpy(data, arg);
 	strcpy(wrq.ifr_name, name);
 	wrq.u.data.length = strlen(data);
 	wrq.u.data.pointer = data;
@@ -117,12 +118,15 @@ int wl_get_wpa_auth(const char *ifname, char *wpa)
 
 int wl_get_wsec(const char *ifname, int *buf)
 {
+	*buf = 0;
 
 	return 0;
 }
 
 int wl_get_noise(const char *ifname, int *buf)
 {
+	*buf = -90;
+
 	return 0;
 }
 
@@ -130,7 +134,7 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
 	char data[20480];
 
-	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, data, strlen(data));
+	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, NULL, data, strlen(data));
 
 	RT_802_11_MAC_TABLE *mp;
 	int i;
@@ -140,7 +144,7 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf)
 	struct wl_ether_addr etheraddr;
 
 	for (i=0; i < mp->Num; i++) {
-		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(mp->Entry[i].Addr));
+		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(etheraddr.octet));
 		if (!strcasecmp((char*) wl_ether_etoa(&(etheraddr)), sta)) {
 			*buf =  (int)mp->Entry[i].AvgRssi0;
 			break;
@@ -194,7 +198,7 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 
 	*channel = atoi(ch);
 
-	*noise = -85;
+	*noise = -90;
 
 	if(!strncmp(ifname, "rai", 3))
 		*bandwidth = 80;
@@ -245,6 +249,12 @@ int wl_get_chanlist(const char *ifname, int *buf)
 int wl_get_deviceid(const char *ifname, int *buf)
 {
 
+	if(!strncmp(ifname, "rai", 3)) {
+		*buf = 0x7615;
+	} else {
+		*buf = 0x7603;
+	}
+
 	return 0;
 }
 
@@ -252,7 +262,7 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 {
 	char data[20480];
 
-	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, data, strlen(data));
+	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, NULL, data, strlen(data));
 
 	RT_802_11_MAC_TABLE *mp;
 	int i;
@@ -270,12 +280,11 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 		memset(macs, 0, maclen);
 		macs->count = mp->Num;
 		for (i=0; i < mp->Num; i++) {
-			memcpy(macs->ea[i].octet, mp->Entry[i].Addr, sizeof(mp->Entry[i].Addr));
+			memcpy(macs->ea[i].octet, mp->Entry[i].Addr, sizeof(macs->ea[i].octet));
 		}
 
 		return macs;
 	}
-
 
 	return NULL;
 }
@@ -284,7 +293,7 @@ void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_i
 {
 	char data[20480];
 
-	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, data, strlen(data));
+	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, NULL, data, strlen(data));
 
 	RT_802_11_MAC_TABLE *mp;
 	int i;
@@ -294,15 +303,15 @@ void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_i
 	struct wl_ether_addr etheraddr;
 
 	for (i=0; i < mp->Num; i++) {
-		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(mp->Entry[i].Addr));
+		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(etheraddr.octet));
 		if (!strcasecmp((char*) wl_ether_etoa(&(etheraddr)), bssid)) {
 			sta_info->in = (unsigned int)mp->Entry[i].ConnectedTime;
 			sta_info->tx_tot_bytes = 1234;
 			sta_info->rx_tot_bytes = 5678;
 			sta_info->tx_rate_fallback = 0;
 			//sta_info->tx_rate = (HTTRANSMIT_SETTING)mp->Entry[i].TxRate;
-			sta_info->tx_rate = (unsigned int)mp->Entry[i].TxRate.word;
-			sta_info->rx_rate = (unsigned int)mp->Entry[i].LastRxRate;
+			sta_info->tx_rate = (unsigned int)mp->Entry[i].TxRate.word *1000;
+			sta_info->rx_rate = (unsigned int)mp->Entry[i].LastRxRate * 1000;
 			sta_info->rssi[0] =  (int)mp->Entry[i].AvgRssi0;
 			sta_info->rssi[1] =  (int)mp->Entry[i].AvgRssi1;
 			sta_info->rssi[2] =  (int)mp->Entry[i].AvgRssi2;

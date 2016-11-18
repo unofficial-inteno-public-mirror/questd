@@ -502,7 +502,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 	ports[7] = "WLAN";
 
 	Port *port;
-	
+
 	for (i = 0; i < MAX_NETWORK; i++) {
 		if (network[i].exists && !strcmp(network[i].name, interface)) {
 			populate_ports(&network[i]);
@@ -511,7 +511,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			break;
 		}
 	}
-	
+
 	if (!found)
 		return;
 
