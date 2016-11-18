@@ -306,8 +306,8 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(etheraddr.octet));
 		if (!strcasecmp((char*) wl_ether_etoa(&(etheraddr)), bssid)) {
 			sta_info->in = (unsigned int)mp->Entry[i].ConnectedTime;
-			sta_info->tx_tot_bytes = 1234;
-			sta_info->rx_tot_bytes = 5678;
+			sta_info->tx_tot_bytes = 0;
+			sta_info->rx_tot_bytes = 0;
 			sta_info->tx_rate_fallback = 0;
 			//sta_info->tx_rate = (HTTRANSMIT_SETTING)mp->Entry[i].TxRate;
 			sta_info->tx_rate = (unsigned int)mp->Entry[i].TxRate.word *1000;
