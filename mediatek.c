@@ -34,11 +34,9 @@ static int wl_ioctl(const char *ifname, int cmd, char *data, int len)
 {
 	int socket_id;
 	char name[25];
-	//char data[20480];
 	struct iwreq wrq;
 
 	sprintf(name, ifname);
-	//strcpy(data, "get_mac_table");
 	strcpy(wrq.ifr_name, name);
 	wrq.u.data.length = strlen(data);
 	wrq.u.data.pointer = data;
@@ -128,7 +126,24 @@ int wl_get_noise(const char *ifname, int *buf)
 
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
-	*buf = -42;
+	char data[20480];
+
+	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, data, strlen(data));
+
+	RT_802_11_MAC_TABLE *mp;
+	int i;
+
+	mp = (RT_802_11_MAC_TABLE*) data;
+
+	struct wl_ether_addr etheraddr;
+
+	for (i=0; i < mp->Num; i++) {
+		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(mp->Entry[i].Addr));
+		if (!strcasecmp((char*) wl_ether_etoa(&(etheraddr)), sta)) {
+			*buf =  (int)mp->Entry[i].AvgRssi0;
+			break;
+		}
+	}
 
 	return 0;
 }
@@ -274,12 +289,25 @@ void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_i
 
 	mp = (RT_802_11_MAC_TABLE*) data;
 
-	sta_info->in = (unsigned int)mp->Entry[i].ConnectedTime;
-	sta_info->tx_tot_bytes = 1234;
-	sta_info->rx_tot_bytes = 5678;
-	sta_info->tx_rate_fallback = 0;
-	//sta_info->tx_rate = (HTTRANSMIT_SETTING)mp->Entry[i].TxRate;
-	sta_info->rx_rate = (unsigned int)mp->Entry[i].LastRxRate;
+	struct wl_ether_addr etheraddr;
+
+	for (i=0; i < mp->Num; i++) {
+		memcpy(etheraddr.octet, mp->Entry[i].Addr, sizeof(mp->Entry[i].Addr));
+		if (!strcasecmp((char*) wl_ether_etoa(&(etheraddr)), bssid)) {
+			sta_info->in = (unsigned int)mp->Entry[i].ConnectedTime;
+			sta_info->tx_tot_bytes = 1234;
+			sta_info->rx_tot_bytes = 5678;
+			sta_info->tx_rate_fallback = 0;
+			//sta_info->tx_rate = (HTTRANSMIT_SETTING)mp->Entry[i].TxRate;
+			sta_info->tx_rate = (unsigned int)mp->Entry[i].TxRate.word;
+			sta_info->rx_rate = (unsigned int)mp->Entry[i].LastRxRate;
+			sta_info->rssi[0] =  (int)mp->Entry[i].AvgRssi0;
+			sta_info->rssi[1] =  (int)mp->Entry[i].AvgRssi1;
+			sta_info->rssi[2] =  (int)mp->Entry[i].AvgRssi2;
+
+			break;
+		}
+	}
 }
 
 /* -------------------------------------------------------------------------- */

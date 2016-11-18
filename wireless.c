@@ -294,6 +294,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u32(&bb, "idle", sta_info.idle);
 		blobmsg_add_u32(&bb, "in_network", sta_info.in);
 
+#if IOPSYS_BROADCOM
 		f = blobmsg_open_table(&bb, "flags");
 		blobmsg_add_u8(&bb, "brcm", (sta_info.flags & WL_STA_BRCM) ? true : false);
 		blobmsg_add_u8(&bb, "wme", (sta_info.flags & WL_STA_WME) ? true : false);
@@ -314,7 +315,6 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u8(&bb, "dwds_active", (sta_info.flags & WL_STA_DWDS) ? true : false);
 		blobmsg_close_table(&bb, f);
 
-#if IOPSYS_BROADCOM
 		h = blobmsg_open_table(&bb, "htcaps");
 		blobmsg_add_u8(&bb, "ldpc", (sta_info.ht_capabilities & WL_STA_CAP_LDPC_CODING) ? true : false);
 		blobmsg_add_u8(&bb, "bw40", (sta_info.ht_capabilities & WL_STA_CAP_40MHZ) ? true : false);
@@ -375,9 +375,14 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 
 			r = blobmsg_open_array(&bb, "rssi_per_antenna");
 			for (j = 0; sta_info.rssi[j] && j < WL_STA_ANT_MAX; j++)
-				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);			
+				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);
 			blobmsg_close_array(&bb, r);
 		}
+#else
+			r = blobmsg_open_array(&bb, "rssi_per_antenna");
+			for (j = 0; sta_info.rssi[j]; j++)
+				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);
+			blobmsg_close_array(&bb, r);
 #endif
 		blobmsg_close_table(&bb, t);
 		num++;
