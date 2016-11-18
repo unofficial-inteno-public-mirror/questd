@@ -342,8 +342,8 @@ populate_ports(Network *network)
 			get_port_speed(port[i].linkspeed, port[i].device);
 #if IOPSYS_BROADCOM
 nextport:
-		prt = strtok_r (NULL, " ", &saveptr1);
 #endif
+		prt = strtok_r (NULL, " ", &saveptr1);
 		i++;
 	}
 	
@@ -352,7 +352,6 @@ nextport:
 get_clients:	
 	for(i=1; i < MAX_PORT; i++)
 	{
-
 		if(strlen(port[i].device)<2)
 			continue;
 
