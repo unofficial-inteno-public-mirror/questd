@@ -289,7 +289,7 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 	return NULL;
 }
 
-void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
+int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
 	char data[20480];
 
@@ -316,9 +316,11 @@ void wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_i
 			sta_info->rssi[1] =  (int)mp->Entry[i].AvgRssi1;
 			sta_info->rssi[2] =  (int)mp->Entry[i].AvgRssi2;
 
-			break;
+			return 1;
 		}
 	}
+
+	return 0;
 }
 
 /* -------------------------------------------------------------------------- */

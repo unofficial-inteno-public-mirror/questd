@@ -243,7 +243,7 @@ load_wireless()
 static void
 router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 {
-	void *t, *v, *r;
+	void *t, *r;
 	char compare[8];
 	char stanum[8];
 	int num = 1;
@@ -295,7 +295,7 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u32(&bb, "in_network", sta_info.in);
 
 #if IOPSYS_BROADCOM
-		void *f, *h, *s;
+		void *f, *h, *s, *v;
 
 		f = blobmsg_open_table(&bb, "flags");
 		blobmsg_add_u8(&bb, "brcm", (sta_info.flags & WL_STA_BRCM) ? true : false);
