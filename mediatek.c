@@ -88,6 +88,8 @@ int wl_get_channel(const char *ifname, int *buf)
 	strcpy(channel, chrCmd("iwinfo %s info 2>/dev/null| grep Channel | awk '{print$4}'", ifname));	
 
 	*buf = atoi(channel);
+
+	return 0;
 }
 
 int wl_get_ssid(const char *ifname, char *buf)
