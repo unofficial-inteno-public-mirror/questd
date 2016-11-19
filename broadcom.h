@@ -136,9 +136,6 @@
 #include "typedefs.h"
 #include "bcmwifi_channels.h"
 
-#ifndef _BROADCOM_H
-#define _BROADCOM_H
-
 #define WL_MCSSET_LEN				16
 #define WL_MAX_STA_COUNT			32
 
