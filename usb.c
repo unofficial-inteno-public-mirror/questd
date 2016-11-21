@@ -48,27 +48,26 @@ get_usb_infos(char *usbno, char *info) {
 	return result;
 }
 
-char*
-get_usb_device(char *mount) {
+void
+get_usb_device(USB *usb) {
 	FILE *mounts;
 	char line[128];
-	static char dev[16];
 	char mnt[64];
 
 	if ((mounts = fopen("/var/usbmounts", "r"))) {
 		while(fgets(line, sizeof(line), mounts) != NULL)
 		{
 			remove_newline(line);
-			if (sscanf(line, "/dev/%s /mnt/%s", dev, mnt) == 2) {
-				if (!strcmp(mnt, mount) || strstr(mount, mnt)) {
+			if (sscanf(line, "/dev/%s /mnt/%s %s", usb->device, mnt, usb->fs) == 3) {
+				if (!strcmp(mnt, usb->mount) || strstr(usb->mount, mnt)) {
 					break;
 				}
+				memset(usb->device, '\0', sizeof(usb->device));
 			}
-			memset(dev, '\0', sizeof(dev));
 		}
 		fclose(mounts);
 	}
-	return dev;
+	return;
 }
 
 long
@@ -125,7 +124,7 @@ dump_usb_info(USB *usb, char *usbno)
 
 		strncpy(usb->netdevice, chrCmd("ls /sys/devices/platform/ehci-platform.*/*/driver/%s*/*/net/ 2>/dev/null || ls /sys/devices/pci*/0*/usb*/%s/*/net/ 2>/dev/null", usbno, usbno), 32);
 		strncpy(usb->desc, chrCmd("cat /lib/network/wwan/%s:%s 2>/dev/null | grep desc | awk -F'[:,]' '{print$2}' | cut -d'\"' -f2", usb->idvendor, usb->idproduct), 128);
-		strncpy(usb->device, get_usb_device(usb->mount), 64);
+		get_usb_device(usb);
 		usb->size = get_usb_size(usb->device);
 	}
 }
@@ -167,6 +166,7 @@ router_dump_usbs(struct blob_buf *b)
 					blobmsg_add_string(b, "device", usb[uno].device);
 					blobmsg_add_u64(b, "size", usb[uno].size);
 					blobmsg_add_string(b, "mntdir", usb[uno].mount);
+					blobmsg_add_string(b, "filesystem", usb[uno].fs);
 				}
 			}
 			if(strlen(usb[uno].netdevice) > 2) {

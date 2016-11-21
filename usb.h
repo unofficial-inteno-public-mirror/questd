@@ -15,6 +15,7 @@ typedef struct {
 	char idvendor[64];
 	char netdevice[32];
 	char desc[128];
+	char fs[16];
 } USB;
 
 void dump_usb_info(USB *usb, char *usbno);
