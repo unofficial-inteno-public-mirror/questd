@@ -412,7 +412,7 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "radio", isup);
 	blobmsg_add_string(&bb, "ssid", ssid);
 	blobmsg_add_string(&bb, "bssid", bssid);
-	blobmsg_add_string(&bb, "encryption", (wsec == 1) ? "WEP" : wpa_auth);
+	blobmsg_add_string(&bb, "encryption", (wsec == 1 || wsec == 65) ? "WEP" : wpa_auth);
 	blobmsg_add_u32(&bb, "frequency", (band==1)?5:2);
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
