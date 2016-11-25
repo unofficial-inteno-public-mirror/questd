@@ -1,3 +1,7 @@
+/* -------------------------------------------------------------------------- */
+#if IOPSYS_BROADCOM
+/* -------------------------------------------------------------------------- */
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -20,10 +24,6 @@
 #include "tools.h"
 #include "broadcom.h"
 #include "bcmwifi_channels.h"
-
-/* -------------------------------------------------------------------------- */
-#if IOPSYS_BROADCOM
-/* -------------------------------------------------------------------------- */
 
 typedef enum {
 	WL0,
@@ -322,45 +322,6 @@ wl_format_ssid(char* ssid_buf, uint8* ssid, int ssid_len)
 	return p - ssid_buf;
 }
 
-void dump_bss_info_summary(wl_bss_info_t *bi)
-{
-	char ssidbuf[SSID_FMT_BUF_LEN];
-
-	wl_format_ssid(ssidbuf, bi->SSID, bi->SSID_len);
-
-	printf("BSSID: %02X:%02X:%02X:%02X:%02X:%02X\t",
-		bi->BSSID.octet[0], bi->BSSID.octet[1], bi->BSSID.octet[2],
-		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]
-	);
-	printf("RSSI: %d dBm\t", (int16)(bi->RSSI));
-
-	printf("Band: %sGHz\t", CHSPEC_IS2G(bi->chanspec)?"2.4":"5");
-	printf("Channel: %d\t", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(bi->chanspec));
-	printf("Noise: %d dBm\t", (int16)(bi->phy_noise));
-
-	if (bi->version != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap) {
-		if (bi->vht_cap)
-			printf("802.11: n/ac\t");
-		else
-			printf("802.11: b/g/n\t");
-	}
-	else {
-		printf("802.11: b/g\t");
-	}
-
-	printf("SSID: %s", ssidbuf);
-
-	printf("\n");
-
-	printf("\tChanspec: %sGHz channel %d %dMHz (0x%x)\n",
-		CHSPEC_IS2G(bi->chanspec)?"2.4":"5", CHSPEC_CHANNEL(bi->chanspec),
-		(CHSPEC_IS160(bi->chanspec) ?
-		160:(CHSPEC_IS80(bi->chanspec) ?
-		80 : (CHSPEC_IS40(bi->chanspec) ?
-		40 : (CHSPEC_IS20(bi->chanspec) ? 20 : 10)))),
-		bi->chanspec);
-}
-
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
 	wl_bss_info_t *bi;
@@ -417,6 +378,95 @@ int wl_get_chanlist(const char *ifname, int *buf)
 		buf[i+1] = 0;
 
 	return ret;
+}
+
+void dump_bss_info_summary(wl_bss_info_t *bi)
+{
+	char ssidbuf[SSID_FMT_BUF_LEN];
+
+	wl_format_ssid(ssidbuf, bi->SSID, bi->SSID_len);
+
+	printf("BSSID: %02X:%02X:%02X:%02X:%02X:%02X\t",
+		bi->BSSID.octet[0], bi->BSSID.octet[1], bi->BSSID.octet[2],
+		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]
+	);
+	printf("RSSI: %d dBm\t", (int16)(bi->RSSI));
+
+	printf("Band: %sGHz\t", CHSPEC_IS2G(bi->chanspec)?"2.4":"5");
+	printf("Channel: %d\t", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(bi->chanspec));
+	printf("Noise: %d dBm\t", (int16)(bi->phy_noise));
+
+	if (bi->version != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap) {
+		if (bi->vht_cap)
+			printf("802.11: n/ac\t");
+		else
+			printf("802.11: b/g/n\t");
+	}
+	else {
+		printf("802.11: b/g\t");
+	}
+
+	printf("SSID: %s", ssidbuf);
+
+	printf("\n");
+
+	printf("\tChanspec: %sGHz channel %d %dMHz (0x%x)\n",
+		CHSPEC_IS2G(bi->chanspec)?"2.4":"5", CHSPEC_CHANNEL(bi->chanspec),
+		(CHSPEC_IS160(bi->chanspec) ?
+		160:(CHSPEC_IS80(bi->chanspec) ?
+		80 : (CHSPEC_IS40(bi->chanspec) ?
+		40 : (CHSPEC_IS20(bi->chanspec) ? 20 : 10)))),
+		bi->chanspec);
+}
+
+static void
+dump_networks_summary(char *network_buf)
+{
+	wl_scan_results_t *list = (wl_scan_results_t*)network_buf;
+	wl_bss_info_t *bi;
+	uint i;
+
+	if (list->count == 0)
+		return;
+	else if (list->version != WL_BSS_INFO_VERSION &&
+	         list->version != LEGACY2_WL_BSS_INFO_VERSION &&
+	         list->version != LEGACY_WL_BSS_INFO_VERSION) {
+/*		printf("Sorry, your driver has bss_info_version %d "*/
+/*			"but this program supports only version %d.\n",*/
+/*			list->version, WL_BSS_INFO_VERSION);*/
+		return;
+	}
+
+	bi = list->bss_info;
+	for (i = 0; i < list->count; i++) {
+		bi = (wl_bss_info_t*)((int8*)bi + bi->length);
+		dump_bss_info_summary(bi);
+	}
+}
+
+int wl_get_scanresults(const char *ifname)
+{
+	int ret, chan_count;
+	char *dump_buf, *dump_buf_orig;
+
+	dump_buf_orig = dump_buf = malloc(WL_DUMP_BUF_LEN);
+
+	if (dump_buf == NULL) {
+		printf("Failed to allocate dump buffer of %d bytes\n", WL_DUMP_BUF_LEN);
+		return -1;
+	}
+
+	system("wlctl -i wl1 scan; sleep 1");
+
+	wl_endianness_check(ifname);
+
+	ret = wl_ioctl(ifname, WLC_SCAN_RESULTS, dump_buf, WL_DUMP_BUF_LEN);
+
+	if (ret == 0) {
+		dump_networks_summary(dump_buf);
+	}
+
+	free(dump_buf_orig);
 }
 
 int wl_get_deviceid(const char *ifname, int *buf)

@@ -40,6 +40,8 @@
 
 #define SSID_FMT_BUF_LEN (4*32+1)	/* Length for SSID format string */
 #define	LEGACY_WL_BSS_INFO_VERSION	107
+#define	LEGACY2_WL_BSS_INFO_VERSION	108
+#define	WL_BSS_INFO_VERSION	109		/* current version of wl_bss_info struct */
 #define MCSSET_LEN	16	/* 16-bits per 8-bit set to give 128-bits bitmap of MCS Index */
 #define WL_STA_ANT_MAX		4	/**< max possible rx antennas */
 #define WL_STA_VER		4
@@ -48,6 +50,8 @@
 #define	ETHER_ADDR_LEN		6
 #endif
 #define WLC_IOCTL_MEDLEN	1536    /* "med" length ioctl buffer required */
+
+#define WL_DUMP_BUF_LEN (127 * 1024)
 
 #define WL_STA_AID(a)		((a) &~ 0xc000)
 
@@ -135,9 +139,6 @@
 
 #include "typedefs.h"
 #include "bcmwifi_channels.h"
-
-#ifndef _BROADCOM_H
-#define _BROADCOM_H
 
 #define WL_MCSSET_LEN				16
 #define WL_MAX_STA_COUNT			32
@@ -543,6 +544,13 @@ typedef struct wl_bss_info {
 	/* variable length Information Elements */
 } wl_bss_info_t;
 
+typedef struct wl_scan_results {
+	uint32 buflen;
+	uint32 version;
+	uint32 count;
+	wl_bss_info_t bss_info[1];
+} wl_scan_results_t;
+
 /* Used to get specific STA parameters */
 typedef struct wl_scb_val {
 	uint32	val;
@@ -687,5 +695,3 @@ int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
-
-#endif

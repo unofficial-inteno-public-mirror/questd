@@ -563,11 +563,31 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+static int
+quest_router_scanresults(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__WL_MAX];
+
+	blobmsg_parse(vif_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (tb[VIF_NAME]) {
+		wl_get_scanresults(blobmsg_data(tb[VIF_NAME]));
+	}
+
+	blob_buf_init(&bb, 0);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+
 struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD("status", quest_router_vif_status, vif_policy),
 	UBUS_METHOD("stas", quest_router_stas, vif_policy),
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
+	UBUS_METHOD("scanresults", quest_router_scanresults, vif_policy),
 };
 
 struct ubus_object_type wireless_object_type =
