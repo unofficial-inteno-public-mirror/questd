@@ -97,14 +97,8 @@ wps_pbc_client(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-#if IOPSYS_BROADCOM
 	system("INTERFACE=wpscbutton ACTION=register /sbin/hotplug-call button &");
-#elif IOPSYS_MEDIATEK
-	system("iwpriv apcli0 set WscConfMode=1");
-	system("iwpriv apcli0 set WscConfStatus=1");
-	system("iwpriv apcli0 set WscMode=2");
-	system("iwpriv apcli0 set WscGetConf=1");
-#endif
+
 	return 0;
 }
 
