@@ -47,8 +47,7 @@ bool is_valid_key(const char *type, const char *key)
 		if(!isalnum(key[i]) && key[i] != '+' && key[i] != '/' && key[i] != '=')
 			return false;
 	}
-	return ((strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA", 16) == 0) ||
-			(strcmp(type, "ssh-dss") == 0 && strncmp(key, "AAAAB3NzaC1kc3MA", 16) == 0));
+	return (strcmp(type, "ssh-rsa") == 0 && strncmp(key, "AAAAB3NzaC1yc2EA", 16) == 0);
 }
 
 static int
