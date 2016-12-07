@@ -139,6 +139,7 @@ load_wireless()
 	const char *network = NULL;
 	const char *ssid = NULL;
 	char wdev[16];
+	char output[32];
 	int rno = 0;
 	int wno = 0;
 	int vif;
@@ -183,7 +184,7 @@ load_wireless()
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
 				wl_get_deviceid(radio[rno].name, &(radio[rno].deviceid));
 				radio[rno].is_ac = false;
-				if (radio[rno].deviceid && atoi(chrCmd("db -q get hw.%x.is_ac", radio[rno].deviceid)) == 1)
+				if (radio[rno].deviceid && atoi(chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid)) == 1)
 					radio[rno].is_ac = true;
 
 				if(radio[rno].frequency == 2) {

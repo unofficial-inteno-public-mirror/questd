@@ -94,6 +94,7 @@ dump_usb_info(USB *usb, char *usbno)
 	FILE *in;
 	char file[64];
 	char result[32];
+	char output[128];
 
 	sprintf(file, "/sys/bus/usb/devices/%s/product", usbno);
 	if ((in = fopen(file, "r"))) {
@@ -122,8 +123,8 @@ dump_usb_info(USB *usb, char *usbno)
 			remove_space(usb->mount);
 		}
 
-		strncpy(usb->netdevice, chrCmd("ls /sys/devices/platform/ehci-platform.*/*/driver/%s*/*/net/ 2>/dev/null || ls /sys/devices/pci*/0*/usb*/%s/*/net/ 2>/dev/null", usbno, usbno), 32);
-		strncpy(usb->desc, chrCmd("cat /lib/network/wwan/%s:%s 2>/dev/null | grep desc | awk -F'[:,]' '{print$2}' | cut -d'\"' -f2", usb->idvendor, usb->idproduct), 128);
+		strncpy(usb->netdevice, chrCmd(output, 32, "ls /sys/devices/platform/ehci-platform.*/*/driver/%s*/*/net/ 2>/dev/null || ls /sys/devices/pci*/0*/usb*/%s/*/net/ 2>/dev/null", usbno, usbno), 32);
+		strncpy(usb->desc, chrCmd(output, 128, "cat /lib/network/wwan/%s:%s 2>/dev/null | grep desc | awk -F'[:,]' '{print$2}' | cut -d'\"' -f2", usb->idvendor, usb->idproduct), 128);
 		get_usb_device(usb);
 		usb->size = get_usb_size(usb->device);
 	}

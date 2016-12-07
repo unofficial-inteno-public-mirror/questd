@@ -107,11 +107,12 @@ get_port_speed(char *linkspeed, char *device)
 	char duplex[16];
 	char ad[8];
 	int speed, fixed;
+	char output[512];
 
-	issfp = chrCmd("ethctl %s media-type 2>&1| grep sfp", device);
+	issfp = chrCmd(output, 512, "ethctl %s media-type 2>&1| grep sfp", device);
 
 	if (!strlen(issfp)) {
-		portspeed = chrCmd("ethctl %s media-type 2>/dev/null | sed -n '2p'", device);
+		portspeed = chrCmd(output, 512, "ethctl %s media-type 2>/dev/null | sed -n '2p'", device);
 
 		if (!strlen(portspeed))
 			return -1;
@@ -135,10 +136,10 @@ get_port_speed(char *linkspeed, char *device)
 
 		return 0;
 	} else {
-		portspeed = chrCmd("ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
+		portspeed = chrCmd(output, 512, "ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
 
 		if (!strlen(portspeed))
-			portspeed = chrCmd("ethctl %s media-type sfp copper 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
+			portspeed = chrCmd(output, 512, "ethctl %s media-type sfp copper 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
 
 		if (!strlen(portspeed))
 			return -1;
@@ -158,7 +159,7 @@ get_port_speed(char *linkspeed, char *device)
 	}
 
 eth:
-	portspeed = chrCmd("ethctl %s media-type 2>&1 | sed -n '4p'", device);
+	portspeed = chrCmd(output, 512, "ethctl %s media-type 2>&1 | sed -n '4p'", device);
 
 	if (!strlen(portspeed))
 		return -1;

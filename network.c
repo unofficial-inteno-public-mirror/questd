@@ -481,8 +481,9 @@ static void dump_client(struct blob_buf *b, Client client)
 static void
 router_dump_ports(struct blob_buf *b, char *interface)
 {
+	char output[64];
 
-	if (!strlen(chrCmd("uci -q get network.%s.ifname", interface)))
+	if (!strlen(chrCmd(output, 64, "uci -q get network.%s.ifname", interface)))
 		return;
 
 	void *t, *c, *h, *s;
@@ -737,6 +738,7 @@ ipv4_clients()
 	char *token;
 #endif
 	char brindex[8];
+	char output[1280];
 
 	memset(clients_new, '\0', sizeof(clients));
 
@@ -769,9 +771,9 @@ ipv4_clients()
 					clients[cno].repeated = true;
 
 					if(strstr(clients[cno].device, "br-")) {
-						strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+						strncpy(brindex, chrCmd(output, 8, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
 						if(strlen(brindex))
-							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+							strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 					}
 
 					if(!strncmp(clients[cno].ethport, "eth", 3)) {
@@ -784,7 +786,7 @@ ipv4_clients()
 			#if IOPSYS_BROADCOM
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
-					strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
+					strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a %s", clients[cno].ipaddr), 1280);
 
 					ano = 0;
 					token = strtok_r(assoclist, " ", &saveptr1);
@@ -844,9 +846,9 @@ ipv4_clients()
 					clients[cno].repeated = true;
 
 					if(strstr(clients[cno].device, "br-")) {
-						strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+						strncpy(brindex, chrCmd(output, 8, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
 						if(strlen(brindex))
-							strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+							strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 					}
 
 					if(!strncmp(clients[cno].ethport, "eth", 3)) {
@@ -905,9 +907,9 @@ inc:
 							clients[cno].repeated = true;
 
 							if(strstr(clients[cno].device, "br-")) {
-								strncpy(brindex, chrCmd("brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+								strncpy(brindex, chrCmd(output, 8, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
 								if(strlen(brindex))
-									strncpy(clients[cno].ethport, chrCmd("brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+									strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 							}
 
 							if(!strncmp(clients[cno].ethport, "eth", 3)) {
@@ -920,7 +922,7 @@ inc:
 					#if IOPSYS_BROADCOM
 						if(clients[cno].connected && is_inteno_macaddr(clients[cno].macaddr)) {
 							memset(clients[cno].assoclist, '\0', 128);
-							strncpy(assoclist, chrCmd("wificontrol -a %s", clients[cno].ipaddr), 1280);
+							strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a %s", clients[cno].ipaddr), 1280);
 
 							ano = 0;
 							token = strtok_r(assoclist, " ", &saveptr2);

@@ -76,12 +76,13 @@ void *ping_uplink(void *arg)
 {
 	const char *ipaddr;
 	unsigned long sleep = 5;
+	char output[64];
 
 	while (1) {
 		usleep(sleep*1000000);
 		if (client_connected == 1)
 			continue;
-		ipaddr = chrCmd("ip r | grep default | awk '{print$3}'");
+		ipaddr = chrCmd(output, 64, "ip r | grep default | awk '{print$3}'");
 		if(strlen(ipaddr) < 7)
 			continue;
 		if(arp_ping(ipaddr, "br-wan", 2000, 5) == 0 && client_connected == 0) {
@@ -100,6 +101,7 @@ int wifiserver(void) {
 	struct sockaddr_in addr, cl_addr;
 	int sockfd, ret, newsockfd;
 	char buffer[BUF_SIZE];
+	char output[BUF_SIZE];
 	pid_t childpid;
 	char clientAddr[CLADDR_LEN];
 	int status;
@@ -160,12 +162,12 @@ int wifiserver(void) {
 				if (strncmp(buffer, "wifi import", 11) && strncmp(buffer, "wlctl", 5))
 					strcpy(buffer, "echo Invalid call to wificontrol");
 
-				ret = sendto(newsockfd, chrCmd(buffer), BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+				ret = sendto(newsockfd, chrCmd(output, BUF_SIZE, buffer), BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
 				if (ret < 0) {
 					//printf("Error sending data!\n");
 					exit(1);
 				}  
-				//printf("Sent data to %s: %s\n", clientAddr, chrCmd(buffer));
+				//printf("Sent data to %s: %s\n", clientAddr, chrCmd(output, BUF_SIZE, buffer));
 			}
 		} else if (childpid > 0) {
 			waitpid(childpid, &status, 0);
@@ -297,9 +299,10 @@ int wificlient(void) {
 	char key[256];
 	char ripaddr[1000];
 	int hw, flag;
+	char output[256];
 
-	strcpy(ssid, chrCmd("uci -q get wireless.@wifi-iface[0].ssid"));
-	strcpy(key, chrCmd("uci -q get wireless.@wifi-iface[0].key"));
+	strncpy(ssid, chrCmd(output, 256, "uci -q get wireless.@wifi-iface[0].ssid"), 256);
+	strncpy(key, chrCmd(output, 256, "uci -q get wireless.@wifi-iface[0].key"), 256);
 
 	if ((leases = fopen("/var/dhcp.leases", "r"))) {
 		while(fgets(line, sizeof(line), leases) != NULL)

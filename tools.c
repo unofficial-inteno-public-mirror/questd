@@ -28,6 +28,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define QD_LINE_MAX 2048
+
 int
 is_inteno_macaddr(char *macaddr) {
 	return (!strncmp(macaddr, "00:22:07", 8) || !strncmp(macaddr, "44:D4:37", 8));
@@ -77,63 +79,6 @@ replace_char(char *buf, char a, char b)
 	buf[i] = '\0';
 }
 
-void
-runCmd(const char *pFmt, ...)
-{
-	va_list ap;
-	char cmd[256] = {0};
-	int len=0, maxLen;
-
-	maxLen = sizeof(cmd);
-
-	va_start(ap, pFmt);
-
-	if (len < maxLen)
-	{
-		maxLen -= len;
-		vsnprintf(&cmd[len], maxLen, pFmt, ap);
-	}
-
-	system(cmd);
-
-	va_end(ap);
-}
-
-const char*
-chrCmd(const char *pFmt, ...)
-{
-	va_list ap;
-	char cmd[256] = {0};
-	int len=0, maxLen;
-
-	maxLen = sizeof(cmd);
-
-	va_start(ap, pFmt);
-
-	if (len < maxLen)
-	{
-		maxLen -= len;
-		vsnprintf(&cmd[len], maxLen, pFmt, ap);
-	}
-
-	va_end(ap);
-
-	FILE *pipe = 0;
-	static char buffer[10000] = {0};
-	buffer[0] = '\0';
-	if ((pipe = popen(cmd, "r"))){
-		fgets(buffer, sizeof(buffer), pipe);
-		pclose(pipe);
-
-		remove_newline(buffer);
-		if (strlen(buffer))
-			return (const char*)buffer;
-		else
-			return "";
-	} else {
-		return ""; 
-	}
-}
 
 char* convert_to_ipaddr(int ip)
 {
@@ -157,4 +102,127 @@ char* single_space(char* str){
 		}
 	}
 	return str;
+}
+
+
+int systemf(const char *format, ...)
+{
+	int rv;
+	va_list ap;
+
+	va_start(ap, format);
+	rv = vsystemf(format, ap);
+	va_end(ap);
+
+	return rv;
+}
+
+int snsystemf(char *output, size_t output_size, const char *format, ...)
+{
+	int rv;
+	va_list ap;
+
+	va_start(ap, format);
+	rv = vsnsystemf(output, output_size, format, ap);
+	va_end(ap);
+
+	return rv;
+}
+
+
+int vsystemf(const char *format, va_list ap)
+{
+	int rv;
+
+	rv = vsnprintf(NULL, 0, format, ap);
+
+	return rv;
+}
+
+int vsnsystemf(char *output, size_t output_size, const char *format, va_list ap)
+{
+	int n, rv = 0;
+	size_t cmdline_size = 256;
+	char *cmdline = NULL, *new_cmdline;
+
+	cmdline = (char *)malloc(cmdline_size * sizeof(char));
+	if (!cmdline)
+		goto out;
+
+	while (1) {
+		memset(cmdline, 0, cmdline_size);
+
+		n = vsnprintf(cmdline, cmdline_size, format, ap);
+
+		if (n < 0)
+			goto out_cmdline;
+		if (n < cmdline_size)
+			break; /* good */
+
+		/* else try again with more space */
+		cmdline_size += 32;
+		new_cmdline = (char *) realloc(cmdline,
+						cmdline_size * sizeof(char));
+		if (!new_cmdline)
+			goto out_cmdline;
+		cmdline = new_cmdline;
+	}
+
+	FILE *stream;
+	char *line;
+
+	stream = popen(cmdline, "r");
+	if (!stream)
+		goto out_stream;
+
+	if (!output || !(output_size > 0))
+		goto out_no_output;
+
+	line = (char *) malloc(QD_LINE_MAX * sizeof(char));
+	if (!line)
+		goto out_line;
+
+	memset(output, 0, output_size);
+	while (fgets(line, QD_LINE_MAX, stream)) {
+		int remaining = output_size - strlen(output) - 1;
+
+		if (remaining <= 0)
+			break;
+		strncat(output, line, remaining);
+	}
+
+out_line:
+	free(line);
+out_no_output:
+out_stream:
+	rv = pclose(stream);
+out_cmdline:
+	free(cmdline);
+out:
+	return rv;
+}
+
+
+/* legacy wrappers */
+
+/* runCmd is an alias for systemf, calls directly vsystemf */
+void runCmd(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsystemf(format, ap);
+	va_end(ap);
+}
+
+/* chrCmd is an alias for snsystemf, calls directly vsnsystemf */
+char *chrCmd(char *output, size_t output_size, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsnsystemf(output, output_size, format, ap);
+	va_end(ap);
+
+	return output;
 }
