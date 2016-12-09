@@ -22,15 +22,21 @@
 
 #include <stdlib.h>
 
+#ifdef IOPSYS_BROADCOM
 #include <linux/if_bridge.h>
+#endif
+
+#if IOPSYS_MEDIATEK
+#define _GNU_SOURCE
+#include <sys/socket.h>
+#include <linux/switch.h>
+#include <swlib.h>
+#endif
 
 #include <libubox/blobmsg.h>
 #include <libubus.h>
 #include <stdbool.h>
 #include <dirent.h>
-#if IOPSYS_MEDIATEK
-#include <swlib.h>
-#endif
 
 #include "network.h"
 #include "port.h"
@@ -196,9 +202,37 @@ eth:
 
 	return 0;
 #else
-	struct switch_dev *dev;
-	dev = swlib_connect(NULL);
-	swlib_free(dev);
+	struct switch_dev *sw_dev;
+	struct switch_attr *attr;
+	struct switch_val val;
+	char dev[16] = {0};
+	char *dot;
+	int len;
+	if(strncmp(device, "eth", 3) != 0){
+		return -1;
+	}
+	dot = strchr(device, '.');
+	if(!dot){
+		strncpy(dev, device, 15);
+	}else{
+		len = strlen(device) - strlen(dot);
+		if(len > 15) return -1;
+		strncpy(dev, device, len);
+	}
+	sw_dev = swlib_connect(NULL);
+	if(!sw_dev) return -1;
+	swlib_scan(sw_dev);
+	attr = sw_dev->vlan_ops;
+	if(attr->type == SWITCH_TYPE_LINK)
+		runCmd("echo test >/dev/console");
+	while(attr){
+		if(swlib_get_attr(sw_dev, attr, &val) < 0)
+			runCmd("echo 'error getting values for attr: %s' >/dev/console", attr->name != NULL?attr->name: "unknown");
+		else
+			runCmd("echo got val correctly >/dev/console");
+		attr = attr->next;
+	}
+	swlib_free_all(sw_dev);
 	strcpy(linkspeed, "Auto-negotiated 1000 Mbps Full Duplex");
 	return 0;
 #endif
@@ -233,7 +267,7 @@ compare_fdbs(const void *_f0, const void *_f1)
 }
 
 static inline void
-copy_fdb(struct fdb_entry *ent, const struct __fdb_entry *f)
+copy_fdb(struct fdb_entry *ent, const struct fdb_entry *f)
 {
 	memcpy(ent->mac_addr, f->mac_addr, 6);
 	ent->port_no = f->port_no;
@@ -245,14 +279,14 @@ bridge_read_fdb(const char *bridge, struct fdb_entry *fdbs, unsigned long offset
 {
 	FILE *f;
 	int i, n;
-	struct __fdb_entry fe[num];
+	struct fdb_entry fe[num];
 	char path[256];
 	
 	snprintf(path, 256, "/sys/class/net/%s/brforward", bridge);
 	f = fopen(path, "r");
 	if (f) {
-		fseek(f, offset*sizeof(struct __fdb_entry), SEEK_SET);
-		n = fread(fe, sizeof(struct __fdb_entry), num, f);
+		fseek(f, offset*sizeof(struct fdb_entry), SEEK_SET);
+		n = fread(fe, sizeof(struct fdb_entry), num, f);
 		fclose(f);
 	}
 

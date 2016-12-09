@@ -38,7 +38,7 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 
 	sprintf(name, ifname);
 	if (arg) strcpy(data, arg);
-	strcpy(wrq.ifr_name, name);
+	strcpy(wrq.ifr_ifrn.ifrn_name, name);
 	wrq.u.data.length = strlen(data);
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
