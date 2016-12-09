@@ -426,6 +426,7 @@ int wl_get_deviceid(const char *ifname, int *buf)
 	wl_endianness_check(ifname);
 	*buf = 0;
 
+	memset(&revinfo, 0, sizeof (wlc_rev_info_t));
 	if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo)))
 		return -1;
 

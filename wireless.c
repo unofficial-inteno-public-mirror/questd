@@ -148,7 +148,7 @@ load_wireless()
 	int i;
 
 	for (i = 0; i < MAX_VIF && wireless[i].vif; i++) {
-		free(wireless[i].vif);
+		free((char *)wireless[i].vif);
 	}
 	memset(wireless, '\0', sizeof(wireless));
 	memset(radio, '\0', sizeof(radio));
@@ -190,7 +190,9 @@ load_wireless()
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
 				wl_get_deviceid(radio[rno].name, &(radio[rno].deviceid));
 				radio[rno].is_ac = false;
-				if (radio[rno].deviceid && atoi(chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid)) == 1)
+				memset(output, 0, 32);
+				chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid);
+				if (radio[rno].deviceid && output?atoi(output):0 == 1)
 					radio[rno].is_ac = true;
 
 				if(radio[rno].frequency == 2) {

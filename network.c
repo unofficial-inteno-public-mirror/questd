@@ -487,6 +487,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 {
 	char output[64];
 
+	memset(output, 0, 64);
 	if (!strlen(chrCmd(output, 64, "uci -q get network.%s.ifname", interface)))
 		return;
 
@@ -741,7 +742,7 @@ ipv4_clients()
 	int ano = 0;
 	char *token;
 #endif
-	char brindex[8];
+	char brindex[8] = {0};
 	char output[1280];
 
 	memset(clients_new, '\0', sizeof(clients));
@@ -775,7 +776,9 @@ ipv4_clients()
 					clients[cno].repeated = true;
 
 					if(strstr(clients[cno].device, "br-")) {
-						strncpy(brindex, chrCmd(output, 8, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
+						memset(brindex, 0, 8);
+						memset(output, 0, 1280);
+						strncpy(brindex, chrCmd(output, 7, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 7);
 						if(strlen(brindex))
 							strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
 					}
@@ -790,6 +793,7 @@ ipv4_clients()
 			#if IOPSYS_BROADCOM
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
+					memset(output, 0, 1280);
 					strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a %s", clients[cno].ipaddr), 1280);
 
 					ano = 0;
@@ -850,9 +854,14 @@ ipv4_clients()
 					clients[cno].repeated = true;
 
 					if(strstr(clients[cno].device, "br-")) {
-						strncpy(brindex, chrCmd(output, 8, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 8);
-						if(strlen(brindex))
-							strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+						memset(brindex, 0, 8);
+						memset(output, 0, 1280);
+						chrCmd(output, 7, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr);
+						strncpy(brindex, output, 7);
+						if(strlen(brindex)) {
+							chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1);
+							strncpy(clients[cno].ethport, output, 8);
+						}
 					}
 
 					if(!strncmp(clients[cno].ethport, "eth", 3)) {

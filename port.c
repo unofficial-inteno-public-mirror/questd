@@ -104,10 +104,10 @@ int
 get_port_speed(char *linkspeed, char *device)
 {
 	const char *portspeed, *issfp;
-	char duplex[16];
-	char ad[8];
-	int speed, fixed;
-	char output[512];
+	char duplex[16] = {0};
+	char ad[8] = {0};
+	int speed = 0, fixed = 0;
+	char output[512] = {0};
 
 	issfp = chrCmd(output, 512, "ethctl %s media-type 2>&1| grep sfp", device);
 
