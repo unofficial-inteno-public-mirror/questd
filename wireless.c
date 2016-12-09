@@ -121,7 +121,11 @@ load_wireless()
 	int vif;
 	int vif0 = 0;
 	int vif1 = 0;
+	int i;
 
+	for (i = 0; i < MAX_VIF && wireless[i].vif; i++) {
+		free(wireless[i].vif);
+	}
 	memset(wireless, '\0', sizeof(wireless));
 	memset(radio, '\0', sizeof(radio));
 
@@ -169,6 +173,8 @@ load_wireless()
 					wno++;
 				}
 			} else if (!strcmp(s->type, "wifi-device")) {
+				if (rno >= MAX_RADIO)
+					continue;
 				radio[rno].name = s->e.name;
 				if(!(radio[rno].band = uci_lookup_option_string(uci_ctx, s, "band")))
 					radio[rno].band = "b";
