@@ -1,7 +1,7 @@
 CC			= gcc
-CFLAGS		= -g -Wall $(QUESTD_CLFAGS)
+CFLAGS		= -g -Wall $(QUESTD_CLFAGS) $(QUESTD_TARGET)
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
-ifeq ($(QUESTD_CLFAGS),-DIOPSYS_MEDIATEK)
+ifeq ($(QUESTD_TARGET),-DIOPSYS_MEDIATEK)
 LIBS		+= -lsw -lnl-tiny
 endif
 LOCLIBS		= 
