@@ -62,7 +62,7 @@ static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 static int wl_endianness_check(const char *wl)
 {
 	int ret;
-	int val;
+	int val = 0;
 
 	if(!strncmp(wl, "wl0", 3) && wl_swap[WL0] != -1) {
 		e_swap = wl_swap[WL0];
@@ -424,6 +424,7 @@ int wl_get_deviceid(const char *ifname, int *buf)
 	wlc_rev_info_t revinfo;
 
 	wl_endianness_check(ifname);
+	*buf = 0;
 
 	if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo)))
 		return -1;

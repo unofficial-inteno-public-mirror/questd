@@ -232,6 +232,8 @@ load_networks()
 					else
 						strcpy(network[nno].ifname, ifname);
 					nno++;
+					if (wifs)
+						free(wifs);
 				}
 			}
 		}
@@ -342,6 +344,8 @@ nextport:
 		prt = strtok_r (NULL, " ", &saveptr1);
 		i++;
 	}
+	if (theports)
+		free(theports);
 	
 	network->ports_populated = true;
 		
