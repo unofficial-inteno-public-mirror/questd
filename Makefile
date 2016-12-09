@@ -1,5 +1,5 @@
 CC			= gcc
-CFLAGS		= -g -Wall $(QUESTD_CLFAGS) $(QUESTD_TARGET)
+CFLAGS		= -g -Wall $(QUESTD_CFLAGS)
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
 ifeq ($(QUESTD_TARGET),-DIOPSYS_MEDIATEK)
 LIBS		+= -lsw -lnl-tiny
