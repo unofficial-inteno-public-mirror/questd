@@ -28,6 +28,9 @@
 #include <libubus.h>
 #include <stdbool.h>
 #include <dirent.h>
+#if IOPSYS_MEDIATEK
+#include <swlib.h>
+#endif
 
 #include "network.h"
 #include "port.h"
@@ -193,6 +196,9 @@ eth:
 
 	return 0;
 #else
+	struct switch_dev *dev;
+	dev = swlib_connect(NULL);
+	swlib_free(dev);
 	strcpy(linkspeed, "Auto-negotiated 1000 Mbps Full Duplex");
 	return 0;
 #endif
