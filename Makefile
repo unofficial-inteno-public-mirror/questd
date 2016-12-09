@@ -1,6 +1,8 @@
 CC		= gcc
 CFLAGS		= -g -Wall $(QUESTD_CLFAGS)
-LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
+LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt -lsw -lnl-tiny
+ifeq ($(QUESTD_CFLAGS),-DIOPSYS_MEDIATEK)
+endif
 LOCLIBS		= 
 OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dsl.o tools.o broadcom.o uboot_env.o dropbear.o wps.o system.o net.o network.o wireless.o mediatek.o
 SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c uboot_env.c dropbear.c wps.c system.c net.c network.c wireless.c mediatek.c
