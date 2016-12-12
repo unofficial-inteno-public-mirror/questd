@@ -33,10 +33,10 @@ static int iosocket = -1;
 static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 {
 	int socket_id;
-	char name[25];
+	char name[IFNAMSIZ];
 	struct iwreq wrq;
 
-	sprintf(name, ifname);
+	snprintf(name, IFNAMSIZ, ifname);
 	if (arg) strcpy(data, arg);
 	strcpy(wrq.ifr_ifrn.ifrn_name, name);
 	wrq.u.data.length = strlen(data);
