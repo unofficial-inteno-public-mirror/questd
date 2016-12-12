@@ -15,18 +15,6 @@ all: questd wificontrol netcheck
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
 
-EOBJS		= eventd.o
-ESRCS		= eventd.c
-
-ueventd: ${EOBJS}
-	${CC} ${LDFLAGS} -o ueventd ${EOBJS} ${LIBS}
-
-SOBJS		= scriptd.o tools.o
-SSRCS		= scriptd.c tools.c
-
-uscriptd: ${SOBJS}
-	${CC} ${LDFLAGS} -o uscriptd ${SOBJS} ${LIBS}
-
 WOBJS		= wificontrol.o arping.o tools.o
 WSRCS		= wificontrol.c arping.c tools.c
 
