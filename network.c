@@ -80,27 +80,6 @@ static Client6 clients6[MAX_CLIENT];
 
 static int lease_time_count = 0;
 
-static struct uci_package *
-init_package(const char *config)
-{
-	struct uci_context *ctx = uci_ctx;
-	struct uci_package *p = NULL;
-
-	if (!ctx) {
-		ctx = uci_alloc_context();
-		uci_ctx = ctx;
-	} else {
-		p = uci_lookup_package(ctx, config);
-		if (p)
-			uci_unload(ctx, p);
-	}
-
-	if (uci_load(ctx, config, &p))
-		return NULL;
-
-	return p;
-}
-
 void
 get_network_clients(Client *clnt)
 {
@@ -147,7 +126,7 @@ get_wifs(char *netname, const char *ifname, char **wifs)
 	*wifs = NULL;
 
 	memset(wrl, '\0', sizeof(wrl));
-	if((uci_wireless = init_package("wireless"))) {
+	if((uci_wireless = init_package(&uci_ctx, "wireless"))) {
 		for(wno = 0; wno <= 1; wno++) {
 			vif = 0;
 			uci_foreach_element(&uci_wireless->sections, e) {
@@ -194,7 +173,7 @@ load_networks()
 
 	memset(network, '\0', sizeof(network));
 
-	if((uci_network = init_package("network"))) {
+	if((uci_network = init_package(&uci_ctx, "network"))) {
 		uci_foreach_element(&uci_network->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 
@@ -705,7 +684,7 @@ get_hostname_from_config(const char *mac_in, char *hostname)
 	const char *mac = NULL;
 	const char *hname = NULL;
 
-	if((uci_dhcp = init_package("dhcp"))) {
+	if((uci_dhcp = init_package(&uci_ctx, "dhcp"))) {
 		uci_foreach_element(&uci_dhcp->sections, e) {
 			s = uci_to_section(e);
 
