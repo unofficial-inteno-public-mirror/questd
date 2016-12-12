@@ -265,20 +265,32 @@ compare_fdbs(const void *_f0, const void *_f1)
 	return memcmp(f0->mac_addr, f1->mac_addr, 6);
 }
 
+static inline void
+copy_fdb(struct fdb_entry *ent, const struct fdb_entry *f)
+{
+	memcpy(ent->mac_addr, f->mac_addr, 6);
+	ent->port_no = f->port_no;
+	ent->is_local = f->is_local;
+}
+
 static int
 bridge_read_fdb(const char *bridge, struct fdb_entry *fdbs, unsigned long offset, int num)
 {
 	FILE *f;
-	int n;
+	int i, n;
+	struct fdb_entry fe[num];
 	char path[256];
 	
 	snprintf(path, 256, "/sys/class/net/%s/brforward", bridge);
 	f = fopen(path, "r");
 	if (f) {
 		fseek(f, offset*sizeof(struct fdb_entry), SEEK_SET);
-		n = fread(&fdbs, sizeof(struct fdb_entry), num, f);
+		n = fread(fe, sizeof(struct fdb_entry), num, f);
 		fclose(f);
 	}
+
+	for (i = 0; i < n; i++) 
+		copy_fdb(fdbs+i, fe+i);
 
 	return n;
 }
@@ -385,14 +397,10 @@ has_port_speed(char *port, char *speed){
 		get_port_speed(speed, port);
 		return true;
 	}else if(strncmp(port, "eth", 3) == 0){
-#if IOPSYS_BROADCOM
 		char p[5];
 		strncpy(p, port, 4);
 		p[4] = '\0';
 		get_port_speed(speed, p);
-#elif IOPSYS_MEDIATEK
-		get_port_speed(speed, port);
-#endif
 		return true;
 	}
 	return false;
