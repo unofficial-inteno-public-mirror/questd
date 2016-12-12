@@ -31,7 +31,7 @@ WOBJS		= wificontrol.o arping.o tools.o
 WSRCS		= wificontrol.c arping.c tools.c
 
 wificontrol: ${WOBJS}
-	${CC} ${LDFLAGS} -o wificontrol ${WOBJS} -lpthread
+	${CC} ${LDFLAGS} -o wificontrol ${WOBJS} -lpthread -luci
 
 NOBJS		= netcheck.o arping.o
 NSRCS		= netcheck.c arping.c
