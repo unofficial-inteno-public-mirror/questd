@@ -24,7 +24,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/sysinfo.h>
-#include <sys/time.h>
+#include <time.h>
 
 #include <uci.h>
 
