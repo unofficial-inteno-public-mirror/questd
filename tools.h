@@ -6,6 +6,7 @@ void remove_space(char *buf);
 void remove_newline(char *buf);
 void replace_char(char *buf, char a, char b);
 void runCmd(const char *pFmt, ...);
+void get_db_value(const char *name, char **value);
 const char* chrCmd(const char *pFmt, ...);
 char* convert_to_ipaddr(int ip);
 char* single_space(char *str);

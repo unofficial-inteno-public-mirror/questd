@@ -46,7 +46,7 @@ init_db_hw_config(void)
 }
 
 static void
-get_db_hw_value(char *opt, char **val)
+get_db_hw_value(const char *opt, char **val)
 {
 	memset(&ptr, 0, sizeof(ptr));
 	ptr.package = "hw";
@@ -69,6 +69,12 @@ get_db_hw_value(char *opt, char **val)
 		return;
 
 	*val = ptr.o->v.string;
+}
+
+void
+get_db_value(const char *name, char **value)
+{
+	get_db_hw_value(name, value);
 }
 
 void
