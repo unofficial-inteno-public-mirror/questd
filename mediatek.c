@@ -32,6 +32,7 @@ static int iosocket = -1;
 
 static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 {
+	int rv;
 	int socket_id;
 	char name[IFNAMSIZ];
 	struct iwreq wrq;
@@ -49,7 +50,12 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 		fcntl(socket_id, F_SETFD, fcntl(socket_id, F_GETFD) | FD_CLOEXEC);
 	}
 
-	return ioctl(socket_id, cmd, &wrq);
+	rv = ioctl(socket_id, cmd, &wrq);
+
+	if(cmd == SIOCGIWFREQ)
+		memcpy(data, &wrq.u.freq, sizeof(struct iw_freq));
+
+	return rv;
 }
 
 int
@@ -83,15 +89,16 @@ wl_ether_etoa(const struct wl_ether_addr *n)
 	return etoa_buf;
 }
 
-int wl_get_channel(const char *ifname, int *buf)
+int wl_get_channel(const char *ifname, int *channel)
 {
-	char channel[4];
+	int rv;
+	struct iw_freq freq;
 
-	strcpy(channel, chrCmd("iwinfo %s info 2>/dev/null| grep Channel | awk '{print$4}'", ifname));	
+	rv = wl_ioctl(ifname, SIOCGIWFREQ, NULL, &freq, 0);
 
-	*buf = atoi(channel);
+	*channel = freq.m;
 
-	return 0;
+	return rv;
 }
 
 int wl_get_ssid(const char *ifname, char *buf)
@@ -195,9 +202,7 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
 	char ch[4];
 
-	strcpy(ch, chrCmd("iwinfo %s info 2>/dev/null | grep Channel | awk '{print$4}'", ifname));	
-
-	*channel = atoi(ch);
+	wl_get_channel(ifname, channel);
 
 	*noise = -90;
 
