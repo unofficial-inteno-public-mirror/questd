@@ -195,16 +195,16 @@ load_networks()
 					network[nno].exists = true;
 					if(is_lan && !strcmp(is_lan, "1"))
 						network[nno].is_lan = true;
-					network[nno].name = s->e.name;
+					strncpy(network[nno].name, s->e.name, sizeof(network[nno].name));
 					if(defaultroute && !strcmp(defaultroute, "0"))
 						network[nno].defaultroute = false;
 					else
 						network[nno].defaultroute = true;
-					(type) ? (network[nno].type = type) : (network[nno].type = "");
-					(proto) ? (network[nno].proto = proto) : (network[nno].proto = "");
+					strncpy(network[nno].type, type ? type : "", sizeof(network[nno].type));
+					strncpy(network[nno].proto, proto ? proto : "", sizeof(network[nno].proto));
 					if(proto && !strcmp(network[nno].proto, "static")) {
-						(ipaddr) ? (network[nno].ipaddr = ipaddr) : (network[nno].ipaddr = "");
-						(netmask) ? (network[nno].netmask = netmask) : (network[nno].netmask = "");
+						strncpy(network[nno].ipaddr, ipaddr ? ipaddr : "", sizeof(network[nno].ipaddr));
+						strncpy(network[nno].netmask, netmask ? netmask : "", sizeof(network[nno].netmask));
 					}
 					if(wifs)
 						sprintf(network[nno].ifname, "%s%s", ifname, wifs);
@@ -216,6 +216,7 @@ load_networks()
 				}
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
@@ -710,6 +711,7 @@ get_hostname_from_config(const char *mac_in, char *hostname)
 				}
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 

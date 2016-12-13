@@ -63,11 +63,11 @@ typedef struct {
 	bool exists;
 	bool is_lan;
 	bool defaultroute;
-	const char *name;
-	const char *type;
-	const char *proto;
-	const char *ipaddr;
-	const char *netmask;
+	char name[16];
+	char type[16];
+	char proto[16];
+	char ipaddr[24];
+	char netmask[24];
 	char ifname[128];
 	Port port[MAX_PORT];
 	bool ports_populated;
