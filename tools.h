@@ -13,6 +13,7 @@ char* single_space(char *str);
 int is_inteno_macaddr(char *macaddr);
 int is_inteno_altered_macaddr(char *macaddr);
 struct uci_package * init_package(struct uci_context **ctx, const char *config);
+void free_uci_context(struct uci_context **ctx);
 
 /* system/popen variadic wrappers (printf alike) */
 int systemf(const char *format, ...);
