@@ -166,7 +166,7 @@ init_package(struct uci_context **ctx, const char *config)
 {
 	struct uci_package *p = NULL;
 
-	if (!*ctx) {
+	if (*ctx == NULL) {
 		*ctx = uci_alloc_context();
 	} else {
 		p = uci_lookup_package(*ctx, config);
@@ -180,3 +180,9 @@ init_package(struct uci_context **ctx, const char *config)
 	return p;
 }
 
+void
+free_uci_context(struct uci_context **ctx){
+	if(*ctx != NULL)
+		uci_free_context(*ctx);
+	*ctx = NULL;
+}
