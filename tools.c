@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <uci.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -157,4 +158,31 @@ char* single_space(char* str){
 		}
 	}
 	return str;
+}
+
+
+struct uci_package *
+init_package(struct uci_context **ctx, const char *config)
+{
+	struct uci_package *p = NULL;
+
+	if (*ctx == NULL) {
+		*ctx = uci_alloc_context();
+	} else {
+		p = uci_lookup_package(*ctx, config);
+		if (p)
+			uci_unload(*ctx, p);
+	}
+
+	if (uci_load(*ctx, config, &p))
+		return NULL;
+
+	return p;
+}
+
+void
+free_uci_context(struct uci_context **ctx){
+	if(*ctx != NULL)
+		uci_free_context(*ctx);
+	*ctx = NULL;
 }

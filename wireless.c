@@ -47,27 +47,6 @@ static Wireless wireless[MAX_VIF];
 static Sta stas[MAX_CLIENT];
 static Radio radio[MAX_RADIO];
 
-static struct uci_package *
-init_package(const char *config)
-{
-	struct uci_context *ctx = uci_ctx;
-	struct uci_package *p = NULL;
-
-	if (!ctx) {
-		ctx = uci_alloc_context();
-		uci_ctx = ctx;
-	} else {
-		p = uci_lookup_package(ctx, config);
-		if (p)
-			uci_unload(ctx, p);
-	}
-
-	if (uci_load(ctx, config, &p))
-		return NULL;
-
-	return p;
-}
-
 void
 wireless_assoclist()
 {
@@ -146,7 +125,7 @@ load_wireless()
 	memset(wireless, '\0', sizeof(wireless));
 	memset(radio, '\0', sizeof(radio));
 
-	if((uci_wireless = init_package("wireless"))) {
+	if((uci_wireless = init_package(&uci_ctx, "wireless"))) {
 		uci_foreach_element(&uci_wireless->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 

@@ -80,27 +80,6 @@ static Client6 clients6[MAX_CLIENT];
 
 static int lease_time_count = 0;
 
-static struct uci_package *
-init_package(const char *config)
-{
-	struct uci_context *ctx = uci_ctx;
-	struct uci_package *p = NULL;
-
-	if (!ctx) {
-		ctx = uci_alloc_context();
-		uci_ctx = ctx;
-	} else {
-		p = uci_lookup_package(ctx, config);
-		if (p)
-			uci_unload(ctx, p);
-	}
-
-	if (uci_load(ctx, config, &p))
-		return NULL;
-
-	return p;
-}
-
 void
 get_network_clients(Client *clnt)
 {
@@ -131,12 +110,13 @@ wdev_already_there(const char *ifname, char *wdev)
 }
 
 static void
-get_wifs(char *netname, const char *ifname, char **wifs)
+get_wifs(char *netname, const char *ifname, char *wifs)
 {
 	struct uci_element *e;
+	struct uci_section *s;
 	const char *device = NULL;
 	const char *network = NULL;
-	char wdev[16];
+	char wdev[16] = {0};
 	char wrl[64];
 	const char *wdevs[2];		
 	int vif, wno;
@@ -147,32 +127,30 @@ get_wifs(char *netname, const char *ifname, char **wifs)
 	*wifs = NULL;
 
 	memset(wrl, '\0', sizeof(wrl));
-	if((uci_wireless = init_package("wireless"))) {
-		for(wno = 0; wno <= 1; wno++) {
-			vif = 0;
-			uci_foreach_element(&uci_wireless->sections, e) {
-				struct uci_section *s = uci_to_section(e);
+	for(wno = 0; wno <= 1; wno++) {
+		vif = 0;
+		uci_foreach_element(&uci_wireless->sections, e) {
+			s = uci_to_section(e);
 
-				if (!strcmp(s->type, "wifi-iface")) {
-					device = uci_lookup_option_string(uci_ctx, s, "device");
-					if(!device || strcmp(device, wdevs[wno]))
+			if (!strcmp(s->type, "wifi-iface")) {
+				device = uci_lookup_option_string(uci_ctx, s, "device");
+				if(!device || strcmp(device, wdevs[wno]))
+					continue;
+				network = uci_lookup_option_string(uci_ctx, s, "network");
+				if (network && device && !strcmp(network, netname)) {
+					if (vif > 0)
+						snprintf(wdev, 15, "%s.%d", device, vif);
+					else
+						strncpy(wdev, device, 15);
+
+					if(wdev_already_there(ifname, wdev))
 						continue;
-					network = uci_lookup_option_string(uci_ctx, s, "network");
-					if (network && device && !strcmp(network, netname)) {
-						if (vif > 0)
-							sprintf(wdev, "%s.%d", device, vif);
-						else
-							strcpy(wdev, device);
 
-						if(wdev_already_there(ifname, wdev))
-							continue;
-
-						strcat(wrl, " ");
-						strcat(wrl, wdev);
-						*wifs = strdup(wrl);
-					}
-					vif++;
+					strcat(wrl, " ");
+					strcat(wrl, wdev);
+					strncpy(wifs, wrl, 63);
 				}
+				vif++;
 			}
 		}
 	}
@@ -189,12 +167,13 @@ load_networks()
 	const char *ipaddr = NULL;
 	const char *netmask = NULL;
 	const char *ifname = NULL;
-	char *wifs;
+	char wifs[64] = {0};
 	int nno = 0;
 
 	memset(network, '\0', sizeof(network));
 
-	if((uci_network = init_package("network"))) {
+	if((uci_network = init_package(&uci_ctx, "network")) &&
+			(uci_wireless = init_package(&uci_ctx, "wireless"))) {
 		uci_foreach_element(&uci_network->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 
@@ -211,21 +190,21 @@ load_networks()
 				ifname = uci_lookup_option_string(uci_ctx, s, "ifname");
 				if(!(ifname))
 					ifname = "";
-				get_wifs(s->e.name, ifname, &wifs);
+				get_wifs(s->e.name, ifname, wifs);
 				if ((ifname && strcmp(ifname, "lo")) || wifs) {
 					network[nno].exists = true;
 					if(is_lan && !strcmp(is_lan, "1"))
 						network[nno].is_lan = true;
-					network[nno].name = s->e.name;
+					strncpy(network[nno].name, s->e.name, sizeof(network[nno].name));
 					if(defaultroute && !strcmp(defaultroute, "0"))
 						network[nno].defaultroute = false;
 					else
 						network[nno].defaultroute = true;
-					(type) ? (network[nno].type = type) : (network[nno].type = "");
-					(proto) ? (network[nno].proto = proto) : (network[nno].proto = "");
+					strncpy(network[nno].type, type ? type : "", sizeof(network[nno].type));
+					strncpy(network[nno].proto, proto ? proto : "", sizeof(network[nno].proto));
 					if(proto && !strcmp(network[nno].proto, "static")) {
-						(ipaddr) ? (network[nno].ipaddr = ipaddr) : (network[nno].ipaddr = "");
-						(netmask) ? (network[nno].netmask = netmask) : (network[nno].netmask = "");
+						strncpy(network[nno].ipaddr, ipaddr ? ipaddr : "", sizeof(network[nno].ipaddr));
+						strncpy(network[nno].netmask, netmask ? netmask : "", sizeof(network[nno].netmask));
 					}
 					if(wifs)
 						sprintf(network[nno].ifname, "%s%s", ifname, wifs);
@@ -235,6 +214,7 @@ load_networks()
 				}
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
@@ -439,7 +419,7 @@ static void dump_client(struct blob_buf *b, Client client)
 		blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
 		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
-	} else 
+	} else
 	if(client.connected) {
 		if(!strncmp(client.ethport, "eth", 3)) {
 			blobmsg_add_string(b, "ethport", client.ethport);
@@ -705,7 +685,7 @@ get_hostname_from_config(const char *mac_in, char *hostname)
 	const char *mac = NULL;
 	const char *hname = NULL;
 
-	if((uci_dhcp = init_package("dhcp"))) {
+	if((uci_dhcp = init_package(&uci_ctx, "dhcp"))) {
 		uci_foreach_element(&uci_dhcp->sections, e) {
 			s = uci_to_section(e);
 
@@ -718,6 +698,7 @@ get_hostname_from_config(const char *mac_in, char *hostname)
 				}
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
