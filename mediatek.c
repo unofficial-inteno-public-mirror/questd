@@ -42,7 +42,7 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	strcpy(wrq.ifr_ifrn.ifrn_name, name);
 	wrq.u.data.length = strlen(data);
 	wrq.u.data.pointer = data;
-	wrq.u.data.length = sizeof(data);
+	wrq.u.data.length = len;
 	wrq.u.data.flags = 0;
 
 	if (iosocket == -1) {
@@ -140,7 +140,7 @@ int wl_get_noise(const char *ifname, int *buf)
 
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
-	char data[20480];
+	char data[20480] = {0};
 
 	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, NULL, data, strlen(data));
 
@@ -264,7 +264,7 @@ int wl_get_deviceid(const char *ifname, int *buf)
 
 struct wl_maclist * wl_read_assoclist(const char *ifname)
 {
-	char data[20480];
+	char data[20480] = {0};
 
 	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, NULL, data, strlen(data));
 
@@ -295,7 +295,7 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
-	char data[20480];
+	char data[20480] = {0};
 
 	wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, NULL, data, strlen(data));
 
