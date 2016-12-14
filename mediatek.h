@@ -114,7 +114,7 @@ int wl_get_ssid(const char *ifname, char *buf);
 int wl_get_bssid(const char *ifname, char *buf);
 int wl_get_noise(const char *ifname, int *buf);
 int wl_get_rssi(const char *ifname, char *sta, int *buf);
-int wl_get_bitrate(const char *ifname, int *buf);
+int wl_get_bitrate(const char *ifname, unsigned long *buf);
 int wl_get_isup(const char *ifname, int *buf);
 int wl_get_band(const char *ifname, int *buf);
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise);

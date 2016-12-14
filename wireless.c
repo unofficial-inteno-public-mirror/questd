@@ -415,7 +415,7 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	int wsec;
 	wl_get_wsec(wldev, &wsec);
 
-	int rate;
+	unsigned long rate;
 	wl_get_bitrate(wldev, &rate);
 
 	int bandwidth, channel, noise;
@@ -431,7 +431,7 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
 	blobmsg_add_u32(&bb, "noise", noise);
-	blobmsg_add_u32(&bb, "rate", (rate/2));
+	blobmsg_add_u64(&bb, "rate", (rate/2));
 
 	ubus_send_reply(ctx, req, bb.head);
 
@@ -508,9 +508,10 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	void *t, *c;
 	int i, j;
-	int isup, band, rate, bw, channel, noise;
-	char maxrate[10];
-	char bitrate[10];
+	int isup, band,  bw, channel, noise;
+	unsigned long rate;
+	char maxrate[20];
+	char bitrate[20];
 	char frequency[10];
 	char bandwidth[10];
 
@@ -526,7 +527,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		sprintf(frequency, "%sGHz", (band==1)?"5":"2.4");
 
 		wl_get_bitrate(radio[i].name, &rate);
-		sprintf(bitrate, "%d%s Mbps", (rate / 2), (rate & 1) ? ".5" : "");
+		sprintf(bitrate, "%g Mbps", (double)rate / 2);
 
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
