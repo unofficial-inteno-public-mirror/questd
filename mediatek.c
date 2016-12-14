@@ -102,11 +102,13 @@ int wl_get_channel(const char *ifname, int *channel)
 	return rv;
 }
 
-int wl_get_ssid(const char *ifname, char *buf)
+int wl_get_ssid(const char *ifname, char *ssid)
 {
-	strcpy(buf, chrCmd("iwinfo %s info 2>/dev/null| grep ESSID | awk '{print$NF}' | tr -d '\"'", ifname));
+	int rv;
 
-	return 0;
+	rv = wl_ioctl(ifname, SIOCGIWESSID, NULL, ssid, strlen(ssid));
+
+	return rv;
 }
 
 int wl_get_bssid(const char *ifname, char *buf)
