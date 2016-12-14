@@ -95,7 +95,7 @@ int wl_get_channel(const char *ifname, int *channel)
 	int rv;
 	struct iw_freq freq;
 
-	rv = wl_ioctl(ifname, SIOCGIWFREQ, NULL, &freq, 0);
+	rv = wl_ioctl(ifname, SIOCGIWFREQ, NULL, (char *)&freq, 0);
 
 	*channel = freq.m;
 
@@ -201,8 +201,6 @@ int wl_get_band(const char *ifname, int *buf)
 
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
-	char ch[4];
-
 	wl_get_channel(ifname, channel);
 
 	*noise = -90;

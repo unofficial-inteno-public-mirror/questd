@@ -124,8 +124,6 @@ get_wifs(char *netname, const char *ifname, char *wifs)
 	wdevs[0] = "wl0";
 	wdevs[1] = "wl1";
 
-	*wifs = NULL;
-
 	memset(wrl, '\0', sizeof(wrl));
 	for(wno = 0; wno <= 1; wno++) {
 		vif = 0;
@@ -191,7 +189,7 @@ load_networks()
 				if(!(ifname))
 					ifname = "";
 				get_wifs(s->e.name, ifname, wifs);
-				if ((ifname && strcmp(ifname, "lo")) || wifs) {
+				if ((ifname && strcmp(ifname, "lo")) || *wifs) {
 					network[nno].exists = true;
 					if(is_lan && !strcmp(is_lan, "1"))
 						network[nno].is_lan = true;
@@ -206,7 +204,7 @@ load_networks()
 						strncpy(network[nno].ipaddr, ipaddr ? ipaddr : "", sizeof(network[nno].ipaddr));
 						strncpy(network[nno].netmask, netmask ? netmask : "", sizeof(network[nno].netmask));
 					}
-					if(wifs)
+					if(*wifs)
 						sprintf(network[nno].ifname, "%s%s", ifname, wifs);
 					else
 						strcpy(network[nno].ifname, ifname);
