@@ -58,6 +58,9 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	case SIOCGIWAP:
 		memcpy(data, &wrq.u.ap_addr, sizeof(struct sockaddr));
 		break;
+	case SIOCGIWRATE:
+		memcpy(data, &wrq.u.bitrate, sizeof(struct iw_param));
+		break;
 	}
 
 	return rv;
@@ -180,15 +183,16 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf)
 	return 0;
 }
 
-int wl_get_bitrate(const char *ifname, int *buf)
+int wl_get_bitrate(const char *ifname, unsigned long *rate)
 {
-	char rate[8];
+	int rv;
+	struct iw_param bitrate;
 
-	sprintf(rate, chrCmd("iwinfo %s info 2>/dev/null | grep 'Bit Rate' | awk '{print$3}' | cut -d'.' -f1", ifname));
+	rv = wl_ioctl(ifname, SIOCGIWRATE, NULL, (char *)&bitrate, 0);
 
-	*buf = atoi(rate)*2;
+	*rate = bitrate.value / 1000000 * 2;
 
-	return 0;
+	return rv;
 }
 
 int wl_get_isup(const char *ifname, int *buf)
