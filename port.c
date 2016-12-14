@@ -546,10 +546,12 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 			blobmsg_add_string(&bb, "speed", linkspeed);
 		blobmsg_close_table(&bb, t);
 	}
+	closedir(dir);
 
 	ubus_send_reply(ctx, req, bb.head);
 	for(ret = 0; ret < num_eth; ret++){
-		if(ret == MAX_DEVS) break;
+		if(ret == MAX_DEVS)
+			break;
 		free(invalid_eth_devs[ret]);
 	}
 	return UBUS_STATUS_OK;
