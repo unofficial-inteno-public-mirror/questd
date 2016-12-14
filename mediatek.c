@@ -33,7 +33,6 @@ static int iosocket = -1;
 static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 {
 	int rv;
-	int socket_id;
 	char name[IFNAMSIZ];
 	struct iwreq wrq;
 
@@ -46,11 +45,11 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	wrq.u.data.flags = 0;
 
 	if (iosocket == -1) {
-		socket_id = socket(AF_INET, SOCK_DGRAM, 0);
-		fcntl(socket_id, F_SETFD, fcntl(socket_id, F_GETFD) | FD_CLOEXEC);
+		iosocket = socket(AF_INET, SOCK_DGRAM, 0);
+		fcntl(iosocket, F_SETFD, fcntl(iosocket, F_GETFD) | FD_CLOEXEC);
 	}
 
-	rv = ioctl(socket_id, cmd, &wrq);
+	rv = ioctl(iosocket, cmd, &wrq);
 
 	switch (cmd) {
 	case SIOCGIWFREQ:
