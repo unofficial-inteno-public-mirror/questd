@@ -52,8 +52,14 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 
 	rv = ioctl(socket_id, cmd, &wrq);
 
-	if(cmd == SIOCGIWFREQ)
+	switch (cmd) {
+	case SIOCGIWFREQ:
 		memcpy(data, &wrq.u.freq, sizeof(struct iw_freq));
+		break;
+	case SIOCGIWAP:
+		memcpy(data, &wrq.u.ap_addr, sizeof(struct sockaddr));
+		break;
+	}
 
 	return rv;
 }
@@ -110,11 +116,22 @@ int wl_get_ssid(const char *ifname, char *ssid)
 	return rv;
 }
 
-int wl_get_bssid(const char *ifname, char *buf)
+int wl_get_bssid(const char *ifname, char *bssid)
 {
-	strcpy(buf, chrCmd("iwinfo %s info 2>/dev/null | grep 'Access Point' | awk '{print$NF}'", ifname));
+	int rv;
+	struct sockaddr ap_addr;
 
-	return 0;
+	rv = wl_ioctl(ifname, SIOCGIWAP, NULL, (char *)&ap_addr, 0);
+
+	snprintf(bssid, 18, "%02X:%02X:%02X:%02X:%02X:%02X\n",
+		(unsigned char) ap_addr.sa_data[0],
+		(unsigned char) ap_addr.sa_data[1],
+		(unsigned char) ap_addr.sa_data[2],
+		(unsigned char) ap_addr.sa_data[3],
+		(unsigned char) ap_addr.sa_data[4],
+		(unsigned char) ap_addr.sa_data[5]);
+
+	return rv;
 }
 
 int wl_get_wpa_auth(const char *ifname, char *wpa)
