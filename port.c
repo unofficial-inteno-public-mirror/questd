@@ -282,7 +282,7 @@ eth:
 	val.port_vlan = port_number;
 	attr = swlib_lookup_attr(sw_dev, SWLIB_ATTR_GROUP_PORT, "link");
 	if(attr->type != SWITCH_TYPE_LINK)
-		return -1;
+		goto error;
 	swlib_get_attr(sw_dev, attr, &val);
 	link = val.value.link;
 	if(link->link)
@@ -292,6 +292,9 @@ eth:
 		sprintf(linkspeed, "Link is down");
 	swlib_free_all(sw_dev);
 	return 0;
+error:
+	swlib_free_all(sw_dev);
+	return -1;
 #endif
 }
 
@@ -421,7 +424,7 @@ const char*
 get_port_type(char *port){
 	if(strncmp(port, "eth", 3) == 0){
 		char dummy[64];
-		int p = get_port_speed(port,dummy);
+		int p = get_port_speed(dummy, port);
 		switch(p){
 		case 1:
 			return "SFP";
