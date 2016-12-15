@@ -136,9 +136,6 @@
 #include "typedefs.h"
 #include "bcmwifi_channels.h"
 
-#ifndef _BROADCOM_H
-#define _BROADCOM_H
-
 #define WL_MCSSET_LEN				16
 #define WL_MAX_STA_COUNT			32
 
@@ -687,5 +684,3 @@ int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
-
-#endif

@@ -80,27 +80,6 @@ static Client6 clients6[MAX_CLIENT];
 
 static int lease_time_count = 0;
 
-static struct uci_package *
-init_package(const char *config)
-{
-	struct uci_context *ctx = uci_ctx;
-	struct uci_package *p = NULL;
-
-	if (!ctx) {
-		ctx = uci_alloc_context();
-		uci_ctx = ctx;
-	} else {
-		p = uci_lookup_package(ctx, config);
-		if (p)
-			uci_unload(ctx, p);
-	}
-
-	if (uci_load(ctx, config, &p))
-		return NULL;
-
-	return p;
-}
-
 void
 get_network_clients(Client *clnt)
 {
@@ -131,12 +110,13 @@ wdev_already_there(const char *ifname, char *wdev)
 }
 
 static void
-get_wifs(char *netname, const char *ifname, char **wifs)
+get_wifs(char *netname, const char *ifname, char *wifs)
 {
 	struct uci_element *e;
+	struct uci_section *s;
 	const char *device = NULL;
 	const char *network = NULL;
-	char wdev[16];
+	char wdev[16] = {0};
 	char wrl[64];
 	const char *wdevs[2];		
 	int vif, wno;
@@ -144,35 +124,31 @@ get_wifs(char *netname, const char *ifname, char **wifs)
 	wdevs[0] = "wl0";
 	wdevs[1] = "wl1";
 
-	*wifs = NULL;
-
 	memset(wrl, '\0', sizeof(wrl));
-	if((uci_wireless = init_package("wireless"))) {
-		for(wno = 0; wno <= 1; wno++) {
-			vif = 0;
-			uci_foreach_element(&uci_wireless->sections, e) {
-				struct uci_section *s = uci_to_section(e);
+	for(wno = 0; wno <= 1; wno++) {
+		vif = 0;
+		uci_foreach_element(&uci_wireless->sections, e) {
+			s = uci_to_section(e);
 
-				if (!strcmp(s->type, "wifi-iface")) {
-					device = uci_lookup_option_string(uci_ctx, s, "device");
-					if(!device || strcmp(device, wdevs[wno]))
+			if (!strcmp(s->type, "wifi-iface")) {
+				device = uci_lookup_option_string(uci_ctx, s, "device");
+				if(!device || strcmp(device, wdevs[wno]))
+					continue;
+				network = uci_lookup_option_string(uci_ctx, s, "network");
+				if (network && device && !strcmp(network, netname)) {
+					if (vif > 0)
+						snprintf(wdev, 15, "%s.%d", device, vif);
+					else
+						strncpy(wdev, device, 15);
+
+					if(wdev_already_there(ifname, wdev))
 						continue;
-					network = uci_lookup_option_string(uci_ctx, s, "network");
-					if (network && device && !strcmp(network, netname)) {
-						if (vif > 0)
-							sprintf(wdev, "%s.%d", device, vif);
-						else
-							strcpy(wdev, device);
 
-						if(wdev_already_there(ifname, wdev))
-							continue;
-
-						strcat(wrl, " ");
-						strcat(wrl, wdev);
-						*wifs = strdup(wrl);
-					}
-					vif++;
+					strcat(wrl, " ");
+					strcat(wrl, wdev);
+					strncpy(wifs, wrl, 63);
 				}
+				vif++;
 			}
 		}
 	}
@@ -189,12 +165,13 @@ load_networks()
 	const char *ipaddr = NULL;
 	const char *netmask = NULL;
 	const char *ifname = NULL;
-	char *wifs;
+	char wifs[64] = {0};
 	int nno = 0;
 
 	memset(network, '\0', sizeof(network));
 
-	if((uci_network = init_package("network"))) {
+	if((uci_network = init_package(&uci_ctx, "network")) &&
+			(uci_wireless = init_package(&uci_ctx, "wireless"))) {
 		uci_foreach_element(&uci_network->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 
@@ -211,32 +188,31 @@ load_networks()
 				ifname = uci_lookup_option_string(uci_ctx, s, "ifname");
 				if(!(ifname))
 					ifname = "";
-				get_wifs(s->e.name, ifname, &wifs);
-				if ((ifname && strcmp(ifname, "lo")) || wifs) {
+				get_wifs(s->e.name, ifname, wifs);
+				if ((ifname && strcmp(ifname, "lo")) || *wifs) {
 					network[nno].exists = true;
 					if(is_lan && !strcmp(is_lan, "1"))
 						network[nno].is_lan = true;
-					network[nno].name = s->e.name;
+					strncpy(network[nno].name, s->e.name, sizeof(network[nno].name));
 					if(defaultroute && !strcmp(defaultroute, "0"))
 						network[nno].defaultroute = false;
 					else
 						network[nno].defaultroute = true;
-					(type) ? (network[nno].type = type) : (network[nno].type = "");
-					(proto) ? (network[nno].proto = proto) : (network[nno].proto = "");
+					strncpy(network[nno].type, type ? type : "", sizeof(network[nno].type));
+					strncpy(network[nno].proto, proto ? proto : "", sizeof(network[nno].proto));
 					if(proto && !strcmp(network[nno].proto, "static")) {
-						(ipaddr) ? (network[nno].ipaddr = ipaddr) : (network[nno].ipaddr = "");
-						(netmask) ? (network[nno].netmask = netmask) : (network[nno].netmask = "");
+						strncpy(network[nno].ipaddr, ipaddr ? ipaddr : "", sizeof(network[nno].ipaddr));
+						strncpy(network[nno].netmask, netmask ? netmask : "", sizeof(network[nno].netmask));
 					}
-					if(wifs)
+					if(*wifs)
 						sprintf(network[nno].ifname, "%s%s", ifname, wifs);
 					else
 						strcpy(network[nno].ifname, ifname);
 					nno++;
-					if (wifs)
-						free(wifs);
 				}
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
@@ -333,14 +309,18 @@ populate_ports(Network *network)
 	prt = strtok_r(theports, " ", &saveptr1);
 	while (prt != NULL)
 	{
+#if IOPSYS_BROADCOM
 		if(strncmp(prt, "wl", 2) && strchr(prt, '.'))
 			goto nextport;
+#endif
 
 		strncpy(port[i].device, prt, 32);
 		get_port_name(&port[i]);
 		if(strstr(port[i].device, "eth"))
 			get_port_speed(port[i].linkspeed, port[i].device);
+#if IOPSYS_BROADCOM
 nextport:
+#endif
 		prt = strtok_r (NULL, " ", &saveptr1);
 		i++;
 	}
@@ -352,7 +332,6 @@ nextport:
 get_clients:	
 	for(i=1; i < MAX_PORT; i++)
 	{
-
 		if(strlen(port[i].device)<2)
 			continue;
 
@@ -391,15 +370,14 @@ nextmac:
 }
 
 static void dump_client(struct blob_buf *b, Client client)
-{
-#if IOPSYS_BROADCOM
+{	
 	static char linkspeed[64];
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr, htcaps;
 
 	if(client.wireless && !wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps))
 		return;
-#endif
+
 	int cno;
 
 	blobmsg_add_string(b, "hostname", client.hostname);
@@ -421,7 +399,6 @@ static void dump_client(struct blob_buf *b, Client client)
 	if(client.connected)
 		blobmsg_add_u32(b, "active_connections", active_connections(client.ipaddr));
 	blobmsg_add_u8(b, "wireless", client.wireless);
-#if IOPSYS_BROADCOM
 	if(client.wireless) {
 		wl_get_stas_info(client.wdev, client.macaddr, &sta_info, &htcaps);
 		wl_get_bssinfo(client.wdev, &bandwidth, &channel, &noise);
@@ -442,7 +419,8 @@ static void dump_client(struct blob_buf *b, Client client)
 		blobmsg_add_u64(b, "rx_bytes", sta_info.rx_tot_bytes);
 		blobmsg_add_u32(b, "tx_rate", (sta_info.tx_rate_fallback > sta_info.tx_rate) ? sta_info.tx_rate_fallback : sta_info.tx_rate);
 		blobmsg_add_u32(b, "rx_rate", sta_info.rx_rate);
-	} else if(client.connected) {
+	} else
+	if(client.connected) {
 		if(!strncmp(client.ethport, "eth", 3)) {
 			blobmsg_add_string(b, "ethport", client.ethport);
 			get_port_speed(linkspeed, client.ethport);
@@ -452,7 +430,7 @@ static void dump_client(struct blob_buf *b, Client client)
 		}
 	}
 
-	if(is_inteno_macaddr(client.macaddr)) {
+	if(strstr(client.macaddr, "00:22:07")) {
 		void *a, *t;
 		int i = 0;
 		int j = 0;
@@ -479,7 +457,6 @@ static void dump_client(struct blob_buf *b, Client client)
 
 		blobmsg_close_array(b, a);
 	}
-#endif
 }
 
 static void
@@ -493,9 +470,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 
 	void *t, *c, *h, *s;
 	int pno, i, j;
-#if IOPSYS_BROADCOM
 	int k, l;
-#endif
 	const char *ports[8];
 	bool found = false;
 
@@ -509,7 +484,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 	ports[7] = "WLAN";
 
 	Port *port;
-	
+
 	for (i = 0; i < MAX_NETWORK; i++) {
 		if (network[i].exists && !strcmp(network[i].name, interface)) {
 			populate_ports(&network[i]);
@@ -518,7 +493,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			break;
 		}
 	}
-	
+
 	if (!found)
 		return;
 
@@ -530,7 +505,11 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			if(strcmp(port[i].name, ports[pno]))
 				continue;
 			t = blobmsg_open_table(b, port[i].device);
+		#if IOPSYS_BROADCOM
 			if(!strncmp(port[i].device, "wl", 2) && strlen(port[i].ssid) > 0)
+		#elif IOPSYS_MEDIATEK
+			if(!strncmp(port[i].device, "ra", 2) && strlen(port[i].ssid) > 0)
+		#endif
 				blobmsg_add_string(b, "ssid", port[i].ssid);
 			else {
 				blobmsg_add_string(b, "name", port[i].name);
@@ -538,8 +517,6 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			}
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
-
-			#if IOPSYS_BROADCOM
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (is_inteno_macaddr(clients[k].macaddr)) {
 						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
@@ -548,10 +525,13 @@ router_dump_ports(struct blob_buf *b, char *interface)
 						}
 					}
 				}
-			#endif
 
 				port[i].client[j].connected = true;
+			#if IOPSYS_BROADCOM
 				if(!strncmp(port[i].device, "wl", 2)) {
+			#elif IOPSYS_MEDIATEK
+				if(!strncmp(port[i].device, "ra", 2)) {
+			#endif
 					strncpy(port[i].client[j].wdev, port[i].device, 8);
 					port[i].client[j].wireless = true;
 				} else {
@@ -707,7 +687,7 @@ get_hostname_from_config(const char *mac_in, char *hostname)
 	const char *mac = NULL;
 	const char *hname = NULL;
 
-	if((uci_dhcp = init_package("dhcp"))) {
+	if((uci_dhcp = init_package(&uci_ctx, "dhcp"))) {
 		uci_foreach_element(&uci_dhcp->sections, e) {
 			s = uci_to_section(e);
 
@@ -720,6 +700,7 @@ get_hostname_from_config(const char *mac_in, char *hostname)
 				}
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
@@ -736,12 +717,10 @@ ipv4_clients()
 	int i, j;
 	bool there;
 	int toms = 1000;
-#if IOPSYS_BROADCOM
 	char assoclist[1280];
 	char *saveptr1, *saveptr2;
 	int ano = 0;
 	char *token;
-#endif
 	char brindex[8] = {0};
 	char output[1280];
 
@@ -765,12 +744,11 @@ ipv4_clients()
 				clients[cno].exists = true;
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
-			#if IOPSYS_BROADCOM
+
 				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 					clients[cno].wireless = true;
 				}
 				else
-			#endif
 				{
 					clients[cno].connected = false;
 					clients[cno].repeated = true;
@@ -790,7 +768,6 @@ ipv4_clients()
 						recalc_sleep_time(true, toms);
 				}
 
-			#if IOPSYS_BROADCOM
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
 					memset(output, 0, 1280);
@@ -805,7 +782,6 @@ ipv4_clients()
 						ano++;
 					}
 				}
-			#endif
 
 				cno++;
 			}
@@ -832,7 +808,6 @@ ipv4_clients()
 				clients[cno].dhcp = true;
 				handle_client(&clients[cno]);
 
-			#if IOPSYS_BROADCOM
 				for (i=0; i < cno; i++) {
 					for(j=0; j < 32 && clients[i].assoclist[j].octet[0] != 0; j++) {
 						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
@@ -843,12 +818,10 @@ ipv4_clients()
 					}
 				}
 
-
 				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 					clients[cno].wireless = true;
 				}
 				else
-			#endif
 				{
 					clients[cno].connected = false;
 					clients[cno].repeated = true;
@@ -870,9 +843,9 @@ ipv4_clients()
 					} else if(!(clients[cno].connected = arping(clients[cno].ipaddr, clients[cno].device, toms)))
 						recalc_sleep_time(true, toms);
 				}
-#if IOPSYS_BROADCOM
+
 inc:
-#endif
+
 				cno++;
 			}
 		}
@@ -910,11 +883,10 @@ inc:
 						get_hostname_from_config(clients[cno].macaddr, clients[cno].hostname);
 						clients[cno].exists = true;
 						clients[cno].dhcp = false;
-					#if IOPSYS_BROADCOM
+
 						if((clients[cno].connected = wireless_sta(&clients[cno]))) {
 							clients[cno].wireless = true;
 						} else
-					#endif
 						{
 							clients[cno].connected = false;
 							clients[cno].repeated = true;
@@ -932,7 +904,6 @@ inc:
 								recalc_sleep_time(true, toms);
 						}
 
-					#if IOPSYS_BROADCOM
 						if(clients[cno].connected && is_inteno_macaddr(clients[cno].macaddr)) {
 							memset(clients[cno].assoclist, '\0', 128);
 							strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a %s", clients[cno].ipaddr), 1280);
@@ -946,7 +917,6 @@ inc:
 								ano++;
 							}
 						}
-					#endif
 
 						cno++;
 					}
@@ -1019,11 +989,11 @@ ipv6_clients()
 				//if((clients6[cno].connected = ndisc (clients6[cno].hostname, clients6[cno].device, 0x8, 1, toms))) {
 				if((clients6[cno].connected = ndisc6 (clients6[cno].ip6addr, clients6[cno].device, clients6[cno].macaddr))) {
 					//sprintf(clients6[cno].macaddr, get_macaddr());
-				#if IOPSYS_BROADCOM
+
 					if (wireless_sta6(&clients6[cno])) {
 						clients6[cno].wireless = true;
 					}
-				#endif
+
 				} else
 					recalc_sleep_time(true, toms);
 
@@ -1046,9 +1016,7 @@ populate_clients()
 	}
 
 	if (popc) {
-	#if IOPSYS_BROADCOM
 		wireless_assoclist();
-	#endif
 		ipv4_clients();
 		ipv6_clients();
 		popc = false;
@@ -1193,9 +1161,7 @@ quest_network_reload(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct blob_attr *msg)
 {
 	load_networks();
-#if IOPSYS_BROADCOM
 	load_wireless();
-#endif
 	return 0;
 }
 

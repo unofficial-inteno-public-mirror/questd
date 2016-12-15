@@ -30,8 +30,6 @@
 #include "tools.h"
 #include "wireless.h"
 
-#if IOPSYS_BROADCOM
-
 enum {
 	VIF_NAME,
 	__WL_MAX,
@@ -49,27 +47,6 @@ static Wireless wireless[MAX_VIF];
 static Sta stas[MAX_CLIENT];
 static Radio radio[MAX_RADIO];
 
-static struct uci_package *
-init_package(const char *config)
-{
-	struct uci_context *ctx = uci_ctx;
-	struct uci_package *p = NULL;
-
-	if (!ctx) {
-		ctx = uci_alloc_context();
-		uci_ctx = ctx;
-	} else {
-		p = uci_lookup_package(ctx, config);
-		if (p)
-			uci_unload(ctx, p);
-	}
-
-	if (uci_load(ctx, config, &p))
-		return NULL;
-
-	return p;
-}
-
 void
 wireless_assoclist()
 {
@@ -79,7 +56,7 @@ wireless_assoclist()
 
 	memset(stas, '\0', sizeof(stas));
 
-	for (i = 0; i < MAX_VIF && wireless[i].device; i++) {
+	for (i = 0; i < MAX_VIF && strlen(wireless[i].device) > 0; i++) {
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
 			for (j = 0; j < MAX_CLIENT && j < macs->count; j++)
@@ -135,25 +112,14 @@ void
 load_wireless()
 {
 	struct uci_element *e;
-	const char *device = NULL;
-	const char *network = NULL;
-	const char *ssid = NULL;
-	char wdev[16];
-	char output[32];
-	int rno = 0;
-	int wno = 0;
-	int vif;
-	int vif0 = 0;
-	int vif1 = 0;
-	int i;
+	const char *device, *network, *ssid, *band;
+	char dev[MAX_DEVICE_LENGTH] = {0};
+	int rno = 0, wno = 0, vif0 = 0, vif1 = 0, vif = 0;
 
-	for (i = 0; i < MAX_VIF && wireless[i].vif; i++) {
-		free((char *)wireless[i].vif);
-	}
 	memset(wireless, '\0', sizeof(wireless));
 	memset(radio, '\0', sizeof(radio));
 
-	if((uci_wireless = init_package("wireless"))) {
+	if((uci_wireless = init_package(&uci_ctx, "wireless"))) {
 		uci_foreach_element(&uci_wireless->sections, e) {
 			struct uci_section *s = uci_to_section(e);
 
@@ -161,10 +127,11 @@ load_wireless()
 				device = uci_lookup_option_string(uci_ctx, s, "device");
 				network = uci_lookup_option_string(uci_ctx, s, "network");
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
-				if (device && wno < MAX_VIF) {
-					wireless[wno].device = device;
-					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
-					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
+				if (device && strlen(device) && wno < MAX_VIF) {
+					strncpy(wireless[wno].device, device, MAX_DEVICE_LENGTH-1);
+					strncpy(wireless[wno].network, (network)? network : "", MAX_NETWORK_LENGTH-1);
+					strncpy(wireless[wno].ssid, (ssid)? ssid : "", MAX_SSID_LENGTH-1);
+				#if IOPSYS_BROADCOM
 					if (!strcmp(device, "wl0")) {
 						vif = vif0;
 						vif0++;
@@ -173,27 +140,44 @@ load_wireless()
 						vif1++;
 					}
 					if (vif > 0)
-						sprintf(wdev, "%s.%d", device, vif);
+						snprintf(wireless[wno].vif, MAX_VIF_LENGTH, "%s.%d", device, vif);
 					else
-						strcpy(wdev, device);
-
-					wireless[wno].vif = strdup(wdev);
-
+						strncpy(wireless[wno].vif, device, MAX_VIF_LENGTH-1);
+				#elif IOPSYS_MEDIATEK
+					if (!strncmp(device, "ra0", 3)) {
+						vif = vif0;
+						vif0++;
+					} else {
+						vif = vif1;
+						vif1++;
+					}
+					if (vif > 0) {
+						strncpy(dev, device, strlen(device) - 1);
+						snprintf(wireless[wno].vif, MAX_VIF_LENGTH, "%s%d", dev, vif);
+					} else
+						strncpy(wireless[wno].vif, device, MAX_VIF_LENGTH-1);
+				#endif
 					wno++;
 				}
 			} else if (!strcmp(s->type, "wifi-device")) {
 				if (rno >= MAX_RADIO)
 					continue;
-				radio[rno].name = s->e.name;
-				if(!(radio[rno].band = uci_lookup_option_string(uci_ctx, s, "band")))
-					radio[rno].band = "b";
+				strncpy(radio[rno].name, s->e.name, MAX_DEVICE_LENGTH-1);
+				band = uci_lookup_option_string(uci_ctx, s, "band");
+				strncpy(radio[rno].band, (band) ? band : "b", 8);
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
-				wl_get_deviceid(radio[rno].name, &(radio[rno].deviceid));
 				radio[rno].is_ac = false;
+			#if IOPSYS_BROADCOM
+				wl_get_deviceid(radio[rno].name, &(radio[rno].deviceid));
+				char output[32];
 				memset(output, 0, 32);
 				chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid);
 				if (radio[rno].deviceid && output?atoi(output):0 == 1)
 					radio[rno].is_ac = true;
+			#elif IOPSYS_MEDIATEK
+				if (!strncmp(radio[rno].name, "rai", 3))
+					radio[rno].is_ac = true;
+			#endif
 
 				if(radio[rno].frequency == 2) {
 					radio[rno].hwmodes[0] = "11b";
@@ -221,13 +205,14 @@ load_wireless()
 				rno++;
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
 static void
 router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 {
-	void *t, *f, *h, *v, *r, *s;
+	void *t, *r;
 	char compare[8];
 	char stanum[8];
 	int num = 1;
@@ -277,6 +262,9 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u32(&bb, "snr", snr);
 		blobmsg_add_u32(&bb, "idle", sta_info.idle);
 		blobmsg_add_u32(&bb, "in_network", sta_info.in);
+
+#if IOPSYS_BROADCOM
+		void *f, *h, *s, *v;
 
 		f = blobmsg_open_table(&bb, "flags");
 		blobmsg_add_u8(&bb, "brcm", (sta_info.flags & WL_STA_BRCM) ? true : false);
@@ -358,9 +346,15 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 
 			r = blobmsg_open_array(&bb, "rssi_per_antenna");
 			for (j = 0; sta_info.rssi[j] && j < WL_STA_ANT_MAX; j++)
-				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);			
+				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);
 			blobmsg_close_array(&bb, r);
 		}
+#else
+			r = blobmsg_open_array(&bb, "rssi_per_antenna");
+			for (j = 0; sta_info.rssi[j]; j++)
+				blobmsg_add_u32(&bb, "", sta_info.rssi[j]);
+			blobmsg_close_array(&bb, r);
+#endif
 		blobmsg_close_table(&bb, t);
 		num++;
 	}
@@ -385,8 +379,10 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	memset(wldev, '\0', sizeof(wldev));
 	strcpy(wldev, blobmsg_data(tb[VIF_NAME]));
 
+#if IOPSYS_BROADCOM
 	if(strncmp(wldev, "wl", 2))
 		return UBUS_STATUS_INVALID_ARGUMENT;
+#endif
 
 	snprintf(syspath, 32, "/sys/class/net/%s", wldev);
 	if (stat(syspath, &s))
@@ -410,7 +406,7 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	int wsec;
 	wl_get_wsec(wldev, &wsec);
 
-	int rate;
+	unsigned long rate;
 	wl_get_bitrate(wldev, &rate);
 
 	int bandwidth, channel, noise;
@@ -426,7 +422,7 @@ quest_router_vif_status(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_u32(&bb, "channel", channel);
 	blobmsg_add_u32(&bb, "bandwidth", bandwidth);
 	blobmsg_add_u32(&bb, "noise", noise);
-	blobmsg_add_u32(&bb, "rate", (rate/2));
+	blobmsg_add_u64(&bb, "rate", (rate/2));
 
 	ubus_send_reply(ctx, req, bb.head);
 
@@ -503,16 +499,17 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	void *t, *c;
 	int i, j;
-	int isup, band, rate, bw, channel, noise;
-	char maxrate[10];
-	char bitrate[10];
+	int isup, band,  bw, channel, noise;
+	unsigned long rate;
+	char maxrate[20];
+	char bitrate[20];
 	char frequency[10];
 	char bandwidth[10];
 
 	blob_buf_init(&bb, 0);
 
 	for (i = 0; i < MAX_RADIO; i++) {
-		if (!radio[i].name)
+		if (strlen(radio[i].name) == 0)
 			break;
 
 		wl_get_isup(radio[i].name, &isup);
@@ -521,7 +518,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		sprintf(frequency, "%sGHz", (band==1)?"5":"2.4");
 
 		wl_get_bitrate(radio[i].name, &rate);
-		sprintf(bitrate, "%d%s Mbps", (rate / 2), (rate & 1) ? ".5" : "");
+		sprintf(bitrate, "%g Mbps", (double)rate / 2);
 
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
@@ -548,7 +545,11 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		blobmsg_add_string(&bb, "bandwidth", bandwidth);
 		blobmsg_add_u32(&bb, "channel", channel);
 		blobmsg_add_u32(&bb, "noise", noise);
+#if IOPSYS_BROADCOM
 		blobmsg_add_string(&bb, "rate", maxrate);
+#else
+		blobmsg_add_string(&bb, "rate", bitrate);
+#endif
 		c = blobmsg_open_array(&bb, "hwmodes");
 		for(j=0; radio[i].hwmodes[j]; j++) {
 			blobmsg_add_string(&bb, "", radio[i].hwmodes[j]);
@@ -588,5 +589,3 @@ struct ubus_object wireless_object = {
 	.methods = wireless_object_methods,
 	.n_methods = ARRAY_SIZE(wireless_object_methods),
 };
-
-#endif

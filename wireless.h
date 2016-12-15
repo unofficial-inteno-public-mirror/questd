@@ -1,11 +1,15 @@
 #define MAX_RADIO	4
 #define MAX_VIF		8
+#define MAX_VIF_LENGTH 16
+#define MAX_DEVICE_LENGTH 16
+#define MAX_SSID_LENGTH 64
+#define MAX_NETWORK_LENGTH 16
 
 typedef struct {
-	const char *vif;
-	const char *device;
-	const char *ssid;
-	const char *network;
+	char vif[MAX_VIF_LENGTH];
+	char device[MAX_DEVICE_LENGTH];
+	char ssid[MAX_SSID_LENGTH];
+	char network[MAX_NETWORK_LENGTH];
 } Wireless;
 
 typedef struct {
@@ -15,9 +19,10 @@ typedef struct {
 } Sta;
 
 typedef struct {
-	const char *name;
-	const char *band;
+	char name[MAX_DEVICE_LENGTH];
+	char band[8];
 	int frequency;
+	//const char is ok. hwmodes are hard coded;
 	const char *hwmodes[6];
 	int channels[64];
 	int deviceid;

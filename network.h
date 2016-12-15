@@ -6,6 +6,9 @@
 #ifdef IOPSYS_BROADCOM
 #include "broadcom.h"
 #endif
+#ifdef IOPSYS_MEDIATEK
+#include "mediatek.h"
+#endif
 
 typedef struct {
 	bool exists;
@@ -22,9 +25,7 @@ typedef struct {
 	bool repeated;
 	char ethport[8];
 	char wdev[8];
-#ifdef IOPSYS_BROADCOM
 	struct wl_ether_addr assoclist[32];
-#endif
 } Client;
 
 typedef struct {
@@ -62,11 +63,11 @@ typedef struct {
 	bool exists;
 	bool is_lan;
 	bool defaultroute;
-	const char *name;
-	const char *type;
-	const char *proto;
-	const char *ipaddr;
-	const char *netmask;
+	char name[16];
+	char type[16];
+	char proto[16];
+	char ipaddr[24];
+	char netmask[24];
 	char ifname[128];
 	Port port[MAX_PORT];
 	bool ports_populated;

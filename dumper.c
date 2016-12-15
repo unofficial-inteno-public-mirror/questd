@@ -24,7 +24,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/sysinfo.h>
-#include <sys/time.h>
+#include <time.h>
 
 #include <uci.h>
 
@@ -46,7 +46,7 @@ init_db_hw_config(void)
 }
 
 static void
-get_db_hw_value(char *opt, char **val)
+get_db_hw_value(const char *opt, char **val)
 {
 	memset(&ptr, 0, sizeof(ptr));
 	ptr.package = "hw";
@@ -69,6 +69,12 @@ get_db_hw_value(char *opt, char **val)
 		return;
 
 	*val = ptr.o->v.string;
+}
+
+void
+get_db_value(const char *name, char **value)
+{
+	get_db_hw_value(name, value);
 }
 
 void
@@ -139,12 +145,19 @@ dump_keys(Key *keys)
 	uboot_env_get("authKey", &keys->auth);
 	uboot_env_get("desKey", &keys->des);
 	uboot_env_get("wpaKey", &keys->wpa);
+#elif defined(IOPSYS_MEDIATEK)
+	keys->auth = "00000000";
+	keys->des = "00000000";
+	keys->wpa = "00000000";
 #elif defined(IOPSYS_BROADCOM)
 	get_db_hw_value("authKey", &keys->auth);
 	get_db_hw_value("desKey", &keys->des);
 	get_db_hw_value("wpaKey", &keys->wpa);
 #else
 	//#error "dumper.c: dump_keys()"
+	keys->auth = "00000000";
+	keys->des = "00000000";
+	keys->wpa = "00000000";
 #endif
 }
 
@@ -164,6 +177,19 @@ dump_static_router_info(Router *router)
 	uboot_env_get("kernelVersion", &router->kernel);
 	uboot_env_get("BaseMacAddr", &router->basemac);
 	uboot_env_get("serialNumber", &router->serialno);
+#elif defined(IOPSYS_MEDIATEK)
+	router->boardid = "EXT400";
+	router->hardware = "EXT400";
+	router->model = "EXT400";
+	router->firmware = "iopsys";
+	router->brcmver = "";
+	router->filesystem = "UBIFS";
+	router->socmod = "";
+	router->socrev = "";
+	router->cfever = "";
+	router->kernel = "4.4.14";
+	uboot_env_get("ethaddr", &router->basemac);
+	router->serialno = "";
 #elif defined(IOPSYS_BROADCOM)
 	get_db_hw_value("boardId", &router->boardid);
 	get_db_hw_value("hardwareVersion", &router->hardware);
@@ -179,6 +205,18 @@ dump_static_router_info(Router *router)
 	get_db_hw_value("serialNumber", &router->serialno);
 #else
 	//#error "dumper.c: dump_static_router_info()"
+	router->boardid = "";
+	router->hardware = "";
+	router->model = "";
+	router->firmware = "";
+	router->brcmver = "";
+	router->filesystem = "";
+	router->socmod = "";
+	router->socrev = "";
+	router->cfever = "";
+	router->kernel = "";
+	router->basemac = "";
+	router->serialno = "";
 #endif
 }
 
