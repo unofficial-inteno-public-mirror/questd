@@ -453,7 +453,7 @@ get_port_direction(char *port){
 #if IOPSYS_BROADCOM
 	char linkspeed[64] = {0};
 	if((strncmp(port, "eth", 3) == 0 && strlen(port) > 4) || get_port_speed(linkspeed, port) < 0)
-		return "Up"
+		return "Up";
 #elif IOPSYS_MEDIATEK
 	if(strncmp(port, "eth", 3) == 0){
 		int dir = get_switch_port_data(port, PORT_TYPE_DIRECTION);
@@ -531,7 +531,7 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 		if(num_eth >= MAX_DEVS)
 			break;
 		len = (dot - ent->d_name)/sizeof(char);
-		invalid_eth_devs[num_eth] = strndup(ent->d_name, len);
+		invalid_eth_devs[num_eth] = strdup(ent->d_name);
 		if(!invalid_eth_devs[num_eth])
 			break;
 		num_eth++;
