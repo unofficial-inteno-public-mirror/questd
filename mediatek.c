@@ -62,6 +62,9 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	case SIOCGIWRATE:
 		memcpy(data, &wrq.u.bitrate, sizeof(struct iw_param));
 		break;
+	case SIOCGIFFLAGS:
+		memcpy(data, &wrq.u, sizeof(short));
+		break;
 	}
 
 	return rv;
@@ -198,17 +201,44 @@ int wl_get_bitrate(const char *ifname, unsigned long *rate)
 	return rv;
 }
 
-int wl_get_isup(const char *ifname, int *buf)
+int wl_get_isup(const char *ifname, int *isup)
 {
-	unsigned int isup;
-	char output[128] = {0};
+	int rv;
+	short flags = 0;
 
-	chrCmd(output, 128, "ifconfig %s | grep -c UP", ifname);
-	isup = atoi(output);
+	/*
+	flags has the same purpose as ifr.ifr_flags
+	inside the iwreq structture, flags is mapping exactly at the beginning of union iwreq_data u.
+	(struct ifreq and struct iwreq have the exactly the same footprint)
+	*/
 
-	*buf = isup;
+	rv = wl_ioctl(ifname, SIOCGIFFLAGS, NULL, (char *)&flags, 0);
 
-	return 0;
+	/* printf("wl_get_is_up up %d bcast %d debug %d lo %d p2p %d run %d noarp %d promisc %d notr %d allmulti %d master %d  slave %d mcast %d portsel %d automedia %d dynamic %d lowup %d dormant %d echo %d\n",
+			flags & IFF_UP,
+			flags & IFF_BROADCAST,
+			flags & IFF_DEBUG,
+			flags & IFF_LOOPBACK,
+			flags & IFF_POINTOPOINT,
+			flags & IFF_RUNNING,
+			flags & IFF_NOARP,
+			flags & IFF_PROMISC,
+			flags & IFF_NOTRAILERS,
+			flags & IFF_ALLMULTI,
+			flags & IFF_MASTER,
+			flags & IFF_SLAVE,
+			flags & IFF_MULTICAST,
+			flags & IFF_PORTSEL,
+			flags & IFF_AUTOMEDIA,
+			flags & IFF_DYNAMIC,
+			flags & IFF_LOWER_UP,
+			flags & IFF_DORMANT,
+			flags & IFF_ECHO);
+	*/
+
+	*isup = flags & IFF_UP;
+
+	return rv;
 }
 
 int wl_get_band(const char *ifname, int *buf)
