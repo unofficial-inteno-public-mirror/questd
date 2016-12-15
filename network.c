@@ -209,8 +209,6 @@ load_networks()
 					else
 						strcpy(network[nno].ifname, ifname);
 					nno++;
-					if (wifs)
-						free(wifs);
 				}
 			}
 		}

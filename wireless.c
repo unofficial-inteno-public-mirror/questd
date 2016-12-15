@@ -56,7 +56,7 @@ wireless_assoclist()
 
 	memset(stas, '\0', sizeof(stas));
 
-	for (i = 0; i < MAX_VIF && wireless[i].device; i++) {
+	for (i = 0; i < MAX_VIF && strlen(wireless[i].device) > 0; i++) {
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
 			for (j = 0; j < MAX_CLIENT && j < macs->count; j++)
@@ -120,9 +120,6 @@ load_wireless()
 	int rno = 0;
 	int wno = 0;
 	int vif;
-	int vif0 = 0;
-	int vif1 = 0;
-	int i;
 
 	for (i = 0; i < MAX_VIF && wireless[i].vif; i++) {
 		free((char *)wireless[i].vif);
@@ -135,13 +132,13 @@ load_wireless()
 			struct uci_section *s = uci_to_section(e);
 
 			if (!strcmp(s->type, "wifi-iface")) {
-				strncpy(device, uci_lookup_option_string(uci_ctx, s, "device"), 16);
+				device = uci_lookup_option_string(uci_ctx, s, "device");
 				network = uci_lookup_option_string(uci_ctx, s, "network");
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
 				if (strlen(device) && wno < MAX_VIF) {
-					wireless[wno].device = (const char *)device;
-					(network) ? (wireless[wno].network = network) : (wireless[wno].network = "");
-					(ssid) ? (wireless[wno].ssid = ssid) : (wireless[wno].ssid = "");
+					strncpy(wireless[wno].device, device, MAX_DEVICE_LENGTH-1);
+					strncpy(wireless[wno].network, (network)? network : "", MAX_NETWORK_LENGTH-1);
+					strncpy(wireless[wno].ssid, (ssid)? ssid : "", MAX_SSID_LENGTH-1);
 				#if IOPSYS_BROADCOM
 					if (!strcmp(device, "wl0")) {
 						vif = vif0;
@@ -151,9 +148,9 @@ load_wireless()
 						vif1++;
 					}
 					if (vif > 0)
-						sprintf(wdev, "%s.%d", device, vif);
+						snprintf(wireless[wno].vif, MAX_VIF_LENGTH, "%s.%d", device, vif);
 					else
-						strcpy(wdev, device);
+						strncpy(wireless[wno].vif, device, MAX_VIF_LENGTH-1);
 				#elif IOPSYS_MEDIATEK
 					if (!strncmp(device, "ra0", 3)) {
 						vif = vif0;
@@ -163,22 +160,19 @@ load_wireless()
 						vif1++;
 					}
 					if (vif > 0) {
-						device[strlen(device)-1] = '\0';
-						sprintf(wdev, "%s%d", device, vif);
+						strncpy(dev, device, strlen(device) - 1);
+						snprintf(wireless[wno].vif, MAX_VIF_LENGTH, "%s%d", dev, vif);
 					} else
-						strcpy(wdev, device);
+						strncpy(wireless[wno].vif, device, MAX_VIF_LENGTH-1);
 				#endif
-
-					wireless[wno].vif = strdup(wdev);
-
 					wno++;
 				}
 			} else if (!strcmp(s->type, "wifi-device")) {
 				if (rno >= MAX_RADIO)
 					continue;
-				radio[rno].name = s->e.name;
-				if(!(radio[rno].band = uci_lookup_option_string(uci_ctx, s, "band")))
-					radio[rno].band = "b";
+				strncpy(radio[rno].name, s->e.name, MAX_DEVICE_LENGTH-1);
+				band = uci_lookup_option_string(uci_ctx, s, "band");
+				strncpy(radio[rno].band, (band) ? band : "b", 8);
 				radio[rno].frequency = !strcmp(radio[rno].band, "a") ? 5 : 2;
 				radio[rno].is_ac = false;
 				memset(output, 0, 32);
@@ -216,6 +210,7 @@ load_wireless()
 				rno++;
 			}
 		}
+		free_uci_context(&uci_ctx);
 	}
 }
 
@@ -519,7 +514,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	blob_buf_init(&bb, 0);
 
 	for (i = 0; i < MAX_RADIO; i++) {
-		if (!radio[i].name)
+		if (strlen(radio[i].name) == 0)
 			break;
 
 		wl_get_isup(radio[i].name, &isup);
