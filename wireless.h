@@ -22,6 +22,7 @@ typedef struct {
 	char name[MAX_DEVICE_LENGTH];
 	char band[8];
 	int frequency;
+	//const char is ok. hwmodes are hard coded;
 	const char *hwmodes[6];
 	int channels[64];
 	int deviceid;
