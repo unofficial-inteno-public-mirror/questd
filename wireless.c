@@ -128,7 +128,7 @@ load_wireless()
 				device = uci_lookup_option_string(uci_ctx, s, "device");
 				network = uci_lookup_option_string(uci_ctx, s, "network");
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
-				if (strlen(device) && wno < MAX_VIF) {
+				if (device && strlen(device) && wno < MAX_VIF) {
 					strncpy(wireless[wno].device, device, MAX_DEVICE_LENGTH-1);
 					strncpy(wireless[wno].network, (network)? network : "", MAX_NETWORK_LENGTH-1);
 					strncpy(wireless[wno].ssid, (ssid)? ssid : "", MAX_SSID_LENGTH-1);
