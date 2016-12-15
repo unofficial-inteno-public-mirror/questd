@@ -61,6 +61,9 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	case SIOCGIWRATE:
 		memcpy(data, &wrq.u.bitrate, sizeof(struct iw_param));
 		break;
+	case SIOCGIFFLAGS:
+		memcpy(data, &wrq.u, sizeof(short));
+		break;
 	}
 
 	return rv;
@@ -195,7 +198,7 @@ int wl_get_bitrate(const char *ifname, unsigned long *rate)
 	return rv;
 }
 
-int wl_get_isup(const char *ifname, int *buf)
+int wl_get_isup(const char *ifname, int *isup)
 {
 	unsigned int isup;
 
@@ -203,7 +206,7 @@ int wl_get_isup(const char *ifname, int *buf)
 
 	*buf = isup;
 
-	return 0;
+	return rv;
 }
 
 int wl_get_band(const char *ifname, int *buf)
