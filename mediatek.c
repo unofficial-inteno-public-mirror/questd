@@ -115,6 +115,19 @@ int wl_get_channel(const char *ifname, int *channel)
 	return rv;
 }
 
+int wl_scan(const char *ifname)
+{
+	char data[255] = {0};
+	strcpy(data, "SiteSurvey=1");
+
+	return wl_ioctl(ifname, RTPRIV_IOCTL_SET, NULL, data, strlen(data)+1);
+}
+
+int wl_get_scanresult(const char *ifname, char *data, int size)
+{
+	return wl_ioctl(ifname, RTPRIV_IOCTL_GSITESURVEY, NULL, data, size);
+}
+
 int wl_get_ssid(const char *ifname, char *ssid)
 {
 	int rv;
@@ -380,6 +393,32 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 	}
 
 	return 0;
+}
+
+void parse_scanresult_list(char *buf, struct blob_buf *b)
+{
+	int channel, signal;
+	char ssid[34] = {0}, bssid[21] = {0}, security[24] = {0}, mode[8] = {0}, wps[4] = {0};
+	void *t, *tmp;
+
+	blob_buf_init(b, 0);
+	while(true){
+		if(sscanf(buf, "%4d%33s%20s%23s%9d%7s%*7s%*3s%3s", &channel, ssid, bssid, security, &signal, mode, wps) == 7 ||
+			sscanf(buf, "%4d%*4s%33s%20s%23s%9d%7s%*7s%*3s%3s", &channel, ssid, bssid, security, &signal, mode, wps) == 7){
+			t = blobmsg_open_table(b, "");
+			blobmsg_add_u32(b, "channel", channel);
+			blobmsg_add_string(b, "ssid", ssid);
+			blobmsg_add_string(b, "bssid", bssid);
+			blobmsg_add_string(b, "security", security);
+			blobmsg_add_u32(b, "signal", signal);
+			blobmsg_add_string(b, "mode", mode);
+			blobmsg_add_u8(b, "wps", strcmp(wps, "YES") == 0 ? true : false);
+			blobmsg_close_table(b, t);
+		}
+		tmp = strchr(buf, '\n');
+		if(!tmp) return;
+		buf = tmp + 1;
+	}
 }
 
 /* -------------------------------------------------------------------------- */
