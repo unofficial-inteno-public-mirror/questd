@@ -56,6 +56,9 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	case SIOCGIWFREQ:
 		memcpy(data, &wrq.u.freq, sizeof(struct iw_freq));
 		break;
+	/*case SIOCGIWSENS:
+		memcpy(data, &wrq.u.sens, sizeof(struct iw_param));
+		break;*/
 	case SIOCGIWAP:
 		memcpy(data, &wrq.u.ap_addr, sizeof(struct sockaddr));
 		break;
@@ -158,12 +161,40 @@ int wl_get_wsec(const char *ifname, int *buf)
 	return 0;
 }
 
-int wl_get_noise(const char *ifname, int *buf)
+int wl_get_noise(const char *ifname, int *noise)
 {
-	*buf = -90;
+	int rv = 0;
 
-	return 0;
+	/*
+		SIOCGIWSENS is not implemented in the driver.
+		Check drivers/net/wireless/mt_wifi/os/linux/ap_ioctl.c
+		and  drivers/net/wireless/rlt_wifi/os/linux/ap_ioctl.c
+		to see when it will be implemented.
+	*/
+	/*
+	struct iw_param sens;
+	rv = wl_ioctl(ifname, SIOCGIWSENS, NULL, (char *)&sens, 0);
+	printf("wl_get_noise: %lu %d %d %d\n", sens.value, sens.fixed, sens.disabled, sens.flags);
+	*noise = sens.value;
+	*/
+
+	/*
+		SIOCGIWRANGE brings in some signal levels, but they are
+		hardcoded at the moment, thus useless.
+	*/
+	/*
+	struct iw_range range;
+	wl_ioctl(ifname, SIOCGIWRANGE, NULL, (char *)&range, 0);
+	printf ("iw_range: we_version %d %d max_qual %d %d %d \n",
+		range.we_version_compiled, range.we_version_source,
+		range.max_qual.qual, range.max_qual.level, range.max_qual.noise);
+	*/
+
+	*noise = -90;
+
+	return rv;
 }
+
 
 int wl_get_rssi(const char *ifname, char *sta, int *buf)
 {
@@ -258,8 +289,7 @@ int wl_get_band(const char *ifname, int *buf)
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
 	wl_get_channel(ifname, channel);
-
-	*noise = -90;
+	wl_get_noise(ifname, noise);
 
 	if(!strncmp(ifname, "rai", 3))
 		*bandwidth = 80;
