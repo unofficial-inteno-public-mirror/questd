@@ -25,6 +25,7 @@
 #include <libubox/blobmsg.h>
 #include <libubus.h>
 #include <uci.h>
+#include <errno.h>
 
 #include "network.h"
 #include "tools.h"
@@ -37,6 +38,15 @@ enum {
 
 static const struct blobmsg_policy vif_policy[__WL_MAX] = {
 	[VIF_NAME] = { .name = "vif", .type = BLOBMSG_TYPE_STRING },
+};
+
+enum {
+	SCAN_RADIO,
+	__SCAN_MAX,
+};
+
+static const struct blobmsg_policy wl_scan_policy[__WL_MAX] = {
+	[SCAN_RADIO] = { .name = "radio", .type = BLOBMSG_TYPE_STRING },
 };
 
 static struct uci_context *uci_ctx;
@@ -493,6 +503,80 @@ quest_router_wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
+quest_router_scan(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__SCAN_MAX];
+	char device[MAX_DEVICE_LENGTH];
+	int i;
+	bool found = false;
+
+	blobmsg_parse(wl_scan_policy, __SCAN_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!(tb[SCAN_RADIO]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	memset(device, '\0', sizeof(device));
+	strncpy(device, blobmsg_data(tb[SCAN_RADIO]), sizeof(device)-1);
+
+	for(i = 0; i < MAX_RADIO; i++){
+		if(!*radio[i].name)
+			break;
+		if(strncmp(radio[i].name, device, MAX_DEVICE_LENGTH) == 0){
+			found = true;
+			break;
+		}
+	}
+
+	if(!found)
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	if(wl_scan(device) == 0)
+		return UBUS_STATUS_OK;
+	return UBUS_STATUS_UNKNOWN_ERROR;
+}
+
+static int
+quest_router_scanresult(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	char data[16380] = {0}; // fit 140 lines of 117 bytes
+	struct blob_attr *tb[__SCAN_MAX];
+	char device[MAX_DEVICE_LENGTH];
+	int i;
+	bool found = false;
+
+	blobmsg_parse(wl_scan_policy, __SCAN_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!(tb[SCAN_RADIO]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	memset(device, '\0', sizeof(device));
+	strncpy(device, blobmsg_data(tb[SCAN_RADIO]), sizeof(device)-1);
+
+	for(i = 0; i < MAX_RADIO; i++){
+		if(!*radio[i].name)
+			break;
+		if(strncmp(radio[i].name, device, MAX_DEVICE_LENGTH) == 0){
+			found = true;
+			break;
+		}
+	}
+
+	if(!found)
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	if(wl_get_scanresult(device, data, sizeof(data)) != 0)
+		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	parse_scanresult_list(data, &bb);
+	ubus_send_reply(ctx, req, bb.head);
+	return UBUS_STATUS_OK;
+}
+
+static int
 quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -578,6 +662,8 @@ struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD("stas", quest_router_stas, vif_policy),
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
+	UBUS_METHOD("scan", quest_router_scan, wl_scan_policy),
+	UBUS_METHOD("scanresult", quest_router_scanresult, wl_scan_policy),
 };
 
 struct ubus_object_type wireless_object_type =

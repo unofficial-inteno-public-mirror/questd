@@ -1,4 +1,5 @@
 #include "typedefs.h"
+#include <libubox/blobmsg.h>
 
 #define WL_STA_ANT_MAX		4	/**< max possible rx antennas */
 #define WL_STA_VER		4
@@ -110,6 +111,8 @@ typedef struct wl_sta_info {
 int wl_ether_atoe(const char *a, struct wl_ether_addr *n);
 char* wl_ether_etoa(const struct wl_ether_addr *n);
 int wl_get_channel(const char *ifname, int *buf);
+int wl_scan(const char *ifname);
+int wl_get_scanresult(const char *ifname, char *data, int size);
 int wl_get_ssid(const char *ifname, char *buf);
 int wl_get_bssid(const char *ifname, char *buf);
 int wl_get_noise(const char *ifname, int *buf);
@@ -125,6 +128,7 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
 int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
+void parse_scanresult_list(char *buf, struct blob_buf *b);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
 
