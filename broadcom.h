@@ -14,6 +14,9 @@
  *
  */
 
+#ifndef _IOPSYS_QUESTD_BROADCOM_H
+#define _IOPSYS_QUESTD_BROADCOM_H
+
 /* Reverse the bytes in a 16-bit value */
 #define BCMSWAP16(val) \
 	((uint16)((((uint16)(val) & (uint16)0x00ffU) << 8) | \
@@ -684,3 +687,5 @@ int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
+
+#endif /*_IOPSYS_QUESTD_BROADCOM_H*/
