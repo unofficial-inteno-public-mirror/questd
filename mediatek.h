@@ -1,3 +1,6 @@
+#ifndef _IOPSYS_QUESTD_MEDIATEK_H
+#define _IOPSYS_QUESTD_MEDIATEK_H
+
 #include "typedefs.h"
 #include <libubox/blobmsg.h>
 
@@ -243,3 +246,4 @@ typedef struct _RT_802_11_MAC_TABLE {
 #define RTPRIV_IOCTL_WSC_CALLBACK	(SIOCIWFIRSTPRIV + 0x1A)
 #define RTPRIV_IOCTL_RX_STATISTICS              (SIOCIWFIRSTPRIV + 0x1B)//Get CMD ID is odd; Set CMD ID is even 
 
+#endif /*_IOPSYS_QUESTD_MEDIATEK_H*/
