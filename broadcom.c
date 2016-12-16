@@ -595,6 +595,39 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 	return assoced;
 }
 
+int wl_scan(const char *ifname)
+{
+	int rv = 0;
+	struct wl_scan_params params;
+
+	wl_endianness_check(ifname);
+
+	memset(&params, 0, sizeof(params));
+	params.bss_type = DOT11_BSSTYPE_ANY;
+	memset(&params.bssid, 0xFF, ETHER_ADDR_LEN);
+	params.scan_type = (-1);
+	params.nprobes = eswap32(-1);
+	params.active_time = eswap32(-1);
+	params.passive_time = eswap32(-1);
+	params.home_time = eswap32(-1);
+	params.channel_num = eswap32(0);
+
+	rv = wl_ioctl(ifname, WLC_SCAN, &params, sizeof(params));
+
+	return rv;
+}
+
+int wl_get_scanresult(const char *ifname, char *data, int size)
+{
+
+	return 0;
+}
+
+void parse_scanresult_list(char *buf, struct blob_buf *b)
+{
+
+}
+
 /* -------------------------------------------------------------------------- */
 #endif /* IOPSYS_BROADCOM */
 /* -------------------------------------------------------------------------- */
