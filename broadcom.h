@@ -138,6 +138,7 @@
 
 #include "typedefs.h"
 #include "bcmwifi_channels.h"
+#include <libubox/blobmsg.h>
 
 #define WL_MCSSET_LEN				16
 #define WL_MAX_STA_COUNT			32
@@ -473,6 +474,12 @@
 #define WLC_SET_WAI_REKEY			315	/* for WAPI */
 #define WLC_LAST
 
+#define DOT11_BSSTYPE_INFRASTRUCTURE		0	/* d11 infrastructure */
+#define DOT11_BSSTYPE_INDEPENDENT		1	/* d11 independent */
+#define DOT11_BSSTYPE_ANY			2	/* d11 any BSS type */
+#define DOT11_SCANTYPE_ACTIVE			0	/* d11 scan active */
+#define DOT11_SCANTYPE_PASSIVE			1	/* d11 scan passive */
+
 /* uint32 list */
 typedef struct wl_uint32_list {
 	/* in - # of elements, out - # of entries */
@@ -667,6 +674,44 @@ typedef struct wl_country_list {
 	char country_abbrev[1];
 } wl_country_list_t;
 
+struct ether_addr {
+	uint8 octet[ETHER_ADDR_LEN];
+};
+
+typedef struct wl_scan_params {
+	wlc_ssid_t ssid;		/* default: {0, ""} */
+	struct ether_addr bssid;	/* default: bcast */
+	int8 bss_type;			/* default: any,
+					 * DOT11_BSSTYPE_ANY/INFRASTRUCTURE/INDEPENDENT
+					 */
+	int8 scan_type;			/* -1 use default, DOT11_SCANTYPE_ACTIVE/PASSIVE */
+	int32 nprobes;			/* -1 use default, number of probes per channel */
+	int32 active_time;		/* -1 use default, dwell time per channel for
+					 * active scanning
+					 */
+	int32 passive_time;		/* -1 use default, dwell time per channel
+					 * for passive scanning
+					 */
+	int32 home_time;		/* -1 use default, dwell time for the home channel
+					 * between channel scans
+					 */
+	int32 channel_num;		/* count of channels and ssids that follow
+					 *
+					 * low half is count of channels in channel_list, 0
+					 * means default (use all available channels)
+					 *
+					 * high half is entries in wlc_ssid_t array that
+					 * follows channel_list, aligned for int32 (4 bytes)
+					 * meaning an odd channel count implies a 2-byte pad
+					 * between end of channel_list and first ssid
+					 *
+					 * if ssid count is zero, single ssid in the fixed
+					 * parameter portion is assumed, otherwise ssid in
+					 * the fixed portion is ignored
+					 */
+	uint16 channel_list[1];		/* list of chanspecs */
+} wl_scan_params_t;
+
 int wl_ether_atoe(const char *a, struct wl_ether_addr *n);
 char* wl_ether_etoa(const struct wl_ether_addr *n);
 int wl_get_channel(const char *ifname, int *buf);
@@ -685,6 +730,9 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
 int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
+int wl_scan(const char *ifname);
+int wl_get_scanresult(const char *ifname, char *data, int size);
+void parse_scanresult_list(char *buf, struct blob_buf *b);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
 
