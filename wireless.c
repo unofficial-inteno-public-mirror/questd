@@ -571,6 +571,7 @@ quest_router_scanresult(struct ubus_context *ctx, struct ubus_object *obj,
 	if(wl_get_scanresult(device, data, sizeof(data)) != 0)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
+	blob_buf_init(&bb, 0);
 	parse_scanresult_list(data, &bb);
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;

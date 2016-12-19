@@ -433,7 +433,6 @@ void parse_scanresult_list(char *buf, struct blob_buf *b)
 	char ssid[34] = {0}, bssid[21] = {0}, security[24] = {0}, mode[8] = {0}, wps[4] = {0};
 	void *t, *tmp;
 
-	blob_buf_init(b, 0);
 	while(true){
 		if(sscanf(buf, "%4d%33s%20s%23s%9d%7s%*7s%*3s%3s", &channel, ssid, bssid, security, &signal, mode, wps) == 7 ||
 			sscanf(buf, "%4d%*4s%33s%20s%23s%9d%7s%*7s%*3s%3s", &channel, ssid, bssid, security, &signal, mode, wps) == 7){
