@@ -322,43 +322,44 @@ wl_format_ssid(char* ssid_buf, uint8* ssid, int ssid_len)
 	return p - ssid_buf;
 }
 
-void dump_bss_info_summary(wl_bss_info_t *bi)
+void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 {
-	char ssidbuf[SSID_FMT_BUF_LEN];
+	char buf[512];
+	void *t;
 
-	wl_format_ssid(ssidbuf, bi->SSID, bi->SSID_len);
+	t = blobmsg_open_table(b, "");
 
-	printf("BSSID: %02X:%02X:%02X:%02X:%02X:%02X\t",
+	sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
 		bi->BSSID.octet[0], bi->BSSID.octet[1], bi->BSSID.octet[2],
-		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]
-	);
-	printf("RSSI: %d dBm\t", (int16)(bi->RSSI));
+		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]);
+	blobmsg_add_string(b, "bssid", buf);
 
-	printf("Band: %sGHz\t", CHSPEC_IS2G(bi->chanspec)?"2.4":"5");
-	printf("Channel: %d\t", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(bi->chanspec));
-	printf("Noise: %d dBm\t", (int16)(bi->phy_noise));
+	sprintf(buf, "%d dBm", (int16)(bi->RSSI));
+	blobmsg_add_string(b, "rssi", buf);
+
+	sprintf(buf, "%sGHz", CHSPEC_IS2G(bi->chanspec)?"2.4":"5");
+	blobmsg_add_string(b, "band", buf);
+
+	blobmsg_add_u32(b, "channel", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(bi->chanspec));
+
+	sprintf(buf, "%d dBm", (int16)(bi->phy_noise));
+	blobmsg_add_string(b, "noise", buf);
 
 	if (bi->version != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap) {
 		if (bi->vht_cap)
-			printf("802.11: n/ac\t");
+			sprintf(buf, "802.11: n/ac");
 		else
-			printf("802.11: b/g/n\t");
+			sprintf(buf, "802.11: b/g/n");
 	}
 	else {
-		printf("802.11: b/g\t");
+		sprintf(buf, "802.11: b/g");
 	}
+	blobmsg_add_string(b, "mode", buf);
 
-	printf("SSID: %s", ssidbuf);
+	wl_format_ssid(buf, bi->SSID, bi->SSID_len);
+	blobmsg_add_string(b, "ssid", buf);
 
-	printf("\n");
-
-	printf("\tChanspec: %sGHz channel %d %dMHz (0x%x)\n",
-		CHSPEC_IS2G(bi->chanspec)?"2.4":"5", CHSPEC_CHANNEL(bi->chanspec),
-		(CHSPEC_IS160(bi->chanspec) ?
-		160:(CHSPEC_IS80(bi->chanspec) ?
-		80 : (CHSPEC_IS40(bi->chanspec) ?
-		40 : (CHSPEC_IS20(bi->chanspec) ? 20 : 10)))),
-		bi->chanspec);
+	blobmsg_close_table(b, t);
 }
 
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
@@ -595,6 +596,7 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 	return assoced;
 }
 
+
 int wl_scan(const char *ifname)
 {
 	int rv = 0;
@@ -619,13 +621,42 @@ int wl_scan(const char *ifname)
 
 int wl_get_scanresult(const char *ifname, char *data, int size)
 {
+	int rv = 0;
 
-	return 0;
+	memset(data, 0, size);
+	memcpy(data, &size, sizeof(uint32));
+
+	rv = wl_ioctl(ifname, WLC_SCAN_RESULTS, data, size);
+
+	printf("\n");
+
+	printf ("wl_get_scanresult ends with code %d\n", rv);
+	return rv;
 }
 
 void parse_scanresult_list(char *buf, struct blob_buf *b)
 {
+	wl_scan_results_t *list = (wl_scan_results_t*)buf;
+	wl_bss_info_t *bi;
+	uint i;
 
+	if (list->count == 0)
+		return;
+	else if (list->version != WL_BSS_INFO_VERSION &&
+			list->version != LEGACY2_WL_BSS_INFO_VERSION &&
+			list->version != LEGACY_WL_BSS_INFO_VERSION) {
+		/*             printf("Sorry, your driver has bss_info_version %d "*/
+		/*                     "but this program supports only version %d.\n",*/
+		/*                     list->version, WL_BSS_INFO_VERSION);*/
+		return;
+	}
+
+	bi = list->bss_info;
+	for (i = 0; i < list->count; i++) {
+		printf("parse_scanresult_list: adding item %d\n", i);
+		bi = (wl_bss_info_t*)((int8*)bi + bi->length);
+		dump_bss_info_summary(bi, b);
+	}
 }
 
 /* -------------------------------------------------------------------------- */

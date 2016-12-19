@@ -43,6 +43,8 @@
 
 #define SSID_FMT_BUF_LEN (4*32+1)	/* Length for SSID format string */
 #define	LEGACY_WL_BSS_INFO_VERSION	107
+#define	LEGACY2_WL_BSS_INFO_VERSION	108
+#define	WL_BSS_INFO_VERSION	109	/* current version of wl_bss_info struct */
 #define MCSSET_LEN	16	/* 16-bits per 8-bit set to give 128-bits bitmap of MCS Index */
 #define WL_STA_ANT_MAX		4	/**< max possible rx antennas */
 #define WL_STA_VER		4
@@ -549,6 +551,13 @@ typedef struct wl_bss_info {
 	/* Add new fields here */
 	/* variable length Information Elements */
 } wl_bss_info_t;
+
+typedef struct wl_scan_results {
+	uint32 buflen;
+	uint32 version;
+	uint32 count;
+	wl_bss_info_t bss_info[1];
+} wl_scan_results_t;
 
 /* Used to get specific STA parameters */
 typedef struct wl_scb_val {
