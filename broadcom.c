@@ -462,6 +462,7 @@ struct wl_maclist * wl_read_assoclist(const char *ifname)
 	return NULL;
 }
 
+/* This is not used
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
 {
 	wl_sta_info_t sta;
@@ -492,7 +493,9 @@ int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf)
 
 	return 0;
 }
+*/
 
+/* This is not used
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 {
 	wl_sta_info_t *sta;
@@ -503,7 +506,7 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 
 	strcpy(buf, "sta_info");
 
-	/* convert the ea string into an ea struct */
+	// convert the ea string into an ea struct
 	if (!wl_ether_atoe(bssid, &ea)) {
 		printf(" ERROR: no valid ether addr provided\n");
 		return -1;
@@ -516,10 +519,10 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 	if ((err = wl_ioctl(ifname, WLC_GET_VAR, buf, WLC_IOCTL_MEDLEN)) < 0)
 		return err;
 
-	/* display the sta info */
+	// display the sta info
 	sta = (wl_sta_info_t *)buf;
 
-	/* Report unrecognized version */
+	// Report unrecognized version
 	if (sta->ver > WL_STA_VER) {
 		printf(" ERROR: unknown driver station info version %d\n", sta->ver);
 		return -1;
@@ -534,6 +537,7 @@ int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo)
 
 	return 0;
 }
+*/
 
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps)
 {
