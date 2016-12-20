@@ -440,8 +440,8 @@ void parse_scanresult_list(char *buf, struct blob_buf *b)
 			blobmsg_add_u32(b, "channel", channel);
 			blobmsg_add_string(b, "ssid", ssid);
 			blobmsg_add_string(b, "bssid", bssid);
-			blobmsg_add_string(b, "security", security);
-			blobmsg_add_u32(b, "signal", signal);
+			blobmsg_add_string(b, "encryption", security);
+			blobmsg_add_u32(b, "snr", signal);
 			blobmsg_add_string(b, "mode", mode);
 			blobmsg_add_u8(b, "wps", strcmp(wps, "YES") == 0 ? true : false);
 			blobmsg_close_table(b, t);
