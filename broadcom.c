@@ -625,9 +625,13 @@ int wl_scan(const char *ifname)
 
 int wl_get_scanresult(const char *ifname, char *data, int size)
 {
-	int rv = 0;
+//	int rv = 0;
 
 	memset(data, 0, size);
+
+	chrCmd(data, size-1, "wlctl -i %s scanresults", ifname);
+	return 0;
+/*
 	memcpy(data, &size, sizeof(uint32));
 
 	rv = wl_ioctl(ifname, WLC_SCAN_RESULTS, data, size);
@@ -636,10 +640,57 @@ int wl_get_scanresult(const char *ifname, char *data, int size)
 
 	printf ("wl_get_scanresult ends with code %d\n", rv);
 	return rv;
+	*/
 }
 
 void parse_scanresult_list(char *buf, struct blob_buf *b)
 {
+	char *ssid, *p;
+	char bufer[56];
+	void *t = NULL;
+	int rssi, snr, noice, channel;
+
+	p = buf;
+	while(true){
+		if(sscanf(p, "SSID: \"%ms\"", ssid) == 1 && ssid){
+			if(t)
+				blobmsg_close_table(b, t);
+			t = blobmsg_open_table(b, "");
+			blobmsg_add_string(b, "ssid", ssid);
+			free(ssid);
+		}
+		else if(sscanf(p, "Mode: %*[^R]SSI: %d dBm\tSNR: %d dB\tnoise: %d dBm\t", &rssi, &snr, &noice) == 3){
+			blobmsg_add_u32(b, "rssi", rssi);
+			blobmsg_add_u32(b, "noise", noice);
+			blobmsg_add_u32(b, "snr", snr);
+		}
+		else if(sscanf(p, "Mode: %*[^R]SSI: %d dBm\tnoise: %d dBm\t", &rssi, &noice) == 2){
+			blobmsg_add_u32(b, "rssi", rssi);
+			blobmsg_add_u32(b, "noise", noice);
+		}
+		else if(sscanf(p, "BSSID: %17s", bufer) == 1){
+			blobmsg_add_string(b, "bssid", bufer);
+		}
+		else if(sscanf(p, " Primary channel: %d", &channel) == 1){
+			blobmsg_add_u32(b, "channel", channel);
+		}
+		else if(sscanf(p, " unicast ciphers(%*d): %[^\n]", bufer) == 1){
+			blobmsg_add_string(b, "cipher", bufer);
+		}
+		else if(sscanf(p, " AKM Suites(%*d): %[^\n]", bufer) == 1){
+			blobmsg_add_string(b, "encryption", bufer);
+		}
+		while(*p != '\0' && *p != '\n')
+			p++;
+		if(*p == '\0')
+			break;
+		p++;
+		if(*p == '\0')
+			break;
+	}
+	blobmsg_close_table(b, t);
+
+	/*
 	wl_scan_results_t *list = (wl_scan_results_t*)buf;
 	wl_bss_info_t *bi;
 	uint i;
@@ -649,9 +700,9 @@ void parse_scanresult_list(char *buf, struct blob_buf *b)
 	else if (list->version != WL_BSS_INFO_VERSION &&
 			list->version != LEGACY2_WL_BSS_INFO_VERSION &&
 			list->version != LEGACY_WL_BSS_INFO_VERSION) {
-		/*             printf("Sorry, your driver has bss_info_version %d "*/
-		/*                     "but this program supports only version %d.\n",*/
-		/*                     list->version, WL_BSS_INFO_VERSION);*/
+		//             printf("Sorry, your driver has bss_info_version %d "
+		//                     "but this program supports only version %d.\n",
+		//                     list->version, WL_BSS_INFO_VERSION);
 		return;
 	}
 
@@ -660,7 +711,7 @@ void parse_scanresult_list(char *buf, struct blob_buf *b)
 		printf("parse_scanresult_list: adding item %d\n", i);
 		bi = (wl_bss_info_t*)((int8*)bi + bi->length);
 		dump_bss_info_summary(bi, b);
-	}
+	}*/
 }
 
 /* -------------------------------------------------------------------------- */
