@@ -664,7 +664,7 @@ struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
 	UBUS_METHOD("scan", quest_router_scan, wl_scan_policy),
-	UBUS_METHOD("scanresult", quest_router_scanresult, wl_scan_policy),
+	UBUS_METHOD("scanresults", quest_router_scanresult, wl_scan_policy),
 };
 
 struct ubus_object_type wireless_object_type =
