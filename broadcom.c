@@ -34,9 +34,9 @@ static int iosocket = -1;
 static int e_swap = 0;
 static int wl_swap[sizeof(WL)] = { -1, -1 };
 
-#define eswap64(val) (e_swap)?BCMSWAP64(val):val
-#define eswap32(val) (e_swap)?BCMSWAP32(val):val
-#define eswap16(val) (e_swap)?BCMSWAP16(val):val
+#define eswap64(val) ((e_swap)?BCMSWAP64(val):val)
+#define eswap32(val) ((e_swap)?BCMSWAP32(val):val)
+#define eswap16(val) ((e_swap)?BCMSWAP16(val):val)
 
 static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 {
