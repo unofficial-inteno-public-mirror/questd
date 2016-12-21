@@ -324,9 +324,182 @@ wl_format_ssid(char* ssid_buf, uint8* ssid, int ssid_len)
 	return p - ssid_buf;
 }
 
+
+void collect_security_info(char *encryption, char *cipher, wl_bss_info_t *bi)
+{
+	int ie_len = eswap32(bi->ie_length);
+	bool is_wpa2 = false, have_wpa = false, have_wpa2 = false;
+	uint8 *ie_start, *ie;
+	uint16 tag, len, count, i;
+	uint8 *wpaie = NULL, *ucast = NULL, *akm = NULL, *suite = NULL;
+	uint8 ciphers_mask = 0;
+	uint8 akm_mask = 0;
+	int p, bit;
+	uint8 oui_tag[3];
+
+	ie_start = (uint8 *)((uint8 *)bi + eswap16(bi->ie_offset));
+
+	for (ie = ie_start, len = ie[1];
+			ie < ie_start + ie_len; ie += len + 2) {
+		tag = *ie & 0x00FF;
+		len = *(ie + 1);
+
+		if (tag == 0x30 && !have_wpa2) {
+			/* RSN */
+			/* tag == DOT11_MNG_RSN_ID */
+			is_wpa2 = true;
+			have_wpa2 = true;
+			memcpy(oui_tag, "\x00\x0F\xAC", 3); /* WPA2_OUI */
+		} else if (tag == 0xDD && /* tag == DOT11_MNG_WPA_ID */
+			!have_wpa &&
+			(uint8)ie[2] == 0 && (uint8)ie[3] == 0x50
+			&& (uint8)ie[4] == 0xF2 && (uint8)ie[5] == 0x01) {
+			/* WPA */
+			/*ie[2,3,4] == WPA_OUI && ie[5] == 0x01 */
+			is_wpa2 = false;
+			have_wpa = true;
+			memcpy(oui_tag, "\x00\x50\xF2", 3); /* WPA_OUI */
+		} else {
+			continue;
+		}
+
+		/* parse wpa (ie) */
+		wpaie = ie + sizeof(int16) + (is_wpa2?0:sizeof(char *));
+
+		/* ignore the multicast suites */
+
+		/* retrieve the unicast suites */
+		ucast = wpaie + sizeof(int16) + sizeof(char *);
+		count = ucast[0] | (ucast[1]<<8); /* always swap */
+		for (i = 0; i < count; i++) {
+			suite = ucast + sizeof(uint16) + i * sizeof(uint32);
+			if (memcmp(suite, oui_tag, 3) != 0)
+				continue;
+			/* suite[0,1,2] == WPA_OUI */
+			/* (uint8)suite[3] is one of the following:
+			* WPA_CIPHER_NONE		0 None
+			* WPA_CIPHER_WEP_40	1 WEP (40-bit)
+			* WPA_CIPHER_TKIP		2 TKIP: default for WPA
+			* WPA_CIPHER_AES_OCB	3 AES (OCB)
+			* WPA_CIPHER_AES_CCM	4 AES (CCM)
+			* WPA_CIPHER_WEP_103	5 WEP (104-bit)
+			* WPA_CIPHER_BIP 6 WEP (104-bit)
+			* WPA_CIPHER_TPK 7 Group addressed traffic not allowed
+			*/
+			ciphers_mask |= (1 << (uint8)suite[3]);
+
+		}
+
+		/* retrieve authentication key management */
+		akm = ucast + sizeof(uint16) + count * sizeof(uint32);
+		count = akm[0] | (akm[1]<<8); /* always swap */
+		for (i = 0; i < count; i++) {
+			suite = akm + sizeof(uint16) + i * sizeof(uint32);
+			if (memcmp(suite, oui_tag, 3) != 0)
+				continue;
+			/* suite[0,1,2] == WPA_OUI */
+			/* (uint8)suite[3] is one of the following:
+			* RSN_AKM_NONE		0 None (IBSS)
+			* RSN_AKM_UNSPECIFIED	1 Over 802.1x
+			* RSN_AKM_PSK		2 Pre-shared Key
+			* RSN_AKM_FBT_1X 3 Fast Bss transition using 802.1X
+			* RSN_AKM_FBT_PSK 4 Fast Bss transition using PSK
+			* RSN_AKM_MFP_1X 5 SHA256 key derivation, using 802.1X
+			* RSN_AKM_MFP_PSK 6 SHA256 key derivation, using PSK
+			* RSN_AKM_TPK	7 TPK(TDLS Peer Key) handshake
+			*/
+			akm_mask |= (1 << (uint8)suite[3]);
+		}
+	}
+
+	for (p = 0; p < 8; p++) {
+		bit = (ciphers_mask & (1<<p)) >> p;
+		if (!bit)
+			continue;
+		if (cipher[0])
+			strcat(cipher, "/");
+		switch (p) {
+		case 0:
+			strcat(cipher, "NONE");
+			break;
+		case 1:
+			strcat(cipher, "WEP_40");
+			break;
+		case 2:
+			strcat(cipher, "TKIP");
+			break;
+		case 3:
+			strcat(cipher, "AES_OCB");
+			break;
+		case 4:
+			strcat(cipher, "AES_CCM");
+			break;
+		case 5:
+			strcat(cipher, "WEP_104");
+			break;
+		case 6:
+			strcat(cipher, "BIP");
+			break;
+		case 7:
+			strcat(cipher, "TPK");
+			break;
+		default:
+			strcat(cipher, "UNKNOWN");
+			break;
+		}
+	}
+
+	sprintf(encryption, "%s%s%s%s",
+		have_wpa ? "WPA" : "",
+		have_wpa && have_wpa2 ? "/" : "",
+		have_wpa2 ? "WPA2" : "",
+		have_wpa && have_wpa2 ? " " : "");
+
+	for (p = 0; p < 8; p++) {
+		bit = (akm_mask & (1<<p)) >> p;
+		if (!bit)
+			continue;
+		if (encryption[strlen(encryption) - 1] != ' ')
+			strcat(encryption, "/");
+		switch (p) {
+		case 0:
+			strcat(encryption, "NONE");
+			break;
+		case 1:
+			strcat(encryption, "802.1x");
+			break;
+		case 2:
+			strcat(encryption, "PSK");
+			break;
+		case 3:
+			strcat(encryption, "FT-802.1x");
+			break;
+		case 4:
+			strcat(encryption, "FT-PSK");
+			break;
+		case 5:
+			strcat(encryption, "MFP-802.1x");
+			break;
+		case 6:
+			strcat(encryption, "MFP-PSK");
+			break;
+		case 7:
+			strcat(encryption, "TPK");
+			break;
+		default:
+			strcat(encryption, "UNKNOWN");
+			break;
+		}
+	}
+
+}
+
+
 void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 {
 	char buf[512];
+	char encryption[512] = {0};
+	char cipher[512] = {0};
 	void *t;
 
 	t = blobmsg_open_table(b, "");
@@ -361,6 +534,16 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 
 	wl_format_ssid(buf, bi->SSID, bi->SSID_len);
 	blobmsg_add_string(b, "ssid", buf);
+
+
+	collect_security_info(encryption, cipher, bi);
+	if (!strlen(encryption))
+		sprintf(encryption, "%s",
+			(eswap16(bi->capability) & 0x0010) ? "WEP" : "OPEN");
+	else
+		blobmsg_add_string(b, "cipher", cipher);
+
+	blobmsg_add_string(b, "encryption", encryption);
 
 	blobmsg_close_table(b, t);
 }
