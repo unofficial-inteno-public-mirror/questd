@@ -91,6 +91,7 @@ static int wl_endianness_check(const char *wl)
 	return 0;
 }
 
+/* This is not used
 static int wl_iovar(const char *name, const char *cmd, const char *arg, int arglen, void *buf, int buflen)
 {
 	unsigned cmdlen = strlen(cmd) + 1;
@@ -102,6 +103,7 @@ static int wl_iovar(const char *name, const char *cmd, const char *arg, int argl
 
 	return wl_ioctl(name, WLC_GET_VAR, buf, buflen);
 }
+*/
 
 int
 wl_ether_atoe(const char *a, struct wl_ether_addr *n)
@@ -253,7 +255,7 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf)
 	return 0;
 }
 
-int wl_get_bitrate(const char *ifname, int *buf)
+int wl_get_bitrate(const char *ifname, unsigned long *buf)
 {
 	int ret = -1;
 	int rate = 0;

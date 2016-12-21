@@ -123,7 +123,6 @@ load_wireless()
 {
 	struct uci_element *e;
 	const char *device, *network, *ssid, *band;
-	char dev[MAX_DEVICE_LENGTH] = {0};
 	int rno = 0, wno = 0, vif0 = 0, vif1 = 0, vif = 0;
 
 	memset(wireless, '\0', sizeof(wireless));
@@ -154,6 +153,7 @@ load_wireless()
 					else
 						strncpy(wireless[wno].vif, device, MAX_VIF_LENGTH-1);
 				#elif IOPSYS_MEDIATEK
+					char dev[MAX_DEVICE_LENGTH] = {0};
 					if (!strncmp(device, "ra0", 3)) {
 						vif = vif0;
 						vif0++;
@@ -182,7 +182,7 @@ load_wireless()
 				char output[32];
 				memset(output, 0, 32);
 				chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid);
-				if (radio[rno].deviceid && output?atoi(output):0 == 1)
+				if (radio[rno].deviceid && *output?atoi(output):0 == 1)
 					radio[rno].is_ac = true;
 			#elif IOPSYS_MEDIATEK
 				if (!strncmp(radio[rno].name, "rai", 3))
