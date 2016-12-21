@@ -648,39 +648,60 @@ int wl_get_scanresult(const char *ifname, char *data, int size)
 void parse_scanresult_list(char *buf, struct blob_buf *b)
 {
 	char *ssid, *p;
-	char bufer[56];
+	char buffer[56], encryption[56] = {0}, cipher[56] = {0};
 	void *t = NULL;
-	int rssi, snr, noice, channel;
+	int rssi, noice, channel;
+	int ensize = sizeof(encryption) - 1;
+	int cisize = sizeof(cipher) - 1;
 
 	p = buf;
 	while(true){
-		if(sscanf(p, "SSID: \"%ms\"", &ssid) == 1 && ssid){
-			if(t)
+		if(sscanf(p, "SSID: \"%ms", &ssid) == 1 && ssid){
+			if(t){
+				if(*encryption){
+					blobmsg_add_string(b, "encryption", encryption);
+					memset(encryption, 0, ensize);
+				}
+				if(*cipher){
+					blobmsg_add_string(b, "cipher", cipher);
+					memset(cipher, 0, cisize);
+				}
 				blobmsg_close_table(b, t);
+			}
 			t = blobmsg_open_table(b, "");
+			ssid[strlen(ssid)-1] = '\0';
 			blobmsg_add_string(b, "ssid", ssid);
 			free(ssid);
 		}
-		else if(sscanf(p, "Mode: %*[^R]SSI: %d dBm\tSNR: %d dB\tnoise: %d dBm\t", &rssi, &snr, &noice) == 3){
+		else if(sscanf(p, "Mode: %*[^R]RSSI: %d dBm SNR: %*d dB noise: %d dBm %*[^\n]", &rssi, &noice) == 2 ||
+				sscanf(p, "Mode: %*[^R]RSSI: %d dBm noise: %d dBm %*[^\n]", &rssi, &noice) == 2){
 			blobmsg_add_u32(b, "rssi", rssi);
 			blobmsg_add_u32(b, "noise", noice);
-			blobmsg_add_u32(b, "snr", snr);
+			blobmsg_add_u32(b, "signal_level", (100 + rssi));
 		}
-		else if(sscanf(p, "Mode: %*[^R]SSI: %d dBm\tnoise: %d dBm\t", &rssi, &noice) == 2){
-			blobmsg_add_u32(b, "rssi", rssi);
-			blobmsg_add_u32(b, "noise", noice);
-		}
-		else if(sscanf(p, "BSSID: %17s", bufer) == 1){
-			blobmsg_add_string(b, "bssid", bufer);
+		else if(sscanf(p, "BSSID: %17s", buffer) == 1){
+			blobmsg_add_string(b, "bssid", buffer);
 		}
 		else if(sscanf(p, " Primary channel: %d", &channel) == 1){
 			blobmsg_add_u32(b, "channel", channel);
 		}
-		else if(sscanf(p, " unicast ciphers(%*d): %[^\n]", bufer) == 1){
-			blobmsg_add_string(b, "cipher", bufer);
+		else if(sscanf(p, " unicast ciphers(%*d): %27[^\n]", buffer) == 1){
+			buffer[strlen(buffer)-1] = '\0';
+			if(*cipher)
+				strncpy(cipher, buffer, cisize);
+			else if(strcmp(cipher, buffer) != 0){
+				strcpy((cipher + strlen(cipher)), "/");
+				strncpy((cipher + strlen(cipher)), buffer, cisize);
+			}
 		}
-		else if(sscanf(p, " AKM Suites(%*d): %[^\n]", bufer) == 1){
-			blobmsg_add_string(b, "encryption", bufer);
+		else if(sscanf(p, " AKM Suites(%*d): %27[^\n]", buffer) == 1){
+			buffer[strlen(buffer)-1] = '\0';
+			if(*encryption)
+				strncpy(encryption, buffer, ensize);
+			else if(strcmp(buffer, encryption) != 0){
+				strcpy((encryption + strlen(encryption)), "/");
+				strncpy((encryption + strlen(encryption)), buffer, ensize);
+			}
 		}
 		while(*p != '\0' && *p != '\n')
 			p++;
@@ -690,6 +711,10 @@ void parse_scanresult_list(char *buf, struct blob_buf *b)
 		if(*p == '\0')
 			break;
 	}
+	if(*encryption)
+		blobmsg_add_string(b, "encryption", encryption);
+	if(*cipher)
+		blobmsg_add_string(b, "cipher", cipher);
 	blobmsg_close_table(b, t);
 
 	/*

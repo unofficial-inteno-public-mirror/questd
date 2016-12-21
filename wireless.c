@@ -542,7 +542,7 @@ quest_router_scanresult(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
-	char data[16380] = {0}; // fit 140 lines of 117 bytes
+	char data[60380] = {0}; // fit 140 lines of 117 bytes
 	struct blob_attr *tb[__SCAN_MAX];
 	char device[MAX_DEVICE_LENGTH];
 	int i;
@@ -664,7 +664,7 @@ struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
 	UBUS_METHOD("scan", quest_router_scan, wl_scan_policy),
-	UBUS_METHOD("scanresult", quest_router_scanresult, wl_scan_policy),
+	UBUS_METHOD("scanresults", quest_router_scanresult, wl_scan_policy),
 };
 
 struct ubus_object_type wireless_object_type =
