@@ -336,18 +336,19 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]);
 	blobmsg_add_string(b, "bssid", buf);
 
-	sprintf(buf, "%d dBm", (int16)(bi->RSSI));
+	sprintf(buf, "%hd dBm", eswap16((int16)(bi->RSSI)));
 	blobmsg_add_string(b, "rssi", buf);
 
-	sprintf(buf, "%sGHz", CHSPEC_IS2G(bi->chanspec)?"2.4":"5");
+	sprintf(buf, "%sGHz", CHSPEC_IS2G(eswap16(bi->chanspec))?"2.4":"5");
 	blobmsg_add_string(b, "band", buf);
 
-	blobmsg_add_u32(b, "channel", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(bi->chanspec));
 
-	sprintf(buf, "%d dBm", (int16)(bi->phy_noise));
+	blobmsg_add_u32(b, "channel", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(eswap16(bi->chanspec)));
+
+	sprintf(buf, "%hhd dBm", (bi->phy_noise));
 	blobmsg_add_string(b, "noise", buf);
 
-	if (bi->version != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap) {
+	if (eswap32(bi->version) != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap) {
 		if (bi->vht_cap)
 			sprintf(buf, "802.11: n/ac");
 		else
@@ -628,40 +629,45 @@ int wl_scan(const char *ifname)
 int wl_get_scanresult(const char *ifname, char *data, int size)
 {
 	int rv = 0;
+	wl_scan_results_t *list = (wl_scan_results_t *)data;
+
+	wl_endianness_check(ifname);
 
 	memset(data, 0, size);
-	memcpy(data, &size, sizeof(uint32));
+	list->buflen = eswap32(size);
+	wl_endianness_check(ifname);
 
+
+	size = eswap32(size);
 	rv = wl_ioctl(ifname, WLC_SCAN_RESULTS, data, size);
 
-	printf("\n");
-
-	printf ("wl_get_scanresult ends with code %d\n", rv);
 	return rv;
 }
 
 void parse_scanresult_list(char *buf, struct blob_buf *b)
 {
 	wl_scan_results_t *list = (wl_scan_results_t*)buf;
+	int count = eswap32(list->count);
+	int version = eswap32(list->version);
 	wl_bss_info_t *bi;
 	uint i;
 
-	if (list->count == 0)
+	if (count == 0) {
 		return;
-	else if (list->version != WL_BSS_INFO_VERSION &&
-			list->version != LEGACY2_WL_BSS_INFO_VERSION &&
-			list->version != LEGACY_WL_BSS_INFO_VERSION) {
+	}
+	else if (version != WL_BSS_INFO_VERSION &&
+			version != LEGACY2_WL_BSS_INFO_VERSION &&
+			version != LEGACY_WL_BSS_INFO_VERSION) {
 		/*             printf("Sorry, your driver has bss_info_version %d "*/
 		/*                     "but this program supports only version %d.\n",*/
-		/*                     list->version, WL_BSS_INFO_VERSION);*/
+		/*                     version, WL_BSS_INFO_VERSION);*/
 		return;
 	}
 
 	bi = list->bss_info;
-	for (i = 0; i < list->count; i++) {
-		printf("parse_scanresult_list: adding item %d\n", i);
-		bi = (wl_bss_info_t*)((int8*)bi + bi->length);
+	for (i = 0; i < count; i++) {
 		dump_bss_info_summary(bi, b);
+		bi = (wl_bss_info_t*)(((int8*)bi) + (eswap32(bi->length)));
 	}
 }
 
