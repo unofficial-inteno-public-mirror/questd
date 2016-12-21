@@ -497,7 +497,7 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 	char linkspeed[64] = {0};
 	char *invalid_eth_devs[MAX_DEVS];
 	struct blob_attr *tb[__PORT_MAX];
-	int ret, num_eth = 0,len;
+	int ret, num_eth = 0;
 	DIR *dir;
 	void *t;
 	struct dirent *ent;
@@ -530,7 +530,6 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 
 		if(num_eth >= MAX_DEVS)
 			break;
-		len = (dot - ent->d_name)/sizeof(char);
 		invalid_eth_devs[num_eth] = strdup(ent->d_name);
 		if(!invalid_eth_devs[num_eth])
 			break;

@@ -162,6 +162,7 @@ load_wireless()
 					else
 						strncpy(wireless[wno].vif, device, MAX_VIF_LENGTH-1);
 				#elif IOPSYS_MEDIATEK
+					char dev[MAX_DEVICE_LENGTH] = {0};
 					if (!strncmp(device, "ra0", 3)) {
 						vif = vif0;
 						vif0++;
