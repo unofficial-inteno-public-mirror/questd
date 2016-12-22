@@ -24,6 +24,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
+#include <uci.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -64,6 +66,28 @@ remove_newline(char *buf)
 	len = strlen(buf) - 1;
 	if (buf[len] == '\n') 
 		buf[len] = 0;
+}
+
+char* trim(char *str)
+{
+	int start = 0, end = 0;
+
+	if (!str)
+		return NULL;
+
+	/* trim at the end */
+	end = strlen(str);
+	while (end >= 0 && isspace(str[end - 1]) )
+		end--;
+	str[end] = 0;
+
+	/* trim at the start */
+	start = 0;
+	while (start <= end && isspace(str[start]))
+		start++;
+	memmove(str, str + start, end - start);
+
+	return str;
 }
 
 void
