@@ -422,7 +422,7 @@ static void dump_client(struct blob_buf *b, Client client)
 	} else
 	if(client.connected) {
 		if(!strncmp(client.ethport, "eth", 3)) {
-			blobmsg_add_string(b, "ethport", client.ethport);
+			blobmsg_add_string(b, "ethport", trim(client.ethport));
 			get_port_speed(linkspeed, client.ethport);
 			blobmsg_add_string(b, "linkspeed", linkspeed);
 		} else {
@@ -758,7 +758,7 @@ ipv4_clients()
 						memset(output, 0, 1280);
 						strncpy(brindex, chrCmd(output, 7, "brctl showmacs %s | grep %s | awk '{print$1}'", clients[cno].device, clients[cno].macaddr), 7);
 						if(strlen(brindex))
-							strncpy(clients[cno].ethport, chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1), 8);
+							strncpy(clients[cno].ethport, trim(chrCmd(output, 8, "brctl showbr %s | sed -n '%dp' | awk '{print$NF}'", clients[cno].device, atoi(brindex) + 1)), 8);
 					}
 
 					if(!strncmp(clients[cno].ethport, "eth", 3)) {
