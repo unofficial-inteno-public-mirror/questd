@@ -177,20 +177,7 @@ dump_static_router_info(Router *router)
 	uboot_env_get("kernelVersion", &router->kernel);
 	uboot_env_get("BaseMacAddr", &router->basemac);
 	uboot_env_get("serialNumber", &router->serialno);
-#elif defined(IOPSYS_MEDIATEK)
-	router->boardid = "EXT400";
-	router->hardware = "EXT400";
-	router->model = "EXT400";
-	router->firmware = "iopsys";
-	router->brcmver = "";
-	router->filesystem = "UBIFS";
-	router->socmod = "";
-	router->socrev = "";
-	router->cfever = "";
-	router->kernel = "4.4.14";
-	uboot_env_get("ethaddr", &router->basemac);
-	router->serialno = "";
-#elif defined(IOPSYS_BROADCOM)
+#elif defined(IOPSYS_BROADCOM) || defined(IOPSYS_MEDIATEK)
 	get_db_hw_value("boardId", &router->boardid);
 	get_db_hw_value("hardwareVersion", &router->hardware);
 	get_db_hw_value("routerModel", &router->model);
@@ -201,7 +188,7 @@ dump_static_router_info(Router *router)
 	get_db_hw_value("socRevision", &router->socrev);
 	get_db_hw_value("cfeVersion", &router->cfever);
 	get_db_hw_value("kernelVersion", &router->kernel);
-	get_db_hw_value("BaseMacAddr", &router->basemac);
+    get_db_hw_value("BaseMacAddr", &router->basemac);
 	get_db_hw_value("serialNumber", &router->serialno);
 #else
 	//#error "dumper.c: dump_static_router_info()"
