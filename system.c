@@ -438,8 +438,8 @@ quest_memory_bank(struct ubus_context *ctx, struct ubus_object *obj,
 		blob_buf_init(&bb, 0);
 		blobmsg_add_u32(&bb, "code", bank);
 		blobmsg_add_string(&bb, "memory_bank", (bank)?"previous":"current");
-		blobmsg_add_string(&bb, "current_bank_firmware", this_fw);
-		blobmsg_add_string(&bb, "previous_bank_firmware", other_fw);
+		blobmsg_add_string(&bb, "current_bank_firmware", trim(this_fw));
+		blobmsg_add_string(&bb, "previous_bank_firmware", trim(other_fw));
 		ubus_send_reply(ctx, req, bb.head);
 	}
 
