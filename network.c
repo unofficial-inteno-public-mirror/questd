@@ -481,8 +481,12 @@ static void dump_client(struct blob_buf *b, Client client)
 static void
 router_dump_ports(struct blob_buf *b, char *interface)
 {
-
 	if (!strlen(chrCmd("uci -q get network.%s.ifname", interface)))
+		return;
+
+	char bridge[32];
+	snprintf(bridge, 32, "br-%s", interface);
+	if(!strlen(chrCmd("brctl showmacs %s 2>/dev/null | grep ageing", bridge)))
 		return;
 
 	void *t, *c, *h, *s;
