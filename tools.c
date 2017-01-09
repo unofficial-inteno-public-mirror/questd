@@ -248,5 +248,7 @@ char *chrCmd(char *output, size_t output_size, const char *format, ...)
 	vsnsystemf(output, output_size, format, ap);
 	va_end(ap);
 
+	trim(output);
+
 	return output;
 }
