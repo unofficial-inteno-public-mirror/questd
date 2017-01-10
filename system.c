@@ -432,8 +432,8 @@ quest_memory_bank(struct ubus_context *ctx, struct ubus_object *obj,
 	} else {
 
 		bank = atoi(chrCmd(output, 64, "cat /proc/nvram/Bootline | awk '{print$8}' | cut -d'=' -f2"));
-		strncpy(this_fw, chrCmd(output, 64, "cat /tmp/this_bank_iopver"), 64);
-		strncpy(other_fw, chrCmd(output, 64, "cat /tmp/other_bank_iopver"), 64);
+		strncpy(this_fw, trim(chrCmd(output, 64, "cat /tmp/this_bank_iopver 2>/dev/null")), 64);
+		strncpy(other_fw, trim(chrCmd(output, 64, "cat /tmp/other_bank_iopver 2>/dev/null")), 64);
 
 		blob_buf_init(&bb, 0);
 		blobmsg_add_u32(&bb, "code", bank);

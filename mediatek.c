@@ -37,9 +37,10 @@ static int wl_ioctl(const char *ifname, int cmd, char *arg, char *data, int len)
 	struct iwreq wrq;
 
 	snprintf(name, IFNAMSIZ, ifname);
-	if (arg) strcpy(data, arg);
-	strcpy(wrq.ifr_ifrn.ifrn_name, name);
-	wrq.u.data.length = strlen(data);
+	if (arg)
+		strcpy(data, arg);
+
+	snprintf(wrq.ifr_ifrn.ifrn_name, IFNAMSIZ, name);
 	wrq.u.data.pointer = data;
 	wrq.u.data.length = len;
 	wrq.u.data.flags = 0;
@@ -158,8 +159,10 @@ int wl_get_bssid(const char *ifname, char *bssid)
 int wl_get_wpa_auth(const char *ifname, char *wpa)
 {
 	int ret = 0;
+	char output[64] = {0};
 
-	strcpy(wpa, chrCmd("grep -w AuthMode %s | head -1 | cut -d'=' -f2", confile(ifname)));
+	chrCmd(output, 64, "grep -w AuthMode %s | head -1 | cut -d'=' -f2", confile(ifname));
+	snprintf(wpa, 64, output);
 
 	return ret;
 }
@@ -244,11 +247,40 @@ int wl_get_bitrate(const char *ifname, unsigned long *rate)
 
 int wl_get_isup(const char *ifname, int *isup)
 {
-	unsigned int isup;
+	int rv;
+	short flags = 0;
 
-	isup = atoi(chrCmd("ifconfig %s | grep -c UP", ifname));
+	/*
+	flags has the same purpose as ifr.ifr_flags
+	inside the iwreq structture, flags is mapping exactly at the beginning of union iwreq_data u.
+	(struct ifreq and struct iwreq have the exactly the same footprint)
+	*/
 
-	*buf = isup;
+	rv = wl_ioctl(ifname, SIOCGIFFLAGS, NULL, (char *)&flags, 0);
+
+	/* printf("wl_get_is_up up %d bcast %d debug %d lo %d p2p %d run %d noarp %d promisc %d notr %d allmulti %d master %d  slave %d mcast %d portsel %d automedia %d dynamic %d lowup %d dormant %d echo %d\n",
+			flags & IFF_UP,
+			flags & IFF_BROADCAST,
+			flags & IFF_DEBUG,
+			flags & IFF_LOOPBACK,
+			flags & IFF_POINTOPOINT,
+			flags & IFF_RUNNING,
+			flags & IFF_NOARP,
+			flags & IFF_PROMISC,
+			flags & IFF_NOTRAILERS,
+			flags & IFF_ALLMULTI,
+			flags & IFF_MASTER,
+			flags & IFF_SLAVE,
+			flags & IFF_MULTICAST,
+			flags & IFF_PORTSEL,
+			flags & IFF_AUTOMEDIA,
+			flags & IFF_DYNAMIC,
+			flags & IFF_LOWER_UP,
+			flags & IFF_DORMANT,
+			flags & IFF_ECHO);
+	*/
+
+	*isup = flags & IFF_UP;
 
 	return rv;
 }

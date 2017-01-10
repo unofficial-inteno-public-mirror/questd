@@ -728,7 +728,6 @@ ipv4_clients()
 	char *saveptr1, *saveptr2;
 	int ano = 0;
 	char *token;
-#endif
 	char brindex[8] = {0};
 	char output[1280];
 

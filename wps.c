@@ -43,7 +43,7 @@ wps_status(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	char status[16];
 	char output[32];
-	int code = atoi(chrCmd(output, 32, "nvram get wps_proc_status"));
+	int code = atoi(chrCmd(output, 32, "nvram get wps_proc_status 2>/dev/null"));
 
 	switch (code) {
 		case 0:
