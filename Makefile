@@ -2,8 +2,8 @@ CC		= gcc
 CFLAGS		= -g -Wall $(QUESTD_CLFAGS)
 LIBS		= -luci -lubus -lubox -lpthread -lblobmsg_json -lcrypt
 LOCLIBS		= 
-OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dsl.o tools.o broadcom.o uboot_env.o dropbear.o wps.o system.o net.o network.o wireless.o
-SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c uboot_env.c dropbear.c wps.c system.c net.c network.c wireless.c
+OBJS		= questd.o dumper.o port.o arping.o usb.o ndisc.o dsl.o tools.o broadcom.o uboot_env.o dropbear.o wps.o system.o directory.o net.o network.o wireless.o
+SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c uboot_env.c dropbear.c wps.c system.c directory.c net.c network.c wireless.c
 LIBSRCS		= 
 ISRCS		= questd.h network.h port.h wireless.h dsl.h tools.h broadcom.h
 

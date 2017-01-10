@@ -120,6 +120,7 @@ quest_ubus_init(const char *path)
 	quest_add_object(&usb_object);
 	quest_add_object(&net_object);
 	quest_add_object(&network_object);
+	quest_add_object(&directory_object);
 #if IOPSYS_BROADCOM
 	quest_add_object(&dsl_object);
 	quest_add_object(&port_object);
