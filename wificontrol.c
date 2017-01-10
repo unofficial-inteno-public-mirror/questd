@@ -86,7 +86,9 @@ void *ping_uplink(void *arg)
 		if(strlen(ipaddr) < 7)
 			continue;
 		if(arp_ping(ipaddr, "br-wan", 2000, 5) == 0 && client_connected == 0) {
+#if IOPSYS_BROADCOM
 			system("ifup wan &");
+#endif
 			sleep = 30;
 		} else {
 			sleep = 5;
