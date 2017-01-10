@@ -160,7 +160,7 @@ int vsystemf(const char *format, va_list ap)
 {
 	int rv;
 
-	rv = vsnprintf(NULL, 0, format, ap);
+	rv = vsnsystemf(NULL, 0, format, ap);
 
 	return rv;
 }
