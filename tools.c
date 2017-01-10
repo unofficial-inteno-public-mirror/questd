@@ -30,6 +30,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "tools.h"
+
 #define QD_LINE_MAX 2048
 
 int

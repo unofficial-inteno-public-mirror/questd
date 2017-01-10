@@ -192,7 +192,7 @@ load_wireless()
 				radio[rno].is_ac = false;
 				memset(output, 0, 32);
 				chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid);
-				if (radio[rno].deviceid && output?atoi(output):0 == 1)
+				if (radio[rno].deviceid && *output?atoi(output):0 == 1)
 					radio[rno].is_ac = true;
 
 				if(radio[rno].frequency == 2) {
