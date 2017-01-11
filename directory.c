@@ -52,7 +52,7 @@ put_folders(const char *name){
 	int n, i;
 
 	n = scandir(name, &namelist, 0, alphasort);
-	if (n < 0)
+	if (n <= 0)
 		return;
 	for (i = 0; i < n; i++) {
 		if(strcmp(namelist[i]->d_name, ".") == 0 || strcmp(namelist[i]->d_name, "..") == 0)
@@ -76,9 +76,15 @@ put_folders(const char *name){
 }
 
 bool
-is_folder_in_temp(const char *path){
+is_valid_path(const char *path){
 	int ret;
+	struct stat buf;
 
+	ret = stat(path, &buf);
+	if(ret != 0) //couldn't stat file
+		return false;
+	if(S_ISDIR(buf.st_mode) == 0) // is not a directory
+		return false;
 	ret = strncmp("/mnt/", path, 5);
 	ret *= strcmp("/mnt", path);
 	if(ret != 0)
@@ -92,32 +98,22 @@ quest_router_folder_tree(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct blob_attr *msg)
 {
 	void *t1, *t2;
-	int ret;
-	char real_path[PATH_MAX];
-	char *path, res;
-	struct stat buf;
+	char *path;
 	struct blob_attr *tb[__DIR_MAX];
+	char real_path[PATH_MAX];
+	char *res;
 
 	blobmsg_parse(dir_policy, __DIR_MAX, tb, blob_data(msg), blob_len(msg));
 
-	if(!tb[PATH]){
-		goto error;
-	}
-
-	path = blobmsg_data(tb[PATH]);
+	if(!tb[PATH])
+		path = "/mnt";
+	else
+		path = blobmsg_get_string(tb[PATH]);
 
 	res = realpath(path, real_path);
-	if(res == NULL)
-		goto error;
 
-	ret = stat(real_path, &buf);
-	if(ret != 0) //couldn't stat file
-				goto error;
-	if(S_ISDIR(buf.st_mode) == 0) // is not a directory
-			goto error;
-
-	if(!is_folder_in_temp(real_path))
-				goto error;
+	if(res == NULL || !is_valid_path(real_path))
+		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	blob_buf_init(&bb, 0);
 	t1 = blobmsg_open_table(&bb, basename(real_path));
