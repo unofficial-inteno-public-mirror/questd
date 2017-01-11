@@ -1,5 +1,5 @@
 /*
- * system -- provides router.system object of questd
+ * directory -- provides router.directory object of questd
  *
  * Copyright (C) 2012-2013 Inteno Broadband Technology AB. All rights reserved.
  *
@@ -47,29 +47,27 @@ static const struct blobmsg_policy dir_policy[__DIR_MAX] = {
 void
 put_folders(const char *name){
 	struct dirent **namelist;
-	char *newName;
+	char newName[PATH_MAX];
 	void *t1, *t2;
 	int n, i;
 
 	n = scandir(name, &namelist, 0, alphasort);
-	if (n <= 0)
+	if (n < 0) //got error
 		return;
 	for (i = 0; i < n; i++) {
 		if(strcmp(namelist[i]->d_name, ".") == 0 || strcmp(namelist[i]->d_name, "..") == 0)
 			continue;
 		if(namelist[i]->d_type != DT_DIR)
 			continue;
-		newName = calloc(sizeof(char), strlen(name) + strlen(namelist[i]->d_name) + 1 + 1);
-		if(!newName)
-			continue;
 		t1 = blobmsg_open_table(&bb, namelist[i]->d_name);
-		snprintf(newName, (strlen(name) + strlen(namelist[i]->d_name) + 1 + 1), "%s/%s", name, namelist[i]->d_name);
+		snprintf(newName, PATH_MAX, "%s/%s", name, namelist[i]->d_name);
 		blobmsg_add_string(&bb, "path", newName);
 		t2 = blobmsg_open_table(&bb, "children");
 		put_folders(newName);
 		blobmsg_close_table(&bb, t2);
 		blobmsg_close_table(&bb, t1);
-		free(newName);
+	}
+	for (i = 0; i < n; i++){
 		free(namelist[i]);
 	}
 	free(namelist);
@@ -99,7 +97,7 @@ void fill_folders(char *path, const char *string)
 	char full_name[PATH_MAX];
 
 	n = scandir(path, &namelist, 0, alphasort);
-	if(n <= 0) //found no entries or got error
+	if(n < 0) //got error
 		return;
 	for(i = 0; i < n; i++){
 		// first remove any files and unwanted folders
@@ -110,6 +108,8 @@ void fill_folders(char *path, const char *string)
 			snprintf(full_name, PATH_MAX, "%s/%s", path, namelist[i]->d_name);
 			blobmsg_add_string(&bb, NULL, full_name);
 		}
+	}
+	for(i = 0; i < n; i++){
 		free(namelist[i]);
 	}
 	free(namelist);
