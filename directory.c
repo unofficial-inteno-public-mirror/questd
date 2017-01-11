@@ -96,6 +96,7 @@ void fill_folders(char *path, const char *string)
 {
 	struct dirent **namelist;
 	int i, n;
+	char full_name[PATH_MAX];
 
 	n = scandir(path, &namelist, 0, alphasort);
 	if(n <= 0) //found no entries or got error
@@ -105,8 +106,10 @@ void fill_folders(char *path, const char *string)
 		if(namelist[i]->d_type != DT_DIR || strcmp(namelist[i]->d_name, ".") == 0
 				|| strcmp(namelist[i]->d_name, "..") == 0)
 			continue;
-		if(strncmp(namelist[i]->d_name, string, strlen(string)) == 0)
-			blobmsg_add_string(&bb, NULL, namelist[i]->d_name);
+		if(strncmp(namelist[i]->d_name, string, strlen(string)) == 0){
+			snprintf(full_name, PATH_MAX, "%s/%s", path, namelist[i]->d_name);
+			blobmsg_add_string(&bb, NULL, full_name);
+		}
 		free(namelist[i]);
 	}
 	free(namelist);
