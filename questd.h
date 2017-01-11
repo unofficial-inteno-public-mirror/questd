@@ -3,6 +3,8 @@
 /* OBJECTS */
 struct ubus_object net_object;
 struct ubus_object network_object;
+struct ubus_object directory_object;
+#if IOPSYS_BROADCOM
 struct ubus_object wireless_object;
 struct ubus_object wps_object;
 struct ubus_object dsl_object;
