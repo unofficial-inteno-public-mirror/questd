@@ -205,7 +205,8 @@ load_wireless()
 					radio[rno].bwcaps[0] = 20;
 					radio[rno].bwcaps[1] = 40;
 					radio[rno].bwcaps[2] = 80;
-					radio[rno].bwcaps[3] = '\0';
+					radio[rno].bwcaps[3] = 160;
+					radio[rno].bwcaps[4] = '\0';
 					if (radio[rno].is_ac)
 						radio[rno].hwmodes[2] = "11ac";
 				}
@@ -610,7 +611,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 
 		if (band == 1) {
 			if (bw == 160)
-				strcpy(maxrate, "2600 Mbps");
+				strcpy(maxrate, "2166.5 Mbps");
 			else if (bw == 80)
 				strcpy(maxrate, "1300 Mbps");
 			else if (bw == 40)
