@@ -33,6 +33,8 @@
 
 #include "tools.h"
 
+#define MAX_RECURSION_LEVEL 100
+
 static struct blob_buf bb;
 
 enum {
@@ -45,7 +47,8 @@ static const struct blobmsg_policy dir_policy[__DIR_MAX] = {
 };
 
 void
-put_folders(const char *name){
+put_folders(const char *name, int level){
+	if(level > MAX_RECURSION_LEVEL) return;
 	struct dirent **namelist;
 	char newName[PATH_MAX];
 	void *t1, *t2;
@@ -63,7 +66,7 @@ put_folders(const char *name){
 		snprintf(newName, PATH_MAX, "%s/%s", name, namelist[i]->d_name);
 		blobmsg_add_string(&bb, "path", newName);
 		t2 = blobmsg_open_table(&bb, "children");
-		put_folders(newName);
+		put_folders(newName, level + 1);
 		blobmsg_close_table(&bb, t2);
 		blobmsg_close_table(&bb, t1);
 	}
@@ -135,17 +138,20 @@ quest_router_folder_tree(struct ubus_context *ctx, struct ubus_object *obj,
 
 	res = realpath(path, real_path);
 
-	if(res == NULL || !is_valid_path(real_path))
+	if(res == NULL || !is_valid_path(real_path)){
+		runCmd("echo 'done return with fail, not valid path' >/dev/console");
 		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
 
 	blob_buf_init(&bb, 0);
 	t1 = blobmsg_open_table(&bb, basename(real_path));
 	blobmsg_add_string(&bb, "path", real_path);
 	t2 = blobmsg_open_table(&bb, "children");
 
-	put_folders(real_path);
+	put_folders(real_path, 0);
 	blobmsg_close_table(&bb, t2);
 	blobmsg_close_table(&bb, t1);
+	runCmd("echo 'done done collection data' >/dev/console");
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;
 }
