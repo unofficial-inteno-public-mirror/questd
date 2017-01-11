@@ -871,6 +871,10 @@ inc:
 			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if ((lno > 0) && sscanf(line, "%s 0x%d 0x%d %s %s %s", clients[cno].ipaddr, &hw, &flag, clients[cno].macaddr, mask, clients[cno].device)) {
 				for (i=0; i < cno; i++) {
+					if(flag == 0) {
+						there = true; // change this to use an invalid boolean to be used in the if condition below
+						break;
+					}
 					if (!strcmp(clients[cno].macaddr, clients[i].macaddr)) {
 						if (clients[i].connected) {
 							there = true;
