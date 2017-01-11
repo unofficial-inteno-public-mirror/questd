@@ -155,7 +155,7 @@ quest_router_autocomplete(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_attr *tb[__DIR_MAX];
 	char real_path[PATH_MAX], copy[PATH_MAX];
 	char *path, *full_path, *string;
-	void *t;
+	void *a;
 
 	blobmsg_parse(dir_policy, __DIR_MAX, tb, blob_data(msg), blob_len(msg));
 
@@ -179,11 +179,11 @@ quest_router_autocomplete(struct ubus_context *ctx, struct ubus_object *obj,
 		goto error;
 
 	blob_buf_init(&bb, 0);
-	t = blobmsg_open_table(&bb, "folders");
+	a = blobmsg_open_array(&bb, "folders");
 
 	fill_folders(real_path, string);
 
-	blobmsg_close_table(&bb, t);
+	blobmsg_close_table(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;
 error:
