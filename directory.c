@@ -92,6 +92,26 @@ is_valid_path(const char *path){
 	return true;
 }
 
+void fill_folders(char *path, const char *string)
+{
+	struct dirent **namelist;
+	int i, n;
+
+	n = scandir(path, &namelist, 0, alphasort);
+	if(n <= 0) //found no entries or got error
+		return;
+	for(i = 0; i < n; i++){
+		// first remove any files and unwanted folders
+		if(namelist[i]->d_type != DT_DIR || strcmp(namelist[i]->d_name, ".") == 0
+				|| strcmp(namelist[i]->d_name, "..") == 0)
+			continue;
+		if(strncmp(namelist[i]->d_name, string, strlen(string)) == 0)
+			blobmsg_add_string(&bb, NULL, namelist[i]->d_name);
+		free(namelist[i]);
+	}
+	free(namelist);
+}
+
 static int
 quest_router_folder_tree(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
@@ -125,12 +145,54 @@ quest_router_folder_tree(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_close_table(&bb, t1);
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;
+}
+
+static int
+quest_router_autocomplete(struct ubus_context *ctx, struct ubus_object *obj,
+		struct ubus_request_data *req, const char *method,
+		struct blob_attr *msg)
+{
+	struct blob_attr *tb[__DIR_MAX];
+	char real_path[PATH_MAX], copy[PATH_MAX];
+	char *path, *full_path, *string;
+	void *t;
+
+	blobmsg_parse(dir_policy, __DIR_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if(!tb[PATH])
+		goto error;
+
+	full_path = blobmsg_get_string(tb[PATH]);
+
+	if(full_path[strlen(full_path) - 1] == '/'){
+		path = full_path;
+		string = "";
+	}else{
+		snprintf(copy, PATH_MAX - 1, full_path);
+		path = dirname(copy);
+		string = basename(full_path);
+	}
+
+	if(realpath(path, real_path) == NULL)
+		goto error;
+	if(!is_valid_path(real_path))
+		goto error;
+
+	blob_buf_init(&bb, 0);
+	t = blobmsg_open_table(&bb, "folders");
+
+	fill_folders(real_path, string);
+
+	blobmsg_close_table(&bb, t);
+	ubus_send_reply(ctx, req, bb.head);
+	return UBUS_STATUS_OK;
 error:
 	return UBUS_STATUS_INVALID_ARGUMENT;
 }
 
 struct ubus_method directory_object_methods[] = {
 	UBUS_METHOD("folder_tree", quest_router_folder_tree, dir_policy),
+	UBUS_METHOD("autocomplete", quest_router_autocomplete, dir_policy),
 };
 
 struct ubus_object_type directory_object_type = UBUS_OBJECT_TYPE("directory", directory_object_methods);
