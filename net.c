@@ -25,6 +25,9 @@
 #include <libubus.h>
 
 #include "tools.h"
+#include "net.h"
+
+#define MAX_IFACES 32
 
 static struct blob_buf bb;
 
@@ -302,6 +305,148 @@ ipv6_routes_table(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+int
+quest_network_connections(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *f;
+	void *t;
+	char line[512];
+	int tcp_count = 0;
+	int udp_count = 0;
+	char type[16], established[16], unreplied_udp[16], unreplied_tcp[16], x[32];
+
+	blob_buf_init(&bb, 0);
+
+	if((f = fopen("/proc/net/ip_conntrack", "r"))) {
+		while(fgets(line, sizeof(line), f) != NULL)
+		{
+			remove_newline(line);
+			if(sscanf(single_space(line),"%s %s %s %s %s %s %s %s %s", type, x, x, established, x, x, x, unreplied_udp, unreplied_tcp) == 9)
+			{
+				if(strcmp(type, "udp")==0 && strcmp(unreplied_udp,"[UNREPLIED]")!=0){
+					++udp_count;
+				}
+				else if(strcmp(type, "tcp")==0 && strcmp(established,"ESTABLISHED")==0 && strcmp(unreplied_tcp,"[UNREPLIED]")!=0){
+					++tcp_count;
+				}
+			}
+		}
+		t = blobmsg_open_table(&bb, "connections");
+		blobmsg_add_u32(&bb, "TCP connections", tcp_count);
+		blobmsg_add_u32(&bb, "UDP connections", udp_count);
+		blobmsg_close_table(&bb, t);
+		fclose(f);
+	}
+
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
+int
+quest_network_load(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	FILE *f;
+	void *t;
+	char line[512];
+	char load1[16],load5[16],load15[16];
+
+	blob_buf_init(&bb, 0);
+
+	if((f = fopen("/proc/loadavg", "r"))) {
+		if(fgets(line, sizeof(line), f) != NULL)
+		{
+			remove_newline(line);
+			if(sscanf(single_space(line),"%s %s %s", load1, load5, load15) == 3) //0.20 0.26 0.67 1/131 26760)
+			{
+				t = blobmsg_open_table(&bb, "load");
+				blobmsg_add_string(&bb, "1 minute", load1);
+				blobmsg_add_string(&bb, "5 minutes", load5);
+				blobmsg_add_string(&bb, "15 minutes", load15);
+				blobmsg_close_table(&bb, t);
+			}
+		}
+		fclose(f);
+	}
+
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
+
+static struct iface ifaces[MAX_IFACES];
+pthread_mutex_t ifaces_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void gather_traffic_data()
+{
+	FILE *f;
+	char line[512];
+	char ifname[64], rx[32], tx[32];
+	int nr_of_ifaces = 0;
+
+	void update_iface(char* name, char* rx_total, char* tx_total){
+		int j;
+		for(j=0; j<nr_of_ifaces; ++j){
+			if(strncmp(ifaces[j].name, name, MAX_IFNAME) == 0){
+				ifaces[j].rx = atol(rx_total) - ifaces[j].rx_total;
+				ifaces[j].tx = atol(tx_total) - ifaces[j].tx_total;
+				ifaces[j].rx_total = atol(rx_total);
+				ifaces[j].tx_total = atol(tx_total);
+				return;
+			}
+			else if(ifaces[j].name[0] == '\0'){
+				strcpy(ifaces[j].name,name);
+				ifaces[j].rx_total = atol(rx_total);
+				ifaces[j].tx_total = atol(tx_total);
+				return;
+			}
+		}
+	}
+
+	/* Update traffic data from /rpoc/net/dev */
+	if((f = fopen("/proc/net/dev", "r"))) {
+		pthread_mutex_lock(&ifaces_lock);
+		nr_of_ifaces = 0;
+		while(fgets(line, sizeof(line), f) != NULL)
+		{
+			remove_newline(line);
+			// eth2: 1465340723 9488842 104 4226 0 0 0 2031000 128068095 1172071 0 0 0 0 0 0
+			if(sscanf(single_space(line)," %[^:]: %s %*s %*s %*s %*s %*s %*s %*s %s", ifname, rx, tx) == 3) {
+				++nr_of_ifaces;
+				update_iface(ifname,rx,tx);
+			}
+		}
+		memset(&ifaces[nr_of_ifaces], 0, sizeof(struct iface)*(MAX_IFACES-nr_of_ifaces));
+		pthread_mutex_unlock(&ifaces_lock);
+		fclose(f);
+	}
+}
+
+static int
+quest_network_traffic(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	int i;
+	void *t;
+	blob_buf_init(&bb, 0);
+
+	pthread_mutex_lock(&ifaces_lock);
+	for(i=0; i<MAX_IFACES && ifaces[i].name[0]!='\0'; ++i){
+		t = blobmsg_open_table(&bb, ifaces[i].name);
+		blobmsg_add_u32(&bb, "Transmitted bytes", ifaces[i].tx);
+		blobmsg_add_u32(&bb, "Received bytes", ifaces[i].rx);
+		blobmsg_close_table(&bb, t);
+	}
+	pthread_mutex_unlock(&ifaces_lock);
+
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
 struct ubus_method net_object_methods[] = {
 	UBUS_METHOD_NOARG("arp", arp_table),
 	UBUS_METHOD_NOARG("igmp_snooping", igmp_snooping_table),
@@ -309,6 +454,9 @@ struct ubus_method net_object_methods[] = {
 	UBUS_METHOD_NOARG("ipv4_routes", ipv4_routes_table),
 	UBUS_METHOD_NOARG("ipv6_neigh", ipv6_neigh_table),
 	UBUS_METHOD_NOARG("ipv6_routes", ipv6_routes_table),
+	UBUS_METHOD_NOARG("connections", quest_network_connections),
+	UBUS_METHOD_NOARG("load", quest_network_load),
+	UBUS_METHOD_NOARG("traffic", quest_network_traffic),
 };
 
 struct ubus_object_type net_object_type =

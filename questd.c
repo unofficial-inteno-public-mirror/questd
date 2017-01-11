@@ -35,6 +35,7 @@
 #include "questd.h"
 #include "network.h"
 #include "system.h"
+#include "net.h"
 #include "tools.h"
 
 static struct ubus_context *ctx = NULL;
@@ -143,6 +144,8 @@ void *collect_router_info(void *arg)
 		usleep(sleep_time);
 		recalc_sleep_time(false, 0);
 		get_cpu_usage(1);
+
+		gather_traffic_data();
 	}
 
 	return NULL;
@@ -167,7 +170,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to initialize mutex\n");
 		return 1;
 	}
-	
+
 	if ((pt = pthread_create(&(tid[0]), NULL, &collect_router_info, NULL) != 0)) {
 		fprintf(stderr, "Failed to create thread\n");
 		return 1;
