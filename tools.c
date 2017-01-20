@@ -79,15 +79,15 @@ char* trim(char *str)
 
 	/* trim at the end */
 	end = strlen(str);
-	while (end >= 0 && isspace(str[end - 1]) )
+	while (end > 0 && isspace(str[end - 1]) )
 		end--;
 	str[end] = 0;
 
 	/* trim at the start */
 	start = 0;
-	while (start <= end && isspace(str[start]))
+	while (start < end && isspace(str[start]))
 		start++;
-	memmove(str, str + start, end - start);
+	memmove(str, str + start, end - start + 1);
 
 	return str;
 }
