@@ -573,9 +573,9 @@ quest_router_scanresult(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
 	blob_buf_init(&bb, 0);
-	a = blobmsg_open_array(b, "access_points");
+	a = blobmsg_open_array(&bb, "access_points");
 	parse_scanresult_list(data, &bb);
-	blobmsg_close_array(b, a);
+	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;
 }
