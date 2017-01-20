@@ -538,7 +538,7 @@ quest_router_scan(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static int
-quest_router_scanresult(struct ubus_context *ctx, struct ubus_object *obj,
+quest_router_scanresults(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
@@ -569,12 +569,12 @@ quest_router_scanresult(struct ubus_context *ctx, struct ubus_object *obj,
 	if(!found)
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if(wl_get_scanresult(device, data, sizeof(data)) != 0)
+	if(wl_get_scanresults(device, data, sizeof(data)) != 0)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
 	blob_buf_init(&bb, 0);
 	a = blobmsg_open_array(&bb, "access_points");
-	parse_scanresult_list(data, &bb);
+	parse_scanresults_list(data, &bb);
 	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;
@@ -667,7 +667,7 @@ struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
 	UBUS_METHOD("scan", quest_router_scan, wl_scan_policy),
-	UBUS_METHOD("scanresults", quest_router_scanresult, wl_scan_policy),
+	UBUS_METHOD("scanresults", quest_router_scanresults, wl_scan_policy),
 };
 
 struct ubus_object_type wireless_object_type =

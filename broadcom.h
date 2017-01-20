@@ -740,8 +740,8 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);
 int wl_scan(const char *ifname);
-int wl_get_scanresult(const char *ifname, char *data, int size);
-void parse_scanresult_list(char *buf, struct blob_buf *b);
+int wl_get_scanresults(const char *ifname, char *data, int size);
+void parse_scanresults_list(char *buf, struct blob_buf *b);
 
 struct wl_maclist * wl_read_assoclist(const char *ifname);
 

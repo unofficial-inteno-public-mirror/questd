@@ -124,7 +124,7 @@ int wl_scan(const char *ifname)
 	return wl_ioctl(ifname, RTPRIV_IOCTL_SET, NULL, data, strlen(data)+1);
 }
 
-int wl_get_scanresult(const char *ifname, char *data, int size)
+int wl_get_scanresults(const char *ifname, char *data, int size)
 {
 	return wl_ioctl(ifname, RTPRIV_IOCTL_GSITESURVEY, NULL, data, size);
 }
@@ -427,7 +427,7 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 	return 0;
 }
 
-void parse_scanresult_list(char *buf, struct blob_buf *b)
+void parse_scanresults_list(char *buf, struct blob_buf *b)
 {
 	int channel, signal;
 	char ssid[34] = {0}, bssid[21] = {0}, security[24] = {0}, mode[8] = {0}, wps[4] = {0};

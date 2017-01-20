@@ -809,7 +809,7 @@ int wl_scan(const char *ifname)
 	return rv;
 }
 
-int wl_get_scanresult(const char *ifname, char *data, int size)
+int wl_get_scanresults(const char *ifname, char *data, int size)
 {
 	int rv = 0;
 	wl_scan_results_t *list = (wl_scan_results_t *)data;
@@ -827,7 +827,7 @@ int wl_get_scanresult(const char *ifname, char *data, int size)
 	return rv;
 }
 
-void parse_scanresult_list(char *buf, struct blob_buf *b)
+void parse_scanresults_list(char *buf, struct blob_buf *b)
 {
 	wl_scan_results_t *list = (wl_scan_results_t*)buf;
 	int count = eswap32(list->count);
