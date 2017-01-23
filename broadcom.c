@@ -500,6 +500,7 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 	char buf[512];
 	char encryption[512] = {0};
 	char cipher[512] = {0};
+	int rssi, noise;
 	void *t;
 
 	t = blobmsg_open_table(b, "");
@@ -509,17 +510,19 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]);
 	blobmsg_add_string(b, "bssid", buf);
 
-	sprintf(buf, "%hd dBm", eswap16((int16)(bi->RSSI)));
-	blobmsg_add_string(b, "rssi", buf);
+	rssi = eswap16((int16)(bi->RSSI));
+	blobmsg_add_u32(b, "rssi", rssi);
+
+	noise = bi->phy_noise;
+	blobmsg_add_u32(b, "noise", noise);
+
+	blobmsg_add_u32(b, "snr", rssi - noise);
 
 	sprintf(buf, "%sGHz", CHSPEC_IS2G(eswap16(bi->chanspec))?"2.4":"5");
-	blobmsg_add_string(b, "band", buf);
+	blobmsg_add_string(b, "frequency", buf);
 
 
 	blobmsg_add_u32(b, "channel", (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(eswap16(bi->chanspec)));
-
-	sprintf(buf, "%hhd dBm", (bi->phy_noise));
-	blobmsg_add_string(b, "noise", buf);
 
 	if (eswap32(bi->version) != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap) {
 		if (bi->vht_cap)
