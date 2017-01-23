@@ -431,7 +431,16 @@ void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 {
 	int channel, signal;
 	char ssid[34] = {0}, bssid[21] = {0}, security[24] = {0}, mode[8] = {0}, wps[4] = {0};
+	char frequency[8];
 	void *t, *tmp;
+	int band;
+
+	wl_get_band(radio, &band);
+
+	if(band == 1)
+		strcpy(frequency, "5GHz");
+	else
+		strcpy(frequency, "2.4GHz");
 
 	runCmd("echo \"%s\" >>/dev/console\n", buf);
 	while(true){
@@ -442,6 +451,7 @@ void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 			blobmsg_add_string(b, "ssid", ssid);
 			blobmsg_add_string(b, "bssid", bssid);
 			blobmsg_add_string(b, "encryption", security);
+			blobmsg_add_string(b, "frequency", frequency);
 			blobmsg_add_u32(b, "snr", signal);
 			blobmsg_add_string(b, "mode", mode);
 			blobmsg_add_u8(b, "wps", strcmp(wps, "YES") == 0 ? true : false);
