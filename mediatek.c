@@ -429,11 +429,15 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 
 void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 {
-	int channel, signal;
-	char ssid[34] = {0}, bssid[21] = {0}, security[24] = {0}, mode[8] = {0}, wps[4] = {0};
-	char frequency[8];
-	void *t, *tmp;
-	int band;
+	// EXAMPLE LINES:
+	// 1   11  Inteno-D02A                      00:22:07:a9:d0:2a   WPA1PSKWPA2PSK/TKIPAES 2        11b/g/n ...
+	// 11  Inteno-D02A                      00:22:07:a9:d0:2a   WPA1PSKWPA2PSK/TKIPAES 2        11b/g/n ...
+
+	char ssid[34], bssid[21], security[24], mode[8], encryption[24], frequency[8];
+	char line[200];
+	char *line_p, *cipher_p, *newline;
+	int str_len, band, channel, snr;
+	void *t;
 
 	wl_get_band(radio, &band);
 
@@ -442,24 +446,50 @@ void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 	else
 		strcpy(frequency, "2.4GHz");
 
-	runCmd("echo \"%s\" >>/dev/console\n", buf);
 	while(true){
-		if(sscanf(buf, "    %4d%33s%20s%23s%9d%7s%*7s%*3s%3s", &channel, ssid, bssid, security, &signal, mode, wps) == 7 ||
-		   sscanf(buf, "%*4s%4d%33s%20s%23s%9d%7s%*7s%*3s%3s", &channel, ssid, bssid, security, &signal, mode, wps) == 7){
-			t = blobmsg_open_table(b, "");
-			blobmsg_add_u32(b, "channel", channel);
-			blobmsg_add_string(b, "ssid", ssid);
-			blobmsg_add_string(b, "bssid", bssid);
-			blobmsg_add_string(b, "encryption", security);
-			blobmsg_add_string(b, "frequency", frequency);
-			blobmsg_add_u32(b, "snr", signal);
-			blobmsg_add_string(b, "mode", mode);
-			blobmsg_add_u8(b, "wps", strcmp(wps, "YES") == 0 ? true : false);
-			blobmsg_close_table(b, t);
+		memset(line, 0, 200);
+		newline = strchr(buf, '\n');
+		if(newline == NULL)
+			break;
+		strncpy(line, buf, (newline - buf));
+		line_p = line;
+		str_len = strlen(line_p);
+		if(str_len < 100){
+			goto next;
 		}
-		tmp = strchr(buf, '\n');
-		if(!tmp) return;
-		buf = tmp + 1;
+		if(str_len > 120){
+			line_p += 4; // ignore index in 5GHz results
+		}
+		sscanf(line_p, "%4d", &channel);
+		line_p += 4;
+		memset(ssid, 0, 34);
+		strncpy(ssid, line_p, 33);
+		line_p += 33;
+		trim(ssid);
+		if(sscanf(line_p, "%20s%23s%9d%7s", bssid, security, &snr, mode) != 4)
+			goto next;
+
+		cipher_p = strchr(security, '/');
+		if(cipher_p == NULL)
+			goto next;
+
+		memset(encryption, 0, 24);
+		strncpy(encryption, security, (cipher_p - security));
+
+		cipher_p ++; // remove leading /
+
+		t = blobmsg_open_table(b, "");
+		blobmsg_add_u32(b, "channel", channel);
+		blobmsg_add_string(b, "ssid", ssid);
+		blobmsg_add_string(b, "bssid", bssid);
+		blobmsg_add_string(b, "encryption", encryption);
+		blobmsg_add_string(b, "cipher", cipher_p);
+		blobmsg_add_string(b, "frequency", frequency);
+		blobmsg_add_u32(b, "snr", snr);
+		blobmsg_add_string(b, "mode", mode);
+		blobmsg_close_table(b, t);
+next:
+		buf = newline + 1;
 	}
 }
 
