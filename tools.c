@@ -199,14 +199,14 @@ int vsnsystemf(char *output, size_t output_size, const char *format, va_list ap)
 
 	stream = popen(cmdline, "r");
 	if (!stream)
-		goto out_stream;
+		goto out_cmdline;
 
 	if (!output || !(output_size > 0))
-		goto out_no_output;
+		goto out_stream;
 
 	line = (char *) malloc(QD_LINE_MAX * sizeof(char));
 	if (!line)
-		goto out_line;
+		goto out_stream;
 
 	memset(output, 0, output_size);
 	while (fgets(line, QD_LINE_MAX, stream)) {
@@ -217,9 +217,7 @@ int vsnsystemf(char *output, size_t output_size, const char *format, va_list ap)
 		strncat(output, line, remaining);
 	}
 
-out_line:
 	free(line);
-out_no_output:
 out_stream:
 	rv = pclose(stream);
 out_cmdline:
