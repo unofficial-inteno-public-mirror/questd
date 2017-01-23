@@ -495,12 +495,12 @@ void collect_security_info(char *encryption, char *cipher, wl_bss_info_t *bi)
 }
 
 
-void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
+void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b, int noise)
 {
 	char buf[512];
 	char encryption[512] = {0};
 	char cipher[512] = {0};
-	int rssi, noise;
+	int rssi;
 	void *t;
 
 	t = blobmsg_open_table(b, "");
@@ -513,8 +513,7 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b)
 	rssi = eswap16((int16)(bi->RSSI));
 	blobmsg_add_u32(b, "rssi", rssi);
 
-	noise = bi->phy_noise;
-	blobmsg_add_u32(b, "noise", noise);
+	blobmsg_add_u32(b, "noise", bi->phy_noise);
 
 	blobmsg_add_u32(b, "snr", rssi - noise);
 
@@ -572,9 +571,12 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 
 	bi = (wl_bss_info_t*)(tmp + 4);
 
-	*channel = (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(eswap16(bi->chanspec));
-	*noise = (int16)(bi->phy_noise);
-	*bandwidth = (CHSPEC_IS160(eswap16(bi->chanspec)) ?
+	if(channel != NULL)
+		*channel = (bi->ctl_ch)?bi->ctl_ch:CHSPEC_CHANNEL(eswap16(bi->chanspec));
+	if(noise != NULL)
+		*noise = (int16)(bi->phy_noise);
+	if(bandwidth != NULL)
+		*bandwidth = (CHSPEC_IS160(eswap16(bi->chanspec)) ?
 		160:(CHSPEC_IS80(eswap16(bi->chanspec)) ?
 		80 : (CHSPEC_IS40(eswap16(bi->chanspec)) ?
 		40 : (CHSPEC_IS20(eswap16(bi->chanspec)) ? 20 : 10))));
@@ -830,11 +832,12 @@ int wl_get_scanresults(const char *ifname, char *data, int size)
 	return rv;
 }
 
-void parse_scanresults_list(char *buf, struct blob_buf *b)
+void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 {
 	wl_scan_results_t *list = (wl_scan_results_t*)buf;
 	int count = eswap32(list->count);
 	int version = eswap32(list->version);
+	int noise;
 	wl_bss_info_t *bi;
 	uint i;
 
@@ -850,9 +853,11 @@ void parse_scanresults_list(char *buf, struct blob_buf *b)
 		return;
 	}
 
+	wl_get_bssinfo(radio, NULL, NULL, &noise);
+
 	bi = list->bss_info;
 	for (i = 0; i < count; i++) {
-		dump_bss_info_summary(bi, b);
+		dump_bss_info_summary(bi, b, noise);
 		bi = (wl_bss_info_t*)(((int8*)bi) + (eswap32(bi->length)));
 	}
 }

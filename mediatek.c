@@ -427,7 +427,7 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 	return 0;
 }
 
-void parse_scanresults_list(char *buf, struct blob_buf *b)
+void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 {
 	int channel, signal;
 	char ssid[34] = {0}, bssid[21] = {0}, security[24] = {0}, mode[8] = {0}, wps[4] = {0};

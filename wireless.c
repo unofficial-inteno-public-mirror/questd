@@ -574,7 +574,7 @@ quest_router_scanresults(struct ubus_context *ctx, struct ubus_object *obj,
 
 	blob_buf_init(&bb, 0);
 	a = blobmsg_open_array(&bb, "access_points");
-	parse_scanresults_list(data, &bb);
+	parse_scanresults_list(device, data, &bb);
 	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
 	return UBUS_STATUS_OK;
