@@ -145,11 +145,7 @@ dump_keys(Key *keys)
 	uboot_env_get("authKey", &keys->auth);
 	uboot_env_get("desKey", &keys->des);
 	uboot_env_get("wpaKey", &keys->wpa);
-#elif defined(IOPSYS_MEDIATEK)
-	keys->auth = "00000000";
-	keys->des = "00000000";
-	keys->wpa = "00000000";
-#elif defined(IOPSYS_BROADCOM)
+#elif defined(IOPSYS_BROADCOM) || defined(IOPSYS_MEDIATEK)
 	get_db_hw_value("authKey", &keys->auth);
 	get_db_hw_value("desKey", &keys->des);
 	get_db_hw_value("wpaKey", &keys->wpa);
