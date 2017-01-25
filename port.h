@@ -9,4 +9,4 @@ struct fdb_entry
 
 void get_bridge_ports(char *bridge, char **ports);
 char* get_clients_onport(char *bridge, int portno);
-int get_port_speed(char *linkspeed, char *device);
+int get_port_status(char *ifname, char *linkspeed, char *type);

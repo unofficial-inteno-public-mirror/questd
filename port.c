@@ -42,7 +42,12 @@
 #include "port.h"
 #include "tools.h"
 
+#if IOPSYS_BROADCOM
+#include "broadcom.h"
+#endif
+
 #define MAX_DEVS	50
+#define MAX_DEV_LENGTH	50
 
 enum number_or_direction{
 	PORT_TYPE_DIRECTION,
@@ -184,19 +189,27 @@ get_switch_port_data(const char *device, enum number_or_direction type)
 }
 
 int
-get_port_speed(char *linkspeed, char *device)
+get_port_status(char *ifname, char *linkspeed, char *type)
 {
+	int ret;
+	if(strncmp(ifname, "eth", 3) != 0)
+		goto get_type;
+
+	if(linkspeed == NULL)
+		return -1;
 #if IOPSYS_BROADCOM
+	char baseifname[16] = {0};
 	const char *portspeed, *issfp;
 	char duplex[16] = {0};
 	char ad[8] = {0};
 	int speed = 0, fixed = 0;
 	char output[512] = {0};
 
-	issfp = chrCmd(output, 512, "ethctl %s media-type 2>&1| grep sfp", device);
+	strncpy(baseifname, ifname, 4);
+	issfp = chrCmd(output, 512, "ethctl %s media-type 2>&1| grep sfp", baseifname);
 
 	if (!strlen(issfp)) {
-		portspeed = chrCmd(output, 512, "ethctl %s media-type 2>/dev/null | sed -n '2p'", device);
+		portspeed = chrCmd(output, 512, "ethctl %s media-type 2>/dev/null | sed -n '2p'", baseifname);
 
 		if (!strlen(portspeed))
 			return -1;
@@ -218,12 +231,13 @@ get_port_speed(char *linkspeed, char *device)
 			sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
 		}
 
-		return 0;
+		ret = 0;
+		goto get_type;
 	} else {
-		portspeed = chrCmd(output, 512, "ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
+		portspeed = chrCmd(output, 512, "ethctl %s media-type sfp fiber 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", baseifname);
 
 		if (!strlen(portspeed))
-			portspeed = chrCmd(output, 512, "ethctl %s media-type sfp copper 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", device);
+			portspeed = chrCmd(output, 512, "ethctl %s media-type sfp copper 2>&1 | tr '\n' '|' | grep 'Link is up' | tr '|' '\n' | sed -n '1p'", baseifname);
 
 		if (!strlen(portspeed))
 			return -1;
@@ -238,12 +252,14 @@ get_port_speed(char *linkspeed, char *device)
 
 		sprintf(linkspeed, "%s %d Mbps %s Duplex", (strstr(ad, "off"))?"Fixed":"Auto-negotiated", speed, duplex);
 
-		if(speed)
-			return 1;
+		if(speed){
+			ret = 1;
+			goto get_type;
+		}
 	}
 
 eth:
-	portspeed = chrCmd(output, 512, "ethctl %s media-type 2>&1 | sed -n '4p'", device);
+	portspeed = chrCmd(output, 512, "ethctl %s media-type 2>&1 | sed -n '4p'", baseifname);
 
 	if (!strlen(portspeed))
 		return -1;
@@ -265,14 +281,14 @@ eth:
 		sprintf(linkspeed, "%s %d Mbps %s Duplex", (fixed)?"Fixed":"Auto-negotiated", speed, duplex);
 	}
 
-	return 0;
+	ret =  0;
 #else
 	struct switch_dev *sw_dev;
 	struct switch_attr *attr;
 	struct switch_val val;
 	struct switch_port_link *link;
 
-	int port_number = get_switch_port_data(device, PORT_TYPE_NUMBER);
+	int port_number = get_switch_port_data(ifname, PORT_TYPE_NUMBER);
 	if(port_number == -1)
 		return -1;
 
@@ -282,8 +298,10 @@ eth:
 
 	val.port_vlan = port_number;
 	attr = swlib_lookup_attr(sw_dev, SWLIB_ATTR_GROUP_PORT, "link");
-	if(attr->type != SWITCH_TYPE_LINK)
-		goto error;
+	if(attr->type != SWITCH_TYPE_LINK){
+		swlib_free_all(sw_dev);
+		return -1;
+	}
 	swlib_get_attr(sw_dev, attr, &val);
 	link = val.value.link;
 	if(link->link)
@@ -292,11 +310,37 @@ eth:
 	else
 		sprintf(linkspeed, "Link is down");
 	swlib_free_all(sw_dev);
-	return 0;
-error:
-	swlib_free_all(sw_dev);
-	return -1;
+	ret =  0;
 #endif
+get_type:
+	if(type == NULL){ // dont fetch type
+		return ret;
+	}
+	if(strncmp(ifname, "eth", 3) == 0){
+		switch(ret){
+		case 1:
+			sprintf(type, "SFP");
+			break;
+		case 0:
+			sprintf(type, "Ethernet");
+			break;
+		default:
+			sprintf(type, "Unknown");
+		}
+	}
+	else if(strncmp(ifname, "atm", 3) == 0)
+		sprintf(type, "ADSL");
+	else if(strncmp(ifname, "ptm", 3) == 0)
+		sprintf(type, "VDSL");
+	else if(strncmp(ifname, "wl", 2) == 0 || strncmp(ifname, "ra", 2) == 0 || strncmp(ifname, "apcli", 5) == 0)
+		sprintf(type, "Wireless");
+	else if(strncmp(ifname, "wwan", 4) == 0)
+		sprintf(type, "Mobile");
+	else if(strncmp(ifname, "br-", 3) == 0)
+		sprintf(type, "Bridge");
+	else
+		sprintf(type, "Unknown");
+	return ret;
 }
 
 void
@@ -406,7 +450,7 @@ get_clients_onport(char *bridge, int portno)
 	return tmpmac;
 }
 
-bool valid_port(char *name, char **list, int num){
+bool valid_port(char *name, char list[][MAX_DEV_LENGTH], int num){
 	const char *exclude[] = {".", "..", "bcmsw", "dsl", "gre", "ifb", "ip6tnl", "lo", "sit", "siit", "br-"};
 	int len = sizeof(exclude)/sizeof(char *);
 	int i;
@@ -422,37 +466,20 @@ bool valid_port(char *name, char **list, int num){
 }
 
 const char*
-get_port_type(char *port){
-	if(strncmp(port, "eth", 3) == 0){
-		char dummy[64];
-		int p = get_port_speed(dummy, port);
-		switch(p){
-		case 1:
-			return "SFP";
-		case 0:
-			return "Ethernet";
-		}
-		return "Unknown";
-	}
-	else if(strncmp(port, "atm", 3) == 0)
-		return "ADSL";
-	else if(strncmp(port, "ptm", 3) == 0)
-		return "VDSL";
-	else if(strncmp(port, "wl", 2) == 0 || strncmp(port, "ra", 2) == 0 || strncmp(port, "apcli", 5) == 0)
-		return "Wireless";
-	else if(strncmp(port, "wwan", 4) == 0)
-		return "Mobile";
-	else if(strncmp(port, "br-", 3) == 0)
-		return "Bridge";
-	else
-		return "Unknown";
-}
-
-const char*
 get_port_direction(char *port){
 #if IOPSYS_BROADCOM
 	char linkspeed[64] = {0};
-	if((strncmp(port, "eth", 3) == 0 && strlen(port) > 4) || get_port_speed(linkspeed, port) < 0)
+	int ret;
+
+	if(strncmp(port, "wl", 2) == 0){
+		if(strlen(port) > 3)
+			return "DOWN";
+		ret = wl_get_bssid(port, linkspeed);
+		if(ret)
+			return "UP";
+		return "DOWN";
+	}
+	if(strncmp(port, "eth", 3) == 0 && strlen(port) > 4)
 		return "Up";
 #elif IOPSYS_MEDIATEK
 	if(strncmp(port, "eth", 3) == 0){
@@ -465,28 +492,9 @@ get_port_direction(char *port){
 			return "Unknown";
 	}
 #endif
-	if(strncmp(port, "asl", 3) == 0 || strncmp(port, "ptm", 3) == 0 || strncmp(port, "wwan", 4) == 0 || strncmp(port, "apcli", 5) == 0)
+	if(strncmp(port, "atm", 3) == 0 || strncmp(port, "ptm", 3) == 0 || strncmp(port, "wwan", 4) == 0 || strncmp(port, "apcli", 5) == 0)
 		return "Up";
 	return "Down";
-}
-
-bool
-has_port_speed(char *port, char *speed){
-	if(strncmp(port, "eth", 3) == 0 && strlen(port) == 4){
-		get_port_speed(speed, port);
-		return true;
-	}else if(strncmp(port, "eth", 3) == 0){
-#if IOPSYS_BROADCOM
-		char p[5];
-		strncpy(p, port, 4);
-		p[4] = '\0';
-		get_port_speed(speed, p);
-#elif IOPSYS_MEDIATEK
-		get_port_speed(speed, port);
-#endif
-		return true;
-	}
-	return false;
 }
 
 static int
@@ -495,9 +503,10 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 			struct blob_attr *msg)
 {
 	char linkspeed[64] = {0};
-	char *invalid_eth_devs[MAX_DEVS];
+	char type[64] = {0};
+	char invalid_eth_devs[MAX_DEVS][MAX_DEV_LENGTH] = {0};
 	struct blob_attr *tb[__PORT_MAX];
-	int ret, num_eth = 0;
+	int num_eth = 0;
 	DIR *dir;
 	void *t;
 	struct dirent *ent;
@@ -505,10 +514,12 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_parse(port_policy, __PORT_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (tb[PORT]){
+		get_port_status((char *)blobmsg_data(tb[PORT]), linkspeed, type);
 		blob_buf_init(&bb, 0);
-		blobmsg_add_string(&bb, "type", get_port_type((char *)blobmsg_data(tb[PORT])));
+		if(strlen(type) > 0)
+			blobmsg_add_string(&bb, "type", type);
 		blobmsg_add_string(&bb, "direction", get_port_direction((char *)blobmsg_data(tb[PORT])));
-		if(has_port_speed(linkspeed, (char*)blobmsg_data(tb[PORT])))
+		if(strlen(linkspeed) > 0)
 			blobmsg_add_string(&bb, "speed", linkspeed);
 		ubus_send_reply(ctx, req, bb.head);
 		return UBUS_STATUS_OK;
@@ -530,7 +541,7 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 
 		if(num_eth >= MAX_DEVS)
 			break;
-		invalid_eth_devs[num_eth] = strdup(ent->d_name);
+		strncpy(invalid_eth_devs[num_eth], ent->d_name, (dot - ent->d_name));
 		if(!invalid_eth_devs[num_eth])
 			break;
 		num_eth++;
@@ -542,20 +553,19 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 		if(!valid_port(ent->d_name, invalid_eth_devs, num_eth))
 			continue;
 		t = blobmsg_open_table(&bb, ent->d_name);
-		blobmsg_add_string(&bb, "type", get_port_type(ent->d_name));
+		memset(linkspeed, 0, 64);
+		memset(type, 0, 64);
+		get_port_status(ent->d_name, linkspeed, type);
+		if(strlen(type) > 0)
+			blobmsg_add_string(&bb, "type", type);
 		blobmsg_add_string(&bb, "direction", get_port_direction(ent->d_name));
-		if(has_port_speed(ent->d_name, linkspeed))
+		if(strlen(linkspeed) > 0)
 			blobmsg_add_string(&bb, "speed", linkspeed);
 		blobmsg_close_table(&bb, t);
 	}
 	closedir(dir);
 
 	ubus_send_reply(ctx, req, bb.head);
-	for(ret = 0; ret < num_eth; ret++){
-		if(ret == MAX_DEVS)
-			break;
-		free(invalid_eth_devs[ret]);
-	}
 	return UBUS_STATUS_OK;
 }
 

@@ -285,6 +285,20 @@ int wl_get_isup(const char *ifname, int *buf)
 	return 0;
 }
 
+int wl_get_isap(const char *ifname, int *buf)
+{
+	unsigned int isap;
+
+	wl_endianness_check(ifname);
+
+	if (wl_ioctl(ifname, WLC_GET_AP, &isap, sizeof(isap)) < 0)
+		return -1;
+
+	*buf = eswap32(isap);
+
+	return 0;
+}
+
 int wl_get_band(const char *ifname, int *buf)
 {
 	unsigned int band;

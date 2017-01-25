@@ -317,7 +317,7 @@ populate_ports(Network *network)
 		strncpy(port[i].device, prt, 32);
 		get_port_name(&port[i]);
 		if(strstr(port[i].device, "eth"))
-			get_port_speed(port[i].linkspeed, port[i].device);
+			get_port_status(port[i].device, port[i].linkspeed, NULL);
 #if IOPSYS_BROADCOM
 nextport:
 #endif
@@ -423,7 +423,7 @@ static void dump_client(struct blob_buf *b, Client client)
 	if(client.connected) {
 		if(!strncmp(client.ethport, "eth", 3)) {
 			blobmsg_add_string(b, "ethport", trim(client.ethport));
-			get_port_speed(linkspeed, client.ethport);
+			get_port_status(client.ethport, linkspeed, NULL);
 			blobmsg_add_string(b, "linkspeed", linkspeed);
 		} else {
 			blobmsg_add_u8(b, "repeated", client.repeated);
