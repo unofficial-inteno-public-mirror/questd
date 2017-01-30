@@ -75,6 +75,9 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 void *ping_uplink(void *arg)
 {
 	const char *ipaddr;
+#if IOPSYS_BROADCOM
+	const char *assoclist;
+#endif
 	unsigned long sleep = 5;
 	char output[64];
 
@@ -86,6 +89,12 @@ void *ping_uplink(void *arg)
 		if(strlen(ipaddr) < 7)
 			continue;
 		if(arp_ping(ipaddr, "br-wan", 2000, 5) == 0 && client_connected == 0) {
+#if IOPSYS_BROADCOM
+			memset(output, 0, 64);
+			assoclist = chrCmd(output, 64, "wlctl -i wl1 assoclist | head -1 | awk '{print$2}'");
+			runCmd("wlctl -i wl1 reassoc %s", assoclist);
+			//runCmd("killall -9 udhcpc &");
+#endif
 			sleep = 10;
 		} else {
 			sleep = 5;
