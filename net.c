@@ -26,6 +26,7 @@
 
 #include "tools.h"
 #include "net.h"
+#include "questd.h"
 
 #define MAX_IFACES 32
 
@@ -380,7 +381,7 @@ quest_network_load(struct ubus_context *ctx, struct ubus_object *obj,
 static struct iface ifaces[MAX_IFACES];
 pthread_mutex_t ifaces_lock = PTHREAD_MUTEX_INITIALIZER;
 
-void gather_traffic_data()
+void gather_iface_traffic_data()
 {
 	FILE *f;
 	char line[512];
@@ -426,7 +427,7 @@ void gather_traffic_data()
 }
 
 static int
-quest_network_traffic(struct ubus_context *ctx, struct ubus_object *obj,
+quest_iface_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
 {
@@ -447,6 +448,31 @@ quest_network_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+static int
+quest_client_traffic(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	static struct ubus_request req_data;
+	uint32_t id;
+	int ret;
+
+	//if (ubus_lookup_id(ctx, "router.network", &id)) {
+	//	fprintf(stderr, "Failed to look up test object\n");
+	//	return 1;
+	//}
+	//ubus_invoke(ctx, id, "clients", msg, NULL, 0, 3000);
+
+	//blob_buf_init(&bb, 0);
+	//void *t;
+	//t = blobmsg_open_table(&bb, "gurka");
+	//blobmsg_add_u32(&bb, "batman", id);
+	//blobmsg_close_table(&bb, t);
+
+	//ubus_send_reply(ctx, req, bb.head);
+	return 0;
+}
+
 struct ubus_method net_object_methods[] = {
 	UBUS_METHOD_NOARG("arp", arp_table),
 	UBUS_METHOD_NOARG("igmp_snooping", igmp_snooping_table),
@@ -456,7 +482,8 @@ struct ubus_method net_object_methods[] = {
 	UBUS_METHOD_NOARG("ipv6_routes", ipv6_routes_table),
 	UBUS_METHOD_NOARG("connections", quest_network_connections),
 	UBUS_METHOD_NOARG("load", quest_network_load),
-	UBUS_METHOD_NOARG("traffic", quest_network_traffic),
+	UBUS_METHOD_NOARG("iface_traffic", quest_iface_traffic),
+	UBUS_METHOD_NOARG("client_traffic", quest_client_traffic),
 };
 
 struct ubus_object_type net_object_type =
