@@ -167,7 +167,7 @@ int wifiserver(void) {
 				}
 				//printf("Received data from %s: %s\n", clientAddr, buffer);
 		
-				if (strncmp(buffer, "wifi import", 11) && strncmp(buffer, "ubus -t 1 call router.wireless assoclist", 40))
+				if (strncmp(buffer, "wifi import", 11) && !strstr(buffer, "router.wireless"))
 					strcpy(buffer, "echo Invalid call to wificontrol");
 
 				ret = sendto(newsockfd, chrCmd(output, BUF_SIZE, buffer), BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
