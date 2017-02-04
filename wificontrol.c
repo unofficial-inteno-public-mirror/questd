@@ -167,7 +167,7 @@ int wifiserver(void) {
 				}
 				//printf("Received data from %s: %s\n", clientAddr, buffer);
 		
-				if (strncmp(buffer, "wifi import", 11) && strncmp(buffer, "wlctl", 5))
+				if (strncmp(buffer, "wifi import", 11) && strncmp(buffer, "ubus -t 1 call router.wireless assoclist", 40))
 					strcpy(buffer, "echo Invalid call to wificontrol");
 
 				ret = sendto(newsockfd, chrCmd(output, BUF_SIZE, buffer), BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
@@ -274,7 +274,7 @@ int get_assoclist(char *serverAddr) {
 			return -1;
 		}
 
-		sprintf(buffer, "wlctl -i wl0 assoclist | awk '{print$2}' | tr '\n' ' '; wlctl -i wl1.1 assoclist | awk '{print$2}' | tr '\n' ' '");
+		sprintf(buffer, "ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
 		ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));
 		if (ret < 0) {
