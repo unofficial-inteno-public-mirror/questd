@@ -430,7 +430,7 @@ static void dump_client(struct blob_buf *b, Client client)
 		}
 	}
 
-	if(strstr(client.macaddr, "00:22:07")) {
+	if(is_inteno_macaddr(client.macaddr)) {
 		void *a, *t;
 		int i = 0;
 		int j = 0;

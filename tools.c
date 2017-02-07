@@ -41,7 +41,7 @@ is_inteno_macaddr(char *macaddr) {
 
 int
 is_inteno_altered_macaddr(char *macaddr) {
-	return ((strncmp(macaddr, "00:22:07", 8) && strncmp(macaddr, "44:D4:37", 8)) && (!strncmp(macaddr+3, "22:07", 5) || !strncmp(macaddr+3, "D4:37", 5)));
+	return (!is_inteno_macaddr && (!strncmp(macaddr+3, "22:07", 5) || !strncmp(macaddr+3, "D4:37", 5)));
 }
 
 void
