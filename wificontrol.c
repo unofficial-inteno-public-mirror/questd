@@ -72,6 +72,11 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 	return ret;
 }
 
+static void sleeps(int seconds)
+{
+	usleep(seconds*1000000);
+}
+
 void *ping_uplink(void *arg)
 {
 	const char *ipaddr;
@@ -79,12 +84,13 @@ void *ping_uplink(void *arg)
 	const char *assoclist;
 #elif IOPSYS_MEDIATEK
 	const char *wetif;
+	int autoc = 1;
 #endif
 	unsigned long sleep = 5;
 	char output[64];
 
 	while (1) {
-		usleep(sleep*1000000);
+		sleeps(sleep);
 		if (client_connected == 1)
 			continue;
 		ipaddr = chrCmd(output, 64, "ip r | grep default | awk '{print$3}'");
@@ -98,8 +104,14 @@ void *ping_uplink(void *arg)
 			//runCmd("killall -9 udhcpc &");
 #elif IOPSYS_MEDIATEK
 			wetif = chrCmd(output, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
-			runCmd("iwpriv %s set ApCliEnable=0", wetif);
-			runCmd("iwpriv %s set ApCliEnable=1", wetif);
+			if(autoc) {
+				runCmd("iwpriv %s set ApCliAutoConnect=1", wetif);
+				autoc = 0;
+			} else {
+				runCmd("iwpriv %s set ApCliEnable=0", wetif);
+				runCmd("iwpriv %s set ApCliEnable=1", wetif);
+				autoc = 1;
+			}
 #endif
 			sleep = 10;
 		} else {
