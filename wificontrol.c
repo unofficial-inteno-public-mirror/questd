@@ -323,16 +323,18 @@ int wificlient(void) {
 	char key[256];
 	int hw, flag;
 	char output[256];
+	char lanip[24];
 
 	strncpy(ssid, chrCmd(output, 256, "uci -q get wireless.@wifi-iface[0].ssid"), 256);
 	strncpy(key, chrCmd(output, 256, "uci -q get wireless.@wifi-iface[0].key"), 256);
+	strncpy(lanip, chrCmd(output, 24, "uci -q get network.lan.ipaddr"), 24);
 
 	if ((arpt = fopen("/proc/net/arp", "r"))) {
 		while(fgets(line, sizeof(line), arpt) != NULL)
 		{
 			remove_newline(line);
 			if (sscanf(line, "%s 0x%d 0x%d %s %s %s", ipaddr, &hw, &flag, macaddr, mask, device) == 6) {
-				if(is_inteno_macaddr(macaddr)) {
+				if(is_inteno_macaddr(macaddr) && !strncmp(ipaddr, lanip, 3)) {
 					connectAndRunCmd(ipaddr, ssid, key);
 				}
 			}
