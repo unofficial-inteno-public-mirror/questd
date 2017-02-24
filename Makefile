@@ -10,7 +10,7 @@ SRCS		= questd.c dumper.c port.c arping.c usb.c ndisc.c dsl.c tools.c broadcom.c
 LIBSRCS		= 
 ISRCS		= questd.h network.h port.h wireless.h dsl.h tools.h broadcom.h uboot_env.h
 
-all: questd wificontrol netcheck
+all: questd wificontrol netcheck graphd 
 
 questd: ${OBJS}
 	${CC} ${LDFLAGS} -o questd ${OBJS} ${LIBS}
@@ -26,6 +26,12 @@ NSRCS		= netcheck.c arping.c
 
 netcheck: ${NOBJS}
 	${CC} ${LDFLAGS} -o netcheck ${NOBJS} -luci -ljson-c
+
+GOBJS		= graphd.o tools.o
+GOSRC		= graphd.c tools.c
+
+graphd: ${GOBJS}
+	${CC} ${LDFLAGS} -o graphd ${GOBJS} ${LIBS} -ljson-c
 
 clean:
 	rm -f questd ueventd uscriptd wificontrol netcheck *.o
