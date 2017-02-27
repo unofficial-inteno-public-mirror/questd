@@ -64,9 +64,11 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 
 	if (ret) {
 		system("ubus -t 1 call led.internet set '{\"enable\":0}'");
+		system("echo -e { \\\"online\\\" : true } > /tmp/internet_connection_status");
 	} else {
 		system("ubus -t 1 call led.internet set '{\"enable\":1}'");
 		system("ubus -t 1 call led.internet set '{\"state\":\"error\"}'");
+		system("echo -e { \\\"online\\\" : false } > /tmp/internet_connection_status");
 	}
 
 	return ret;
