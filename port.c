@@ -473,28 +473,50 @@ get_port_direction(char *port){
 
 	if(strncmp(port, "wl", 2) == 0){
 		if(strlen(port) > 3)
-			return "DOWN";
+			return "down";
 		ret = wl_get_bssid(port, linkspeed);
 		if(ret)
-			return "UP";
-		return "DOWN";
+			return "up";
+		return "down";
 	}
 	if(strncmp(port, "eth", 3) == 0 && strlen(port) > 4)
-		return "Up";
+		return "up";
 #elif IOPSYS_MEDIATEK
 	if(strncmp(port, "eth", 3) == 0){
 		int dir = get_switch_port_data(port, PORT_TYPE_DIRECTION);
 		if(dir == 1)
-			return "Up";
+			return "up";
 		else if(dir == 0)
-			return "Down";
+			return "down";
 		else
-			return "Unknown";
+			return "unknown";
 	}
 #endif
 	if(strncmp(port, "atm", 3) == 0 || strncmp(port, "ptm", 3) == 0 || strncmp(port, "wwan", 4) == 0 || strncmp(port, "apcli", 5) == 0)
-		return "Up";
-	return "Down";
+		return "up";
+	return "down";
+}
+
+void
+get_uplink_port(const char *name)
+{
+	char buf[120];
+	char *ptr, *save_ptr;
+	const char *dir;
+
+	chrCmd(buf, sizeof(buf), "brctl showbr br-wan | sed '1d' | awk '{print $NF}'");
+	if(*buf == 0)
+		return NULL;
+	save_ptr = buf;
+	ptr = strtok_r(buf, "\n", &save_ptr);
+	while(ptr){
+		dir = get_port_direction(ptr);
+		if(strncmp(dir, "up", 2) == 0){
+			sprintf(name, ptr);
+			return;
+		}
+		ptr = strtok_r(NULL, "\n", &save_ptr);
+	}
 }
 
 static int
@@ -510,15 +532,19 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 	DIR *dir;
 	void *t;
 	struct dirent *ent;
+	char *uplink_port = NULL;
 
 	blobmsg_parse(port_policy, __PORT_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (tb[PORT]){
-		get_port_status((char *)blobmsg_data(tb[PORT]), linkspeed, type);
+		uplink_port = (char *)blobmsg_data(tb[PORT]);
+		if (strncmp(uplink_port, "br-", 3) == 0)
+			get_uplink_port(uplink_port);
+		get_port_status(uplink_port, linkspeed, type);
 		blob_buf_init(&bb, 0);
 		if(strlen(type) > 0)
 			blobmsg_add_string(&bb, "type", type);
-		blobmsg_add_string(&bb, "direction", get_port_direction((char *)blobmsg_data(tb[PORT])));
+		blobmsg_add_string(&bb, "direction", get_port_direction(uplink_port));
 		if(strlen(linkspeed) > 0)
 			blobmsg_add_string(&bb, "speed", linkspeed);
 		ubus_send_reply(ctx, req, bb.head);
