@@ -38,6 +38,8 @@ static int wl_swap[sizeof(WL)] = { -1, -1 };
 #define eswap32(val) ((e_swap)?BCMSWAP32(val):val)
 #define eswap16(val) ((e_swap)?BCMSWAP16(val):val)
 
+#define AC_BUF_SIZE 50
+
 static int wl_ioctl(const char *name, int cmd, void *buf, int len)
 {
 	struct ifreq ifr;
@@ -874,6 +876,14 @@ void parse_scanresults_list(const char *radio, char *buf, struct blob_buf *b)
 		dump_bss_info_summary(bi, b, noise);
 		bi = (wl_bss_info_t*)(((int8*)bi) + (eswap32(bi->length)));
 	}
+}
+
+int wl_autochannel(const char *ifname)
+{
+	char buf[AC_BUF_SIZE] = {0};
+
+	chrCmd(buf, AC_BUF_SIZE, "acs_cli -i %s autochannel", ifname);
+	return strncmp(buf, "Request finished", 16);
 }
 
 /* -------------------------------------------------------------------------- */

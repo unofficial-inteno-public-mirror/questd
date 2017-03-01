@@ -661,11 +661,50 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
+static int
+quest_router_autochannel(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	char device[MAX_DEVICE_LENGTH];
+	bool found = false;
+	int i;
+	struct blob_attr *tb[__SCAN_MAX];
+	int ret;
+
+	blobmsg_parse(wl_scan_policy, __SCAN_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (!(tb[SCAN_RADIO]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	memset(device, '\0', sizeof(device));
+	strncpy(device, blobmsg_data(tb[SCAN_RADIO]), sizeof(device)-1);
+
+	for(i = 0; i < MAX_RADIO; i++){
+		if(!*radio[i].name)
+			break;
+		if(strncmp(radio[i].name, device, MAX_DEVICE_LENGTH) == 0){
+			found = true;
+			break;
+		}
+	}
+
+	if(!found)
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	ret = wl_autochannel(device);
+
+	if(ret == 0)
+		return 	UBUS_STATUS_OK;
+	return UBUS_STATUS_UNKNOWN_ERROR;
+}
+
 struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD("status", quest_router_vif_status, vif_policy),
 	UBUS_METHOD("stas", quest_router_stas, vif_policy),
 	UBUS_METHOD_NOARG("assoclist", quest_router_wl_assoclist),
 	UBUS_METHOD_NOARG("radios", quest_router_radios),
+	UBUS_METHOD("autochannel", quest_router_autochannel, wl_scan_policy),
 	UBUS_METHOD("scan", quest_router_scan, wl_scan_policy),
 	UBUS_METHOD("scanresults", quest_router_scanresults, wl_scan_policy),
 };

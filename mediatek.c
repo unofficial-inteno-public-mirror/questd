@@ -492,6 +492,10 @@ next:
 		buf = newline + 1;
 	}
 }
+int wl_autochannel(const char *ifname)
+{
+	return chrCmd(NULL, 0, "iwpriv %s set AutoChannelSel=2", ifname);
+}
 
 /* -------------------------------------------------------------------------- */
 #endif /* IOPSYS_MEDIATEK */
