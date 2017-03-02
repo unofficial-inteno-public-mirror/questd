@@ -172,6 +172,7 @@ load_wireless()
 			} else if (!strcmp(s->type, "wifi-device")) {
 				if (rno >= MAX_RADIO)
 					continue;
+				bool bw160 = false;
 				strncpy(radio[rno].name, s->e.name, MAX_DEVICE_LENGTH-1);
 				band = uci_lookup_option_string(uci_ctx, s, "band");
 				strncpy(radio[rno].band, (band) ? band : "b", 8);
@@ -184,9 +185,15 @@ load_wireless()
 				chrCmd(output, 32, "db -q get hw.%x.is_ac", radio[rno].deviceid);
 				if (radio[rno].deviceid && *output?atoi(output):0 == 1)
 					radio[rno].is_ac = true;
+				memset(output, 0, 32);
+				chrCmd(output, 32, "wlctl -i %s chanspecs | grep -c '0xe872'", radio[rno].name);
+				if (*output?atoi(output):0 == 1)
+					bw160 = true;
 			#elif IOPSYS_MEDIATEK
-				if (!strncmp(radio[rno].name, "rai", 3))
+				if (!strncmp(radio[rno].name, "rai", 3)) {
 					radio[rno].is_ac = true;
+					bw160 = true;
+				}
 			#endif
 
 				if(radio[rno].frequency == 2) {
@@ -205,7 +212,12 @@ load_wireless()
 					radio[rno].bwcaps[0] = 20;
 					radio[rno].bwcaps[1] = 40;
 					radio[rno].bwcaps[2] = 80;
-					radio[rno].bwcaps[3] = '\0';
+					if(bw160) {
+						radio[rno].bwcaps[3] = 160;
+						radio[rno].bwcaps[4] = '\0';
+					} else {
+						radio[rno].bwcaps[3] = '\0';
+					}
 					if (radio[rno].is_ac)
 						radio[rno].hwmodes[2] = "11ac";
 				}
@@ -613,7 +625,7 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 
 		if (band == 1) {
 			if (bw == 160)
-				strcpy(maxrate, "2600 Mbps");
+				strcpy(maxrate, "2166.5 Mbps");
 			else if (bw == 80)
 				strcpy(maxrate, "1300 Mbps");
 			else if (bw == 40)

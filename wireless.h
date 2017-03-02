@@ -26,7 +26,7 @@ typedef struct {
 	const char *hwmodes[6];
 	int channels[64];
 	int deviceid;
-	int bwcaps[4];
+	int bwcaps[8];
 	bool is_ac;
 } Radio;
 
