@@ -498,7 +498,7 @@ get_port_direction(char *port){
 }
 
 void
-get_uplink_port(const char *name)
+get_uplink_port(char *name)
 {
 	char buf[120];
 	char *ptr, *save_ptr;
@@ -506,7 +506,7 @@ get_uplink_port(const char *name)
 
 	chrCmd(buf, sizeof(buf), "brctl showbr br-wan | sed '1d' | awk '{print $NF}'");
 	if(*buf == 0)
-		return NULL;
+		return;
 	save_ptr = buf;
 	ptr = strtok_r(buf, "\n", &save_ptr);
 	while(ptr){
