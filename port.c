@@ -520,6 +520,17 @@ get_uplink_port(char *name)
 	return 0;
 }
 
+int
+is_valid_device(const char *device)
+{
+	char buf[16];
+
+	chrCmd(buf, sizeof(buf), "devstatus %s", device);
+	if (strncmp(buf, "", 16) == 0)
+		return -1;
+	return 0;
+}
+
 static int
 quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 			struct ubus_request_data *req, const char *method,
@@ -539,6 +550,9 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 
 	if (tb[PORT]){
 		strncpy(uplink_port, blobmsg_get_string(tb[PORT]), 16);
+		ret = is_valid_device(uplink_port);
+		if(ret != 0)
+			return UBUS_STATUS_INVALID_ARGUMENT;
 		blob_buf_init(&bb, 0);
 		if (strncmp(uplink_port, "br-", 3) == 0){
 			ret = get_uplink_port(uplink_port);
