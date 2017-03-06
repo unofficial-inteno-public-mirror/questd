@@ -497,26 +497,27 @@ get_port_direction(char *port){
 	return "down";
 }
 
-void
+int
 get_uplink_port(char *name)
 {
 	char buf[120];
 	char *ptr, *save_ptr;
 	const char *dir;
 
-	chrCmd(buf, sizeof(buf), "brctl showbr br-wan | sed '1d' | awk '{print $NF}'");
-	if(*buf == 0)
-		return;
+	chrCmd(buf, sizeof(buf), "brctl showbr %s | sed '1d' | awk '{print $NF}'", name);
+	if(*buf == 0 || strncmp(buf, name, 120) == 0)
+		return 1;
 	save_ptr = buf;
 	ptr = strtok_r(buf, "\n", &save_ptr);
 	while(ptr){
 		dir = get_port_direction(ptr);
 		if(strncmp(dir, "up", 2) == 0){
 			sprintf(name, ptr);
-			return;
+			return 0;
 		}
 		ptr = strtok_r(NULL, "\n", &save_ptr);
 	}
+	return 0;
 }
 
 static int
@@ -528,20 +529,25 @@ quest_portinfo(struct ubus_context *ctx, struct ubus_object *obj,
 	char type[64] = {0};
 	char invalid_eth_devs[MAX_DEVS][MAX_DEV_LENGTH] = {0};
 	struct blob_attr *tb[__PORT_MAX];
-	int num_eth = 0;
+	int num_eth = 0, ret;
 	DIR *dir;
 	void *t;
 	struct dirent *ent;
-	char *uplink_port = NULL;
+	char uplink_port[16];
 
 	blobmsg_parse(port_policy, __PORT_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (tb[PORT]){
-		uplink_port = (char *)blobmsg_data(tb[PORT]);
-		if (strncmp(uplink_port, "br-", 3) == 0)
-			get_uplink_port(uplink_port);
-		get_port_status(uplink_port, linkspeed, type);
+		strncpy(uplink_port, blobmsg_get_string(tb[PORT]), 16);
 		blob_buf_init(&bb, 0);
+		if (strncmp(uplink_port, "br-", 3) == 0){
+			ret = get_uplink_port(uplink_port);
+			if (ret == 1)
+				return UBUS_STATUS_INVALID_ARGUMENT;
+			if (strcmp(blobmsg_get_string(tb[PORT]), uplink_port) != 0) // got new port
+				blobmsg_add_string(&bb, "uplink_device", uplink_port);
+		}
+		get_port_status(uplink_port, linkspeed, type);
 		if(strlen(type) > 0)
 			blobmsg_add_string(&bb, "type", type);
 		blobmsg_add_string(&bb, "direction", get_port_direction(uplink_port));
