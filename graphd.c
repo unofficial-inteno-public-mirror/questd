@@ -237,8 +237,8 @@ static int show_iface_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 	pthread_mutex_lock(&ifaces_lock);
 	for (i = 0; i < MAX_IFACES && ifaces[i].name[0] != '\0'; ++i) {
 		t = blobmsg_open_table(&bb, ifaces[i].name);
-		blobmsg_add_u32(&bb, "Transmitted bytes", ifaces[i].tx);
 		blobmsg_add_u32(&bb, "Received bytes", ifaces[i].rx);
+		blobmsg_add_u32(&bb, "Transmitted bytes", ifaces[i].tx);
 		blobmsg_close_table(&bb, t);
 	}
 	pthread_mutex_unlock(&ifaces_lock);
@@ -270,8 +270,8 @@ void gather_client_traffic_data(void)
 		if (json_object_object_get_ex(iter.val, "wireless", &wireless_obj)) {
 			const char *wireless_str = json_object_to_json_string(wireless_obj);
 			if (strcmp(wireless_str, "true") == 0) {
-				json_get_var(iter.val, "tx_bytes", tx);
-				json_get_var(iter.val, "rx_bytes", rx);
+				json_get_var(iter.val, "rx_bytes", tx); //router.network clients inverts rx/tx
+				json_get_var(iter.val, "tx_bytes", rx); //router.network clients inverts rx/tx
 				json_get_var(iter.val, "hostname", clname);
 				++nr_of_clients;
 				update_node(clname, rx, tx, clients, MAX_CLIENTS);
@@ -294,8 +294,8 @@ static int show_client_traffic(struct ubus_context *ctx, struct ubus_object *obj
 	pthread_mutex_lock(&clients_lock);
 	for (i = 0; i < MAX_CLIENTS && clients[i].name[0] != '\0'; ++i) {
 		t = blobmsg_open_table(&bb, clients[i].name);
-		blobmsg_add_u32(&bb, "Transmitted bytes", clients[i].tx);
 		blobmsg_add_u32(&bb, "Received bytes", clients[i].rx);
+		blobmsg_add_u32(&bb, "Transmitted bytes", clients[i].tx);
 		blobmsg_close_table(&bb, t);
 	}
 	pthread_mutex_unlock(&clients_lock);
