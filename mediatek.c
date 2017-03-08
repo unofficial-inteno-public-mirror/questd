@@ -301,11 +301,17 @@ int wl_get_band(const char *ifname, int *buf)
 
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 {
+	unsigned long rate;
+
 	wl_get_channel(ifname, channel);
 	wl_get_noise(ifname, noise);
 
-	if(!strncmp(ifname, "rai", 3))
+	wl_get_bitrate(ifname, &rate);
+
+	if((rate/2) > 300)
 		*bandwidth = 80;
+	else if((rate/2) > 144)
+		*bandwidth = 40;
 	else
 		*bandwidth = 20;
 
