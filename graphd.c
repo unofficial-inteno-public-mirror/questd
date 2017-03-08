@@ -23,37 +23,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 #include <json-c/json.h>
 #include <libubox/blobmsg.h>
 #include <libubox/blobmsg_json.h>
 #include <libubus.h>
-
 #include "tools.h"
 #include "questd.h"
 
-// h file?
 #define MAX_MSG_LEN 10000
 #define MAX_NAME_LEN 32
 #define MAX_IFACES 32
 #define MAX_CLIENTS 32
 
-typedef struct network_node {
+struct network_node {
 	unsigned long rx_total, tx_total;
 	unsigned long rx, tx;
 	char name[MAX_NAME_LEN];
-} network_node;
+};
 
-static struct network_node ifaces[MAX_IFACES];
-static struct network_node clients[MAX_CLIENTS];
+struct network_node ifaces[MAX_IFACES+1];
+struct network_node clients[MAX_CLIENTS+1];
 pthread_mutex_t ifaces_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
 
-void gather_iface_traffic_data(void); //TODO REMOVE?
-void gather_client_traffic_data(void);
-
 unsigned int thread_tick = 4000;
-// h file?
 
 static pthread_t tid[1];
 static struct ubus_context *ctx = NULL;
@@ -77,6 +70,18 @@ void update_node(char *name, char *rx_total, char *tx_total, struct network_node
 			strcpy(nodes[j].name, name);
 			nodes[j].rx_total = atol(rx_total);
 			nodes[j].tx_total = atol(tx_total);
+			return;
+		}
+	}
+}
+
+void remove_node(char *name, struct network_node nodes[], int nodes_len)
+{
+	int j;
+
+	for (j = 0; j < nodes_len; ++j) {
+		if (strncmp(nodes[j].name, name, MAX_NAME_LEN) == 0) {
+			memmove(&nodes[j], &nodes[j+1], sizeof(struct network_node)*(nodes_len-j));
 			return;
 		}
 	}
@@ -252,7 +257,6 @@ static int show_iface_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 void gather_client_traffic_data(void)
 {
 	char clname[MAX_NAME_LEN], rx[32], tx[32];
-	int nr_of_clients = 0;
 	char ubus_call_output[MAX_MSG_LEN];
 	struct json_object_iter iter;
 
@@ -261,24 +265,32 @@ void gather_client_traffic_data(void)
 
 	json_object *output_obj = json_tokener_parse(ubus_call_output);
 	json_object *wireless_obj = NULL;
+	json_object *connected_obj = NULL;
 
 	pthread_mutex_lock(&clients_lock);
-	// {"client-2": {"wireless": true, "hostname": "android-30ewer203r92", "tx_bytes": 1233, "rx_bytes": 2321}}
+	// {"client-2": {"wireless": true, "connected": true, "hostname": "android-30ewer203r92", "tx_bytes": 1233, "rx_bytes": 2321}}
 	json_object_object_foreachC(output_obj, iter)
 	{
 		//TODO IF NOT CONTINUE
 		if (json_object_object_get_ex(iter.val, "wireless", &wireless_obj)) {
-			const char *wireless_str = json_object_to_json_string(wireless_obj);
-			if (strcmp(wireless_str, "true") == 0) {
+			const char *is_wireless = json_object_to_json_string(wireless_obj);
+			if (strcmp(is_wireless, "true") == 0) {
 				json_get_var(iter.val, "rx_bytes", tx); //router.network clients inverts rx/tx
 				json_get_var(iter.val, "tx_bytes", rx); //router.network clients inverts rx/tx
 				json_get_var(iter.val, "hostname", clname);
-				++nr_of_clients;
 				update_node(clname, rx, tx, clients, MAX_CLIENTS);
+			}
+
+		}
+		if (json_object_object_get_ex(iter.val, "connected", &connected_obj)) {
+			const char *is_connected = json_object_to_json_string(connected_obj);
+			if (strcmp(is_connected, "false") == 0) {
+				json_get_var(iter.val, "hostname", clname);
+				remove_node(clname, clients, MAX_CLIENTS);
 			}
 		}
 	}
-	memset(&clients[nr_of_clients], 0, sizeof(struct network_node)*(MAX_CLIENTS-nr_of_clients));
+
 	pthread_mutex_unlock(&clients_lock);
 }
 
