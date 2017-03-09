@@ -148,7 +148,7 @@ ip_conntrack_table(struct ubus_context *ctx, struct ubus_object *obj,
 		while(fgets(line, sizeof(line), ipcntable) != NULL)
 		{
 			remove_newline(line);
-			if(sscanf(single_space(line),"tcp %d %d %s src=%s dst=%s sport=%d dport=%d src=%s dst=%s sport=%d dport=%d %s mark=%d use=%d",
+			if(sscanf(single_space(line),"%*[ipv4\t0-9 t]cp %d %d %s src=%s dst=%s sport=%d dport=%d src=%s dst=%s sport=%d dport=%d %s mark=%d use=%d",
 					&tmpi, &tmpi, state, tmps, tmps, &tmpi, &tmpi, local_ip, remote_ip, &local_port, &remote_port, tmps, &tmpi, &tmpi) == 14)
 			{
 				t = blobmsg_open_table(&bb, NULL);
