@@ -36,8 +36,8 @@
 #define MAX_CLIENTS 32
 
 struct network_node {
-	unsigned long rx_total, tx_total;
-	unsigned long rx, tx;
+	unsigned long long rx_total, tx_total;
+	unsigned long long rx, tx;
 	char name[MAX_NAME_LEN];
 };
 
