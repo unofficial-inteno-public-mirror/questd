@@ -53,13 +53,14 @@ static struct ubus_context *ctx = NULL;
 static struct blob_buf bb;
 
 
-//TODO COMMENT
+/* updates member variables for a network_node in a given array of network_nodes */
 void update_node(char *name, char *rx_total, char *tx_total, struct network_node nodes[], int nodes_len)
 {
 	int j;
 
 	for (j = 0; j < nodes_len; ++j) {
 		if (strncmp(nodes[j].name, name, MAX_NAME_LEN) == 0) {
+			// diff between current and previous totals
 			nodes[j].rx = atoll(rx_total) - nodes[j].rx_total;
 			nodes[j].tx = atoll(tx_total) - nodes[j].tx_total;
 			nodes[j].rx_total = atoll(rx_total);
@@ -75,6 +76,7 @@ void update_node(char *name, char *rx_total, char *tx_total, struct network_node
 	}
 }
 
+/* removes network_node with the given name form the given array of network_nodes */
 void remove_node(char *name, struct network_node nodes[], int nodes_len)
 {
 	int j;
@@ -96,7 +98,7 @@ int system_call(char *command, char *output)
 
 	fp = popen(command, "r");
 	if (fp == NULL) {
-		printf("Failed to run command %s\n", command);
+		printf("graphd: Failed to run command %s\n", command);
 		return -1;
 	}
 
@@ -111,7 +113,7 @@ int system_call(char *command, char *output)
 	return 0;
 }
 
-//TODO: MOVE TO TOOLS
+//TODO: MOVE TO TOOLS?
 void json_get_var(json_object *obj, char *var, char *value)
 {
 	json_object_object_foreach(obj, key, val) {
@@ -137,6 +139,7 @@ void json_get_var(json_object *obj, char *var, char *value)
 	}
 }
 
+/* read values from /proc/loadavg and send to ubus */
 int show_load(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -148,7 +151,6 @@ int show_load(struct ubus_context *ctx, struct ubus_object *obj,
 
 	blob_buf_init(&bb, 0);
 
-	//TODO COMMENT
 	f = fopen("/proc/loadavg", "r");
 	if (f) {
 		if (fgets(line, sizeof(line), f) != NULL) {
@@ -164,11 +166,11 @@ int show_load(struct ubus_context *ctx, struct ubus_object *obj,
 		fclose(f);
 	}
 
-	//TODO COMMENT
 	ubus_send_reply(ctx, req, bb.head);
 	return 0;
 }
 
+/* count number of tcp/udp connections from /proc/net/ip_conntrack and send to ubus */
 int show_connections(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -206,31 +208,35 @@ int show_connections(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-void gather_iface_traffic_data(void)
+/* read rx/tx_bytes from /proc/net/dev and write to ifaces[] */
+void gather_iface_traffic(void)
 {
 	FILE *f;
 	char line[512];
 	char ifname[MAX_NAME_LEN], rx[32], tx[32];
 	int nr_of_ifaces  = 0;
 
-	/* Update traffic data from /rpoc/net/dev */
 	f = fopen("/proc/net/dev", "r");
-	if (f) {//TODO REVERT LOGIC, !DO TWO STUFF IN ONE LINE NEXT TIME MIGHT BE TROETT
-		pthread_mutex_lock(&ifaces_lock);
-		while (fgets(line, sizeof(line), f) != NULL) {
-			remove_newline(line);
-			// eth2: 1465340723 9488842 104 4226 0 0 0 2031000 128068095 1172071 0 0 0 0 0 0
-			if (sscanf(single_space(line), " %[^:]: %s %*s %*s %*s %*s %*s %*s %*s %s", ifname, rx, tx) == 3) {
-				++nr_of_ifaces;
-				update_node(ifname, rx, tx, ifaces, MAX_IFACES);
-			}
-		}
-		memset(&ifaces[nr_of_ifaces], 0, sizeof(struct network_node)*(MAX_IFACES-nr_of_ifaces));
-		pthread_mutex_unlock(&ifaces_lock);
-		fclose(f);
+	if (f == NULL) {
+		printf("graphd: Failed to open /proc/net/dev\n");
+		return;
 	}
+
+	pthread_mutex_lock(&ifaces_lock);
+	while (fgets(line, sizeof(line), f) != NULL) {
+		remove_newline(line);
+		// eth2: 1465340723 9488842 104 4226 0 0 0 2031000 128068095 1172071 0 0 0 0 0 0
+		if (sscanf(single_space(line), " %[^:]: %s %*s %*s %*s %*s %*s %*s %*s %s", ifname, rx, tx) == 3) {
+			++nr_of_ifaces;
+			update_node(ifname, rx, tx, ifaces, MAX_IFACES);
+		}
+	}
+	memset(&ifaces[nr_of_ifaces], 0, sizeof(struct network_node)*(MAX_IFACES-nr_of_ifaces));
+	pthread_mutex_unlock(&ifaces_lock);
+	fclose(f);
 }
 
+/* read rx,tx from network_nodes in ifaces[] and send to ubus */
 static int show_iface_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -253,14 +259,13 @@ static int show_iface_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-//TODO COLLECT? REMOVE DATA?
-void gather_client_traffic_data(void)
+/* read rx/tx_bytes from clients in 'ubus call router.network clients' and write to clients[] */
+void gather_client_traffic(void)
 {
 	char clname[MAX_NAME_LEN], rx[32], tx[32];
 	char ubus_call_output[MAX_MSG_LEN];
 	struct json_object_iter iter;
 
-	/* Update traffic data from ubus call router.network clients*/
 	system_call("ubus call router.network clients", ubus_call_output);
 
 	json_object *output_obj = json_tokener_parse(ubus_call_output);
@@ -271,7 +276,6 @@ void gather_client_traffic_data(void)
 	// {"client-2": {"wireless": true, "connected": true, "hostname": "android-30ewer203r92", "tx_bytes": 1233, "rx_bytes": 2321}}
 	json_object_object_foreachC(output_obj, iter)
 	{
-		//TODO IF NOT CONTINUE
 		if (json_object_object_get_ex(iter.val, "wireless", &wireless_obj)) {
 			if (strcmp("true", json_object_get_string(wireless_obj)) == 0) {
 				json_get_var(iter.val, "rx_bytes", tx); //router.network clients inverts rx/tx
@@ -294,6 +298,7 @@ void gather_client_traffic_data(void)
 	pthread_mutex_unlock(&clients_lock);
 }
 
+/* read rx,tx from network_nodes in clients[] and send to ubus */
 static int show_client_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -345,8 +350,8 @@ static void add_object(struct ubus_object *obj)
 void *thread_loop(void *arg)
 {
 	while (true) {
-		gather_iface_traffic_data();
-		gather_client_traffic_data();
+		gather_iface_traffic();
+		gather_client_traffic();
 		usleep(thread_tick*1000);
 	}
 
