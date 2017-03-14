@@ -60,16 +60,16 @@ void update_node(char *name, char *rx_total, char *tx_total, struct network_node
 
 	for (j = 0; j < nodes_len; ++j) {
 		if (strncmp(nodes[j].name, name, MAX_NAME_LEN) == 0) {
-			nodes[j].rx = atol(rx_total) - nodes[j].rx_total;
-			nodes[j].tx = atol(tx_total) - nodes[j].tx_total;
-			nodes[j].rx_total = atol(rx_total);
-			nodes[j].tx_total = atol(tx_total);
+			nodes[j].rx = atoll(rx_total) - nodes[j].rx_total;
+			nodes[j].tx = atoll(tx_total) - nodes[j].tx_total;
+			nodes[j].rx_total = atoll(rx_total);
+			nodes[j].tx_total = atoll(tx_total);
 			return;
 		}
 		else if (nodes[j].name[0] == '\0') {
 			strcpy(nodes[j].name, name);
-			nodes[j].rx_total = atol(rx_total);
-			nodes[j].tx_total = atol(tx_total);
+			nodes[j].rx_total = atoll(rx_total);
+			nodes[j].tx_total = atoll(tx_total);
 			return;
 		}
 	}
@@ -128,7 +128,7 @@ void json_get_var(json_object *obj, char *var, char *value)
 					sprintf(value, "%d", json_object_get_boolean(val));
 					break;
 				case json_type_int:
-					sprintf(value, "%d", json_object_get_int(val));
+					sprintf(value, "%lld", json_object_get_int64(val));
 					break;
 				default:
 					break;
@@ -273,8 +273,7 @@ void gather_client_traffic_data(void)
 	{
 		//TODO IF NOT CONTINUE
 		if (json_object_object_get_ex(iter.val, "wireless", &wireless_obj)) {
-			const char *is_wireless = json_object_to_json_string(wireless_obj);
-			if (strcmp(is_wireless, "true") == 0) {
+			if (strcmp("true", json_object_get_string(wireless_obj)) == 0) {
 				json_get_var(iter.val, "rx_bytes", tx); //router.network clients inverts rx/tx
 				json_get_var(iter.val, "tx_bytes", rx); //router.network clients inverts rx/tx
 				json_get_var(iter.val, "hostname", clname);
@@ -283,14 +282,15 @@ void gather_client_traffic_data(void)
 
 		}
 		if (json_object_object_get_ex(iter.val, "connected", &connected_obj)) {
-			const char *is_connected = json_object_to_json_string(connected_obj);
-			if (strcmp(is_connected, "false") == 0) {
+			if (strcmp("false", json_object_get_string(connected_obj)) == 0) {
 				json_get_var(iter.val, "hostname", clname);
 				remove_node(clname, clients, MAX_CLIENTS);
 			}
 		}
 	}
-
+	json_object_put(wireless_obj);
+	json_object_put(connected_obj);
+	json_object_put(output_obj);
 	pthread_mutex_unlock(&clients_lock);
 }
 
