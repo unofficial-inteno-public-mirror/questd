@@ -57,20 +57,21 @@ static struct blob_buf bb;
 void update_node(char *name, char *rx_total, char *tx_total, struct network_node nodes[], int nodes_len)
 {
 	int j;
+	unsigned long long eight = 8; //TODO SHIFT 3 << instead?
 
 	for (j = 0; j < nodes_len; ++j) {
 		if (strncmp(nodes[j].name, name, MAX_NAME_LEN) == 0) {
 			// diff between current and previous totals
-			nodes[j].rx = atoll(rx_total) - nodes[j].rx_total;
-			nodes[j].tx = atoll(tx_total) - nodes[j].tx_total;
-			nodes[j].rx_total = atoll(rx_total);
-			nodes[j].tx_total = atoll(tx_total);
+			nodes[j].rx = ((unsigned long long)atoll(rx_total)*eight - nodes[j].rx_total);
+			nodes[j].tx = ((unsigned long long)atoll(tx_total)*eight - nodes[j].tx_total);
+			nodes[j].rx_total = atoll(rx_total) * eight;
+			nodes[j].tx_total = atoll(tx_total) * eight;
 			return;
 		}
 		else if (nodes[j].name[0] == '\0') {
 			strcpy(nodes[j].name, name);
-			nodes[j].rx_total = atoll(rx_total);
-			nodes[j].tx_total = atoll(tx_total);
+			nodes[j].rx_total = atoll(rx_total) * eight;
+			nodes[j].tx_total = atoll(tx_total) * eight;
 			return;
 		}
 	}
@@ -248,8 +249,8 @@ static int show_iface_traffic(struct ubus_context *ctx, struct ubus_object *obj,
 	pthread_mutex_lock(&ifaces_lock);
 	for (i = 0; i < MAX_IFACES && ifaces[i].name[0] != '\0'; ++i) {
 		t = blobmsg_open_table(&bb, ifaces[i].name);
-		blobmsg_add_u32(&bb, "Received bytes", ifaces[i].rx);
-		blobmsg_add_u32(&bb, "Transmitted bytes", ifaces[i].tx);
+		blobmsg_add_u64(&bb, "Downstream", ifaces[i].rx);
+		blobmsg_add_u64(&bb, "Upstream", ifaces[i].tx);
 		blobmsg_close_table(&bb, t);
 	}
 	pthread_mutex_unlock(&ifaces_lock);
@@ -311,8 +312,8 @@ static int show_client_traffic(struct ubus_context *ctx, struct ubus_object *obj
 	pthread_mutex_lock(&clients_lock);
 	for (i = 0; i < MAX_CLIENTS && clients[i].name[0] != '\0'; ++i) {
 		t = blobmsg_open_table(&bb, clients[i].name);
-		blobmsg_add_u32(&bb, "Received bytes", clients[i].rx);
-		blobmsg_add_u32(&bb, "Transmitted bytes", clients[i].tx);
+		blobmsg_add_u64(&bb, "Downstream", clients[i].rx);
+		blobmsg_add_u64(&bb, "Upstream", clients[i].tx);
 		blobmsg_close_table(&bb, t);
 	}
 	pthread_mutex_unlock(&clients_lock);
