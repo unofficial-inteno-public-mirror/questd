@@ -35,6 +35,10 @@
 #define MAX_IFACES 32
 #define MAX_CLIENTS 32
 
+#ifndef PTHREAD_MUTEX_INITIALIZER
+#define PTHREAD_MUTEX_INITIALIZER {{{0}}}
+#endif
+
 struct network_node {
 	unsigned long long rx_total, tx_total;
 	unsigned long long rx, tx;
