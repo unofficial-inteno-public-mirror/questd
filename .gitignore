@@ -11,4 +11,5 @@ uscriptd
 ueventd
 wificontrol
 netcheck
+graphd
 .configured_*
