@@ -273,6 +273,33 @@ int wl_get_bitrate(const char *ifname, unsigned long *buf)
 	return ret;
 }
 
+int wl_get_maxrate(const char *ifname, int band, int bandwidth, unsigned long *buf)
+{
+
+	char output[32] = {0};
+	bool fbf = false;
+
+	chrCmd(output, 32, "wlctl -i %s revinfo | grep -c 'deviceid 0x43c5'", ifname);
+	if (*output?atoi(output):0 == 1)
+		fbf = true;
+
+	if (band == 1) {
+		if (bandwidth == 160)
+			*buf = fbf?2166.5:2166.5;
+		else if (bandwidth == 80)
+			*buf = fbf?2166.5:1300;
+		else if (bandwidth == 40)
+			*buf = fbf?1000:600;
+		else
+			*buf = fbf?481:288.5;
+	} else {
+		if (bandwidth == 40)
+			*buf = 300;
+		else
+			*buf = 144;
+	}
+}
+
 int wl_get_isup(const char *ifname, int *buf)
 {
 	unsigned int isup;

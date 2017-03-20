@@ -623,21 +623,8 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		wl_get_bssinfo(radio[i].name, &bw, &channel, &noise);
 		sprintf(bandwidth, "%dMHz", bw);
 
-		if (band == 1) {
-			if (bw == 160)
-				strcpy(maxrate, "2166.5 Mbps");
-			else if (bw == 80)
-				strcpy(maxrate, "1300 Mbps");
-			else if (bw == 40)
-				strcpy(maxrate, "600 Mbps");
-			else
-				strcpy(maxrate, "288.5 Mbps");
-		} else {
-			if (bw == 40)
-				strcpy(maxrate, "300 Mbps");
-			else
-				strcpy(maxrate, "144 Mbps");
-		}
+		wl_get_maxrate(radio[i].name, band, bw, &rate);
+		sprintf(maxrate, "%lu Mbps", rate);
 
 		t = blobmsg_open_table(&bb, radio[i].name);
 		blobmsg_add_u8(&bb, "isup", isup);
