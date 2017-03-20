@@ -157,19 +157,22 @@ int show_load(struct ubus_context *ctx, struct ubus_object *obj,
 	blob_buf_init(&bb, 0);
 
 	f = fopen("/proc/loadavg", "r");
-	if (f) {
-		if (fgets(line, sizeof(line), f) != NULL) {
-			remove_newline(line);
-			if (sscanf(single_space(line), "%s %s %s", load1, load5, load15) == 3) { //0.20 0.26 0.67 1/131 26760)
-				t = blobmsg_open_table(&bb, "load");
-				blobmsg_add_string(&bb, "1 minute", load1);
-				blobmsg_add_string(&bb, "5 minutes", load5);
-				blobmsg_add_string(&bb, "15 minutes", load15);
-				blobmsg_close_table(&bb, t);
-			}
-		}
-		fclose(f);
+	if (f == NULL) {
+		printf("graphd: Failed to open /proc/loadavg\n");
+		return UBUS_STATUS_NO_DATA;
 	}
+
+	if (fgets(line, sizeof(line), f) != NULL) {
+		remove_newline(line);
+		if (sscanf(single_space(line), "%s %s %s", load1, load5, load15) == 3) { //0.20 0.26 0.67 1/131 26760)
+			t = blobmsg_open_table(&bb, "load");
+			blobmsg_add_string(&bb, "1 minute", load1);
+			blobmsg_add_string(&bb, "5 minutes", load5);
+			blobmsg_add_string(&bb, "15 minutes", load15);
+			blobmsg_close_table(&bb, t);
+		}
+	}
+	fclose(f);
 
 	ubus_send_reply(ctx, req, bb.head);
 	return 0;
@@ -190,24 +193,27 @@ int show_connections(struct ubus_context *ctx, struct ubus_object *obj,
 	blob_buf_init(&bb, 0);
 
 	f = fopen("/proc/net/ip_conntrack", "r");
-	if (f) {
-		while (fgets(line, sizeof(line), f) != NULL) {
-			remove_newline(line);
-			if (sscanf(single_space(line), "%s %s %s %s %s %s %s %s %s %s %s", x, x, type, x, x, established, x, x, x, unreplied_udp, unreplied_tcp) == 11) {
-				if (strcmp(type, "udp") == 0 && strcmp(unreplied_udp, "[UNREPLIED]") != 0) {
-					++udp_count;
-				}
-				else if (strcmp(type, "tcp") == 0 && strcmp(established, "ESTABLISHED") == 0 && strcmp(unreplied_tcp, "[UNREPLIED]") != 0) {
-					++tcp_count;
-				}
+	if (f == NULL) {
+		printf("graphd: Failed to open /proc/net/ip_conntrack");
+		return UBUS_STATUS_NO_DATA;
+	}
+
+	while (fgets(line, sizeof(line), f) != NULL) {
+		remove_newline(line);
+		if (sscanf(single_space(line), "%s %s %s %s %s %s %s %s %s %s %s", x, x, type, x, x, established, x, x, x, unreplied_udp, unreplied_tcp) == 11) {
+			if (strcmp(type, "udp") == 0 && strcmp(unreplied_udp, "[UNREPLIED]") != 0) {
+				++udp_count;
+			}
+			else if (strcmp(type, "tcp") == 0 && strcmp(established, "ESTABLISHED") == 0 && strcmp(unreplied_tcp, "[UNREPLIED]") != 0) {
+				++tcp_count;
 			}
 		}
-		t = blobmsg_open_table(&bb, "connections");
-		blobmsg_add_u32(&bb, "TCP connections", tcp_count);
-		blobmsg_add_u32(&bb, "UDP connections", udp_count);
-		blobmsg_close_table(&bb, t);
-		fclose(f);
 	}
+	t = blobmsg_open_table(&bb, "connections");
+	blobmsg_add_u32(&bb, "TCP connections", tcp_count);
+	blobmsg_add_u32(&bb, "UDP connections", udp_count);
+	blobmsg_close_table(&bb, t);
+	fclose(f);
 
 	ubus_send_reply(ctx, req, bb.head);
 	return 0;
@@ -270,8 +276,12 @@ void gather_client_traffic(void)
 	char clname[MAX_NAME_LEN], rx[32], tx[32];
 	char ubus_call_output[MAX_MSG_LEN];
 	struct json_object_iter iter;
+	int ret;
 
-	system_call("ubus call router.network clients", ubus_call_output);
+	ret = system_call("ubus call router.network clients", ubus_call_output);
+	if (ret != 0) {
+		return;
+	}
 
 	json_object *output_obj = json_tokener_parse(ubus_call_output);
 	json_object *wireless_obj = NULL;
