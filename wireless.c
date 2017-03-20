@@ -601,6 +601,9 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 	int i, j;
 	int isup, band,  bw, channel, noise;
 	unsigned long rate;
+#if IOPSYS_BROADCOM
+	char maxrate[20];
+#endif
 	char bitrate[20];
 	char frequency[10];
 	char bandwidth[10];
@@ -629,7 +632,6 @@ quest_router_radios(struct ubus_context *ctx, struct ubus_object *obj,
 		blobmsg_add_u32(&bb, "channel", channel);
 		blobmsg_add_u32(&bb, "noise", noise);
 #if IOPSYS_BROADCOM
-		char maxrate[20];
 		wl_get_maxrate(radio[i].name, band, bw, &rate);
 		sprintf(maxrate, "%lu Mbps", rate);
 		blobmsg_add_string(&bb, "rate", maxrate);
