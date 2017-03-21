@@ -178,7 +178,7 @@ int show_load(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-/* count number of tcp/udp connections from /proc/net/ip_conntrack and send to ubus */
+/* count number of tcp/udp connections from /proc/net/nf_conntrack and send to ubus */
 int show_connections(struct ubus_context *ctx, struct ubus_object *obj,
 		  struct ubus_request_data *req, const char *method,
 		  struct blob_attr *msg)
@@ -188,19 +188,19 @@ int show_connections(struct ubus_context *ctx, struct ubus_object *obj,
 	char line[512];
 	int tcp_count = 0;
 	int udp_count = 0;
-	char type[16], established[16], unreplied_udp[16], unreplied_tcp[16], x[32];
+	char type[16], established[48], unreplied_udp[48], unreplied_tcp[48], x[48];
 
 	blob_buf_init(&bb, 0);
 
-	f = fopen("/proc/net/ip_conntrack", "r");
+	f = fopen("/proc/net/nf_conntrack", "r");
 	if (f == NULL) {
-		printf("graphd: Failed to open /proc/net/ip_conntrack");
+		printf("graphd: Failed to open /proc/net/nf_conntrack");
 		return UBUS_STATUS_NO_DATA;
 	}
 
 	while (fgets(line, sizeof(line), f) != NULL) {
 		remove_newline(line);
-		if (sscanf(single_space(line), "%s %s %s %s %s %s %s %s %s %s %s", x, x, type, x, x, established, x, x, x, unreplied_udp, unreplied_tcp) == 11) {
+		if (sscanf(single_space(line), "%s %s %s %s %s %s %s %s %s %s %s %s", x, x, type, x, x, established, x, x, x, x, unreplied_tcp, unreplied_udp) == 12) {
 			if (strcmp(type, "udp") == 0 && strcmp(unreplied_udp, "[UNREPLIED]") != 0) {
 				++udp_count;
 			}
