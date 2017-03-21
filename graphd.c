@@ -226,6 +226,7 @@ void gather_iface_traffic(void)
 	char line[512];
 	char ifname[MAX_NAME_LEN], rx[32], tx[32];
 	int nr_of_ifaces  = 0;
+	char *colon_char = NULL;
 
 	f = fopen("/proc/net/dev", "r");
 	if (f == NULL) {
@@ -236,7 +237,12 @@ void gather_iface_traffic(void)
 	pthread_mutex_lock(&ifaces_lock);
 	while (fgets(line, sizeof(line), f) != NULL) {
 		remove_newline(line);
+
 		// eth2: 1465340723 9488842 104 4226 0 0 0 2031000 128068095 1172071 0 0 0 0 0 0
+		colon_char = strchr(line, ':');
+		if (colon_char == NULL) {
+			continue;
+		}
 		if (sscanf(single_space(line), " %[^:]: %s %*s %*s %*s %*s %*s %*s %*s %s", ifname, rx, tx) == 3) {
 			++nr_of_ifaces;
 			update_node(ifname, rx, tx, ifaces, MAX_IFACES);
