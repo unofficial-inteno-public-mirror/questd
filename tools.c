@@ -77,6 +77,9 @@ char* trim(char *str)
 	if (!str)
 		return NULL;
 
+	if (strlen(str) == 0)
+		return str;
+
 	/* trim at the end */
 	end = strlen(str);
 	while (end > 0 && isspace(str[end - 1]) )
