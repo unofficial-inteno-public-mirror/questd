@@ -112,6 +112,7 @@ void *ping_uplink(void *arg)
 				runCmd("iwpriv %s set ApCliEnable=0", wetif);
 				runCmd("iwpriv %s set ApCliEnable=1", wetif);
 				autoc = 1;
+				sleeps(60);
 			}
 #endif
 			sleep = 10;
@@ -231,6 +232,11 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 	tv.tv_sec = 2;
 	tv.tv_usec = 0;
 
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+		printf("Error setting socket timeout!\n");
+		goto close;
+	}
+
 	if (select(sockfd+1, &fdset, NULL, NULL, &tv) > 0) {
 		ret = connect(sockfd, (struct sockaddr *) &addr, (socklen_t)sizeof(addr));
 		if (ret < 0) {
@@ -255,6 +261,7 @@ int connectAndRunCmd(char *serverAddr, char *ssid, char *key) {
 		}*/
 	}
 
+close:
  	close(sockfd);
 
 	pthread_mutex_unlock(&lock);
