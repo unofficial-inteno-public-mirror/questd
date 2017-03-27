@@ -111,7 +111,10 @@ int wl_get_channel(const char *ifname, int *channel)
 
 	rv = wl_ioctl(ifname, SIOCGIWFREQ, NULL, (char *)&freq, 0);
 
-	*channel = freq.m;
+	if(rv == -1)
+		*channel = 0;
+	else
+		*channel = freq.m;
 
 	return rv;
 }
