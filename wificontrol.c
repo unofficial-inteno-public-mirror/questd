@@ -61,17 +61,32 @@ void parse_args(int argc, char **argv)
 
 void collect_intenos_on_the_lan(char **repeaters)
 {
-	char lanname[32], lanip[17], lanmask[17];
+	int len;
+	char buffer[256], lanname[32], lanip[17], lanmask[17], *point1, *point2;
 
-	chrCmd(lanname, 32,
+	/* get lanname */
+	/* only the "first lan" is relevant for repeaters */
+	chrCmd(buffer, 256,
 	"uci -q show network | grep is_lan | grep -v loopback | head -n 1");
+	point1 = strchr(buffer, '.');
+	if (!point1)
+		return;
+	++point1;
+	point2 = strchr(point1, '.');
+	if (!point2)
+		return;
+	len = point2 - point1 < 32 ? point2 - point1 : 32;
+	memcpy(lanname, point1, len);
 	printf("lanname \"%s\"\n", lanname);
 
-	chrCmd(lanip, 17, "uci -q get network.lan.ipaddr");
+	/* get lanip */
+	chrCmd(lanip, 17, "uci -q get network.%s.ipaddr", lanname);
 	printf("lanip \"%s\"\n", lanip);
 
-	chrCmd(lanmask, 17, "uci -q get network.lan.netmask");
+	/* get lanmask */
+	chrCmd(lanmask, 17, "uci -q get network.%s.netmask", lanname);
 	printf("lanmask \"%s\"\n", lanmask);
+
 }
 
 /* this function allocates memory. free it! when no longer needed */
