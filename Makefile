@@ -34,5 +34,5 @@ graphd: ${GOBJS}
 	${CC} ${LDFLAGS} -o graphd ${GOBJS} ${LIBS} -ljson-c
 
 clean:
-	rm -f questd ueventd uscriptd wificontrol netcheck *.o
+	rm -f questd ueventd uscriptd wificontrol netcheck graphd *.o
 
