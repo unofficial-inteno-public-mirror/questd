@@ -13,6 +13,7 @@ char* convert_to_ipaddr(int ip);
 char* single_space(char *str);
 int is_inteno_macaddr(char *macaddr);
 int is_inteno_altered_macaddr(char *macaddr);
+int is_ip_in_network(char *ip, char *network, char *mask);
 struct uci_package * init_package(struct uci_context **ctx, const char *config);
 void free_uci_context(struct uci_context **ctx);
 
@@ -28,5 +29,6 @@ int vsnsystemf(char *output, size_t output_size,
 /* legacy wrappers */
 void runCmd(const char *format, ...);
 char *chrCmd(char *output, size_t output_size, const char *format, ...);
+
 
 #endif /* QUESTD_TOOLS_H */

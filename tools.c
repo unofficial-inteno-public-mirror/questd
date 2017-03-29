@@ -44,6 +44,25 @@ is_inteno_altered_macaddr(char *macaddr) {
 	return (!is_inteno_macaddr(macaddr) && (!strncasecmp(macaddr+3, "22:07", 5) || !strncasecmp(macaddr+3, "D4:37", 5) || !strncasecmp(macaddr+3, "0C:07", 5)));
 }
 
+/* return true if ip is part of network/mask */
+int is_ip_in_network(char *ip, char *network, char *mask)
+{
+	struct in_addr in_ip, in_network, in_mask;
+
+	if (!inet_aton(ip, &in_ip))
+		return false;
+	if (!inet_aton(network, &in_network))
+		return false;
+	if (!inet_aton(mask, &in_mask))
+		return false;
+
+	if ((in_ip.s_addr	& in_mask.s_addr) ==
+	    (in_network.s_addr	& in_mask.s_addr))
+		return true;
+
+	return false;
+}
+
 void
 remove_space(char *buf)
 {
