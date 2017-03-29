@@ -78,8 +78,9 @@ void collect_intenos_on_the_lan(char **repeaters)
 	point2 = strchr(point1, '.');
 	if (!point2)
 		return;
-	len = point2 - point1 < 32 ? point2 - point1 : 32;
+	len = point2 - point1 < 32 ? point2 - point1 : 31;
 	memcpy(lanname, point1, len);
+	lanname[len] = '\0';
 	printf("lanname \"%s\"\n", lanname);
 
 	/* get lanip */
