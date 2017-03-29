@@ -61,7 +61,7 @@ void parse_args(int argc, char **argv)
 
 void collect_intenos_on_the_lan(char **repeaters)
 {
-	int len, rv;
+	int len, rv, i;
 	char line[256], *point1, *point2;
 	char lanname[32], lanip[17], lanmask[17];
 	char ip[17], mac[18];
@@ -91,6 +91,11 @@ void collect_intenos_on_the_lan(char **repeaters)
 	chrCmd(lanmask, 17, "uci -q get network.%s.netmask", lanname);
 	printf("lanmask \"%s\"\n", lanmask);
 
+	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
+		;
+	printf("repeaters index i = %d\n", i);
+
+	/* parse the arp table in search of inteno repeaters on the lan */
 	arp = fopen("/proc/net/arp", "r");
 	if (!arp)
 		return;
@@ -103,11 +108,18 @@ void collect_intenos_on_the_lan(char **repeaters)
 		*/
 		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
 		printf("line: rv = %d ip \"%s\" mac \"%s\"\n", rv, ip, mac);
+		if (rv != 2)
+			continue;
 		if (!is_inteno_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, lanip, lanmask))
 			continue;
 		printf("ip \"%s\" is inteno product and in lan network\n", ip);
+
+		/* add repeater's ip in the array */
+		repeaters[i++] = strdup(ip);
+		if (i >= MAX_REPEATERS)
+			break;
 	}
 
 }
@@ -145,10 +157,8 @@ void router_mode(void)
 	printf("Router mode\n");
 	repeaters = collect_repeaters();
 
-
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		printf("repeater[%d]: \"%s\"\n", i, repeaters[i]);
-
 
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		free(repeaters[i]);
