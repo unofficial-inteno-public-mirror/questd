@@ -61,14 +61,17 @@ void parse_args(int argc, char **argv)
 
 void collect_intenos_on_the_lan(char **repeaters)
 {
-	int len;
-	char buffer[256], lanname[32], lanip[17], lanmask[17], *point1, *point2;
+	int len, rv;
+	char line[256], *point1, *point2;
+	char lanname[32], lanip[17], lanmask[17];
+	char ip[17], mac[18];
+	FILE *arp;
 
 	/* get lanname */
 	/* only the "first lan" is relevant for repeaters */
-	chrCmd(buffer, 256,
+	chrCmd(line, 256,
 	"uci -q show network | grep is_lan | grep -v loopback | head -n 1");
-	point1 = strchr(buffer, '.');
+	point1 = strchr(line, '.');
 	if (!point1)
 		return;
 	++point1;
@@ -86,6 +89,25 @@ void collect_intenos_on_the_lan(char **repeaters)
 	/* get lanmask */
 	chrCmd(lanmask, 17, "uci -q get network.%s.netmask", lanname);
 	printf("lanmask \"%s\"\n", lanmask);
+
+	arp = fopen("/proc/net/arp", "r");
+	if (!arp)
+		return;
+	fgets(line, sizeof(line), arp); /* dump the first line */
+	while (fgets(line, sizeof(line), arp)) {
+		trim(line);
+		printf("line: \"%s\"\n", line);
+		/* IP address	HW type	Flags	HW address	Mask	Device
+		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
+		*/
+		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
+		printf("line: rv = %d ip \"%s\" mac \"%s\"\n", rv, ip, mac);
+		if (!is_inteno_macaddr(mac))
+			continue;
+		if (!is_ip_in_network(ip, lanip, lanmask))
+			continue;
+		printf("ip \"%s\" is inteno product and in lan network\n", ip);
+	}
 
 }
 
