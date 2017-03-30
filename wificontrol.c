@@ -6,6 +6,7 @@
 #include "tools.h"
 
 #define MAX_REPEATERS (255)
+#define WIFICONTROL_LISTENING_PORT (9876)
 
 char *file;
 char *destination;
@@ -148,6 +149,26 @@ out:
 	return repeaters;
 }
 
+void send_data(char *ip)
+{
+	int sock;
+	struct sockaddr_in addr;
+
+	/* create a socket */
+	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
+	if (sock == -1) {
+		perror ("socket");
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(ip);
+	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
+
+	/* TODO connect etc */
+
+}
 
 void router_mode(void)
 {
@@ -159,6 +180,9 @@ void router_mode(void)
 
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		printf("repeater[%d]: \"%s\"\n", i, repeaters[i]);
+
+	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
+		send_data(repeaters[i]);
 
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		free(repeaters[i]);
