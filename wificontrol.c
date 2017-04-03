@@ -104,6 +104,8 @@ void *ping_uplink(void *arg)
 			runCmd("wlctl -i wl1 reassoc %s", assoclist);
 			//runCmd("killall -9 udhcpc &");
 #elif IOPSYS_MEDIATEK
+			runCmd("iwpriv ra0 set DisConnectAllSta=2"); // Disconnect clients on 2.4GHz radio
+			runCmd("iwpriv rai0 set DisConnectAllSta=2"); // Disconnect clients on 5GHz radio
 			wetif = chrCmd(output, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
 			if(autoc) {
 				runCmd("iwpriv %s set ApCliAutoConnect=1", wetif);
