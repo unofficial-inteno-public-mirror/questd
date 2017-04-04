@@ -219,9 +219,12 @@ void send_data(char *ip)
 		return;
 	}
 
-	while (fgets(buffer, BUFFER_SIZE, file)) {
-		printf("buffer: \"%s\"\n", buffer);
-		rv = send(sock, buffer, strlen(buffer) + 1, 0);
+	while (1) {
+		memset(buffer, 0, BUFFER_SIZE);
+		rv = fread(buffer, sizeof(char), BUFFER_SIZE, file);
+		if (rv <= 0)
+			break;
+		rv = send(sock, buffer, rv, 0);
 		if (rv == -1) {
 			perror("send");
 			break;
