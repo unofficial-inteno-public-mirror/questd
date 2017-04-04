@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <getopt.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
 
 #include "tools.h"
 
@@ -151,13 +154,13 @@ out:
 
 void send_data(char *ip)
 {
-	int sock;
+	int sock, rv;
 	struct sockaddr_in addr;
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
 	if (sock == -1) {
-		perror ("socket");
+		perror("socket");
 		return;
 	}
 
@@ -167,6 +170,22 @@ void send_data(char *ip)
 	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
 
 	/* TODO connect etc */
+	rv = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (rv == -1) {
+		perror("connect");
+		return;
+	}
+
+	rv = send(sock, "AB", 2, 0);
+	if (rv != 2) {
+		perror("send");
+		close(sock);
+		return;
+	}
+
+
+
+	close(sock);
 
 }
 
@@ -190,8 +209,69 @@ void router_mode(void)
 
 void repeater_mode(void)
 {
+	int sock, connection, rv;
+	char buffer[100];
+	struct sockaddr_in addr, remote_addr;
+	socklen_t remote_addr_len;
 
 	printf("Repeater mode\n");
+
+	/* create a socket */
+	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
+	if (sock == -1) {
+		perror("socket");
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
+
+	rv = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (rv == -1) {
+		perror("bind");
+		close(sock);
+		return;
+	}
+
+	rv = listen(sock, 5 /* MAXPENDING */);
+	if (rv == -1) {
+		perror("listen");
+		close(sock);
+		return;
+	}
+
+	while (1) {
+
+		remote_addr_len = sizeof(remote_addr);
+		connection = accept(sock,
+			(struct sockaddr *) &remote_addr, &remote_addr_len);
+
+		if (connection == -1) {
+			perror("accept");
+			continue;
+		}
+
+		if (remote_addr_len != sizeof(remote_addr)) {
+			close(connection);
+			continue;
+		}
+
+		/* TODO check that remote_addr is the gateway and is inteno */
+
+		memset(buffer, 0, 100);
+		rv = recv(connection, buffer, 100, 0);
+		if (rv < 0) {
+			perror("recv");
+			close(connection);
+			continue;
+		}
+
+		printf("received: \"%s\"\n", buffer);
+
+		close(connection);
+	}
 
 }
 
