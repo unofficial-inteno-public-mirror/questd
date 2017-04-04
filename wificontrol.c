@@ -9,7 +9,7 @@
 #include "tools.h"
 
 #define MAX_REPEATERS (255)
-#define WIFICONTROL_LISTENING_PORT (9876)
+#define WIFICONTROL_LISTENING_PORT (9875)
 
 char *file;
 char *destination;
