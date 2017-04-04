@@ -220,8 +220,12 @@ void send_data(char *ip)
 		return;
 	}
 
-	while (fgets(buffer, 5, file))
+	while (fgets(buffer, 5, file)) {
 		printf("buffer: \"%s\"\n", buffer);
+		rv = send(sock, buffer, 5, 0);
+		if (rv != 5)
+			perror("send");
+	}
 	if (ferror(file))
 		perror("fgets");
 
