@@ -9,6 +9,7 @@
 #include "tools.h"
 
 #define MAX_REPEATERS (255)
+#define BUFFER_SIZE (1024)
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
 
@@ -156,9 +157,7 @@ out:
 
 FILE *fopen_wrapper(char *filename)
 {
-	int rv;
 	FILE *file = NULL;
-	long stdin_size = 0;
 
 	if (filename) {
 		file = fopen(filename, "r");
@@ -191,7 +190,7 @@ void send_data(char *ip)
 	int sock, rv;
 	struct sockaddr_in addr;
 	FILE *file;
-	char buffer[5];
+	char buffer[BUFFER_SIZE];
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
@@ -220,11 +219,13 @@ void send_data(char *ip)
 		return;
 	}
 
-	while (fgets(buffer, 5, file)) {
+	while (fgets(buffer, BUFFER_SIZE, file)) {
 		printf("buffer: \"%s\"\n", buffer);
-		rv = send(sock, buffer, 5, 0);
-		if (rv != 5)
+		rv = send(sock, buffer, strlen(buffer) + 1, 0);
+		if (rv == -1) {
 			perror("send");
+			break;
+		}
 	}
 	if (ferror(file))
 		perror("fgets");
@@ -256,7 +257,7 @@ void router_mode(void)
 void repeater_mode(void)
 {
 	int sock, connection, rv, yes = 1;
-	char buffer[100];
+	char buffer[BUFFER_SIZE];
 	struct sockaddr_in addr, remote_addr;
 	socklen_t remote_addr_len;
 
@@ -313,15 +314,15 @@ void repeater_mode(void)
 
 		/* TODO check that remote_addr is the gateway and is inteno */
 
-		memset(buffer, 0, 100);
 		do {
-			rv = recv(connection, buffer, 100, 0);
+			memset(buffer, 0, BUFFER_SIZE);
+			rv = recv(connection, buffer, BUFFER_SIZE, 0);
 			if (rv < 0) {
 				perror("recv");
 				break;
 			}
 
-			printf("received: \"%s\"\n", buffer);
+			printf("received: %d \"%s\"\n", rv, buffer);
 		} while (rv > 0);
 
 		close(connection);
