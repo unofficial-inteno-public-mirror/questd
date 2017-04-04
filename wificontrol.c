@@ -10,8 +10,9 @@
 
 #define MAX_REPEATERS (255)
 #define WIFICONTROL_LISTENING_PORT (9875)
+#define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
 
-char *file;
+char *filename;
 char *destination;
 
 
@@ -49,8 +50,9 @@ void parse_args(int argc, char **argv)
 		case 0: /* long_options */
 			break;
 		case 'f': /* -f --file file.txt*/
-			file = strdup(optarg ? optarg : "");
-			printf("file: \"%s\"\n", file ? file : "(NULL)");
+			filename = strdup(optarg ? optarg : "");
+			printf("file: \"%s\"\n",
+				filename ? filename : "(NULL)");
 			break;
 		case 'd': /* -d --destination 192.168.1.123*/
 			destination = strdup(optarg ? optarg : "");
@@ -152,10 +154,43 @@ out:
 	return repeaters;
 }
 
+FILE *fopen_wrapper(char *filename)
+{
+	int rv;
+	FILE *file = NULL;
+	long stdin_size = 0;
+
+	if (filename) {
+		file = fopen(filename, "r");
+		goto out;
+	}
+
+	/* check if data is available on stdin */
+	rv = fseek(stdin, 0L, SEEK_END);
+	if (rv == -1) {
+		perror("fseek");
+		goto out;
+	}
+	stdin_size = ftell(stdin);
+	rewind(stdin);
+
+	if (stdin_size > 0) {
+		file = stdin;
+		goto out;
+	}
+
+	file = fopen(WIFICONTROL_DEFAULT_FILE, "r");
+
+out:
+	return file;
+}
+
 void send_data(char *ip)
 {
 	int sock, rv;
 	struct sockaddr_in addr;
+	FILE *file;
+	char buffer[5];
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
@@ -173,20 +208,26 @@ void send_data(char *ip)
 	rv = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv == -1) {
 		perror("connect");
-		return;
-	}
-
-	rv = send(sock, "AB", 2, 0);
-	if (rv != 2) {
-		perror("send");
 		close(sock);
 		return;
 	}
 
+	file = fopen_wrapper(filename);
+	if (!file) {
+		perror("fopen_wrapper");
+		close(sock);
+		return;
+	}
 
+	while (fgets(buffer, 5, file))
+		printf("buffer: \"%s\"\n", buffer);
+	if (ferror(file))
+		perror("fgets");
+
+	if (file && file != stdin)
+		fclose(file);
 
 	close(sock);
-
 }
 
 void router_mode(void)
@@ -298,8 +339,8 @@ int main(int argc, char **argv)
 	if (mode == MODE_REPEATER)
 		repeater_mode();
 
-	if (file)
-		free(file);
+	if (filename)
+		free(filename);
 	if (destination)
 		free(destination);
 
