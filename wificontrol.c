@@ -9,7 +9,7 @@
 #include "tools.h"
 
 #define MAX_REPEATERS (255)
-#define BUFFER_SIZE (1024)
+#define BUFFER_SIZE (4)
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
 
