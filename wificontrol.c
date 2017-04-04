@@ -34,6 +34,10 @@ struct option long_options[] = {
 	{0,		0,			0,		0}
 };
 
+/* TODO add usage() and functions definitions */
+
+/* parse_args */
+/* parse command line arguments */
 void parse_args(int argc, char **argv)
 {
 	int c, option_index = 0;
@@ -66,6 +70,9 @@ void parse_args(int argc, char **argv)
 
 }
 
+/* collect_intenos_on_the_lan */
+/* populates the repeaters array with the host on the lan */
+/* that have inteno mac and are possibly repeaters */
 void collect_intenos_on_the_lan(char **repeaters)
 {
 	int len, rv, i;
@@ -155,36 +162,24 @@ out:
 	return repeaters;
 }
 
+/* fopen_wrapper */
+/* opens filename if this is present */
+/* else it opens the default file */
 FILE *fopen_wrapper(char *filename, char *mode)
 {
 	FILE *file = NULL;
 
-	if (filename) {
+	if (filename)
 		file = fopen(filename, mode);
-		goto out;
-	}
 
-	/* check if data is available on stdin */
-	/*rv = fseek(stdin, 0L, SEEK_END);
-	*if (rv == -1) {
-	*	perror("fseek");
-	*	goto out;
-	*}
-	*stdin_size = ftell(stdin);
-	*rewind(stdin);
+	if (!file)
+		file = fopen(WIFICONTROL_DEFAULT_FILE, mode);
 
-	*if (stdin_size > 0) {
-	*	file = stdin;
-	*	goto out;
-	*}
-	*/
-
-	file = fopen(WIFICONTROL_DEFAULT_FILE, mode);
-
-out:
 	return file;
 }
 
+/* send_data */
+/* send data to a repeater identified by ip */
 void send_data(char *ip)
 {
 	int sock, rv;
@@ -204,7 +199,7 @@ void send_data(char *ip)
 	addr.sin_addr.s_addr = inet_addr(ip);
 	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
 
-	/* TODO connect etc */
+	/* connect etc */
 	rv = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv == -1) {
 		perror("connect");
@@ -212,6 +207,7 @@ void send_data(char *ip)
 		return;
 	}
 
+	/* open file for reading */
 	file = fopen_wrapper(filename, "r");
 	if (!file) {
 		perror("fopen_wrapper");
@@ -219,6 +215,7 @@ void send_data(char *ip)
 		return;
 	}
 
+	/* read data from file and send it to the repeater */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
 		rv = fread(buffer, sizeof(char), BUFFER_SIZE, file);
@@ -239,6 +236,8 @@ void send_data(char *ip)
 	close(sock);
 }
 
+/* router_mode */
+/* main function when running in --router mode */
 void router_mode(void)
 {
 	int i;
@@ -250,6 +249,7 @@ void router_mode(void)
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		printf("repeater[%d]: \"%s\"\n", i, repeaters[i]);
 
+	/* send data to each (possible) repeater found on lan */
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		send_data(repeaters[i]);
 
@@ -257,6 +257,8 @@ void router_mode(void)
 		free(repeaters[i]);
 }
 
+/* repeater_mode */
+/* main function when running in --repeater mode */
 void repeater_mode(void)
 {
 	int sock, connection, rv, nbytes, yes = 1;
@@ -274,6 +276,7 @@ void repeater_mode(void)
 		return;
 	}
 
+	/* set socket option SO_REUSEADDR */
 	rv = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (rv == -1) {
 		perror("setsockopt");
@@ -281,11 +284,13 @@ void repeater_mode(void)
 		return;
 	}
 
+	/* prepare the address for bind */
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
 
+	/* bind the address to the socket */
 	rv = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv == -1) {
 		perror("bind");
@@ -293,6 +298,7 @@ void repeater_mode(void)
 		return;
 	}
 
+	/* listen on connections */
 	rv = listen(sock, 5 /* MAXPENDING */);
 	if (rv == -1) {
 		perror("listen");
@@ -301,7 +307,7 @@ void repeater_mode(void)
 	}
 
 	while (1) {
-
+		/* accept a connection on the listening socket */
 		remote_addr_len = sizeof(remote_addr);
 		connection = accept(sock,
 			(struct sockaddr *) &remote_addr, &remote_addr_len);
@@ -316,6 +322,7 @@ void repeater_mode(void)
 			continue;
 		}
 
+		/* open file for writing */
 		file = fopen_wrapper(filename, "w");
 		if (!file) {
 			perror("fopen_wrapper");
@@ -325,6 +332,7 @@ void repeater_mode(void)
 
 		/* TODO check that remote_addr is the gateway and is inteno */
 
+		/* receive data */
 		while (1) {
 			memset(buffer, 0, BUFFER_SIZE);
 			rv = recv(connection, buffer, BUFFER_SIZE, 0);
