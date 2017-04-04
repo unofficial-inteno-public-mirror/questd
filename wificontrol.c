@@ -314,14 +314,15 @@ void repeater_mode(void)
 		/* TODO check that remote_addr is the gateway and is inteno */
 
 		memset(buffer, 0, 100);
-		rv = recv(connection, buffer, 100, 0);
-		if (rv < 0) {
-			perror("recv");
-			close(connection);
-			continue;
-		}
+		do {
+			rv = recv(connection, buffer, 100, 0);
+			if (rv < 0) {
+				perror("recv");
+				break;
+			}
 
-		printf("received: \"%s\"\n", buffer);
+			printf("received: \"%s\"\n", buffer);
+		} while (rv > 0);
 
 		close(connection);
 	}
