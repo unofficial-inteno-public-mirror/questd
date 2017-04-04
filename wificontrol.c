@@ -166,18 +166,19 @@ FILE *fopen_wrapper(char *filename)
 	}
 
 	/* check if data is available on stdin */
-	rv = fseek(stdin, 0L, SEEK_END);
-	if (rv == -1) {
-		perror("fseek");
-		goto out;
-	}
-	stdin_size = ftell(stdin);
-	rewind(stdin);
+	/*rv = fseek(stdin, 0L, SEEK_END);
+	*if (rv == -1) {
+	*	perror("fseek");
+	*	goto out;
+	*}
+	*stdin_size = ftell(stdin);
+	*rewind(stdin);
 
-	if (stdin_size > 0) {
-		file = stdin;
-		goto out;
-	}
+	*if (stdin_size > 0) {
+	*	file = stdin;
+	*	goto out;
+	*}
+	*/
 
 	file = fopen(WIFICONTROL_DEFAULT_FILE, "r");
 
