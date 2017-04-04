@@ -209,7 +209,7 @@ void router_mode(void)
 
 void repeater_mode(void)
 {
-	int sock, connection, rv;
+	int sock, connection, rv, yes = 1;
 	char buffer[100];
 	struct sockaddr_in addr, remote_addr;
 	socklen_t remote_addr_len;
@@ -220,6 +220,13 @@ void repeater_mode(void)
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
 	if (sock == -1) {
 		perror("socket");
+		return;
+	}
+
+	rv = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+	if (rv == -1) {
+		perror("setsockopt");
+		close(sock);
 		return;
 	}
 
