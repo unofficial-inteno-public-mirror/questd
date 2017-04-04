@@ -155,12 +155,12 @@ out:
 	return repeaters;
 }
 
-FILE *fopen_wrapper(char *filename)
+FILE *fopen_wrapper(char *filename, char *mode)
 {
 	FILE *file = NULL;
 
 	if (filename) {
-		file = fopen(filename, "r");
+		file = fopen(filename, mode);
 		goto out;
 	}
 
@@ -179,7 +179,7 @@ FILE *fopen_wrapper(char *filename)
 	*}
 	*/
 
-	file = fopen(WIFICONTROL_DEFAULT_FILE, "r");
+	file = fopen(WIFICONTROL_DEFAULT_FILE, mode);
 
 out:
 	return file;
@@ -212,7 +212,7 @@ void send_data(char *ip)
 		return;
 	}
 
-	file = fopen_wrapper(filename);
+	file = fopen_wrapper(filename, "r");
 	if (!file) {
 		perror("fopen_wrapper");
 		close(sock);
@@ -259,10 +259,11 @@ void router_mode(void)
 
 void repeater_mode(void)
 {
-	int sock, connection, rv, yes = 1;
+	int sock, connection, rv, nbytes, yes = 1;
 	char buffer[BUFFER_SIZE];
 	struct sockaddr_in addr, remote_addr;
 	socklen_t remote_addr_len;
+	FILE *file = NULL;
 
 	printf("Repeater mode\n");
 
@@ -315,9 +316,16 @@ void repeater_mode(void)
 			continue;
 		}
 
+		file = fopen_wrapper(filename, "w");
+		if (!file) {
+			perror("fopen_wrapper");
+			close(connection);
+			continue;
+		}
+
 		/* TODO check that remote_addr is the gateway and is inteno */
 
-		while(1) {
+		while (1) {
 			memset(buffer, 0, BUFFER_SIZE);
 			rv = recv(connection, buffer, BUFFER_SIZE, 0);
 			if (rv < 0) {
@@ -327,9 +335,14 @@ void repeater_mode(void)
 			if (rv == 0)
 				break;
 
-			printf("received: %d \"%s\"\n", rv, buffer);
+			nbytes = fwrite(buffer, sizeof(char), rv, file);
+			if (nbytes != rv) {
+				perror("fwrite");
+				break;
+			}
 		}
 
+		fclose(file);
 		close(connection);
 	}
 
