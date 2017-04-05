@@ -10,7 +10,7 @@
 #include "tools.h"
 
 #define MAX_REPEATERS (255)
-#define BUFFER_SIZE (4)
+#define BUFFER_SIZE (2048)
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
 
@@ -22,14 +22,17 @@ int client_connected;
 enum RUNNING_MODE {
 	MODE_NONE,
 	MODE_ROUTER,
+	MODE_ROUTER_ASSOCLIST,
 	MODE_REPEATER,
 	MODE_COUNT
 };
 enum RUNNING_MODE mode = MODE_NONE;
 
+
 struct option long_options[] = {
 	/* {char *name;	int has_arg;		int *flag;	int val; }*/
 	{"router",	no_argument,		(int *)&mode,	MODE_ROUTER},
+	{"assoclist",	no_argument,		(int *)&mode,	MODE_ROUTER_ASSOCLIST},
 	{"repeater",	no_argument,		(int *)&mode,	MODE_REPEATER},
 	{"file",	required_argument,	0,		'f'},
 	{"destination",	required_argument,	0,		'd'},
@@ -46,7 +49,7 @@ void parse_args(int argc, char **argv)
 	int c, option_index = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "f:d:",
+		c = getopt_long(argc, argv, "f:d:a",
 			long_options, &option_index);
 
 		printf("c = %d %c\n", c, c);
@@ -66,6 +69,10 @@ void parse_args(int argc, char **argv)
 			destination = strdup(optarg ? optarg : "");
 			printf("destination: \"%s\"\n",
 				destination ? destination : "(NULL)");
+			break;
+		case 'a': /* -a --assoclist */
+			mode = MODE_ROUTER_ASSOCLIST;
+			break;
 		default:
 			break;
 		}
@@ -328,6 +335,64 @@ void send_data(char *ip)
 	close(sock);
 }
 
+
+/* retrieve assoclist from repeater */
+void retrieve_assoclist(char *ip)
+{
+	int sock, rv, nbytes;
+	struct sockaddr_in addr;
+	char buffer[BUFFER_SIZE];
+
+	/* create a socket */
+	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
+	if (sock == -1) {
+		perror("socket");
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(ip);
+	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
+
+	/* connect etc */
+	rv = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (rv == -1) {
+		perror("connect");
+		close(sock);
+		return;
+	}
+
+	memset(buffer, 0, BUFFER_SIZE);
+	snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");
+	rv = send(sock, buffer, rv, 0);
+	if (rv == -1) {
+		perror("send");
+		close(sock);
+		return;
+	}
+
+	/* receive data */
+	while (1) {
+		memset(buffer, 0, BUFFER_SIZE);
+		rv = recv(sock, buffer, BUFFER_SIZE, 0);
+		if (rv < 0) {
+			perror("recv");
+			break;
+		}
+		if (rv == 0)
+			break;
+
+		nbytes = fwrite(buffer, sizeof(char), rv, stdout);
+		if (nbytes != rv) {
+			perror("fwrite");
+			break;
+		}
+	}
+	close(sock);
+}
+
+
 /* router_mode */
 /* main function when running in --router mode */
 void router_mode(void)
@@ -348,6 +413,7 @@ void router_mode(void)
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
 		free(repeaters[i]);
 }
+
 
 /* repeater_mode */
 /* main function when running in --repeater mode */
@@ -425,14 +491,6 @@ void repeater_mode(void)
 		}
 		client_connected = 1;
 
-		/* open file for writing */
-		file = fopen_wrapper(filename, "w");
-		if (!file) {
-			perror("fopen_wrapper");
-			close(connection);
-			continue;
-		}
-
 		/* TODO check that remote_addr is the gateway and is inteno */
 
 		/* receive data */
@@ -446,6 +504,29 @@ void repeater_mode(void)
 			if (rv == 0)
 				break;
 
+			if (strstr(buffer, "give_me_assoclist")) {
+				memset(buffer, 0, BUFFER_SIZE);
+				chrCmd(buffer, BUFFER_SIZE - 1,
+				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
+
+				rv = send(sock, buffer, strlen(buffer), 0);
+				if (rv == -1) {
+					perror("send");
+					break;
+				}
+				break;
+			}
+
+			/* open file for writing */
+			if (!file) {
+				file = fopen_wrapper(filename, "w");
+				if (!file) {
+					perror("fopen_wrapper");
+					close(connection);
+					continue;
+				}
+			}
+
 			nbytes = fwrite(buffer, sizeof(char), rv, file);
 			if (nbytes != rv) {
 				perror("fwrite");
@@ -453,7 +534,10 @@ void repeater_mode(void)
 			}
 		}
 
-		fclose(file);
+		if (file) {
+			fclose(file);
+			file = NULL;
+		}
 		close(connection);
 
 		/* aply the new wireless settings */
@@ -476,6 +560,8 @@ int main(int argc, char **argv)
 
 	if (mode == MODE_ROUTER)
 		router_mode();
+	if (mode == MODE_ROUTER_ASSOCLIST)
+		retrieve_assoclist(destination);
 
 	if (mode == MODE_REPEATER)
 		repeater_mode();
