@@ -455,6 +455,11 @@ void repeater_mode(void)
 
 		fclose(file);
 		close(connection);
+
+		/* aply the new wireless settings */
+		runCmd(
+		"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
+		filename ? filename : WIFICONTROL_DEFAULT_FILE);
 	}
 
 }
