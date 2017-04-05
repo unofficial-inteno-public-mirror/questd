@@ -365,17 +365,20 @@ void retrieve_assoclist(char *ip)
 
 	memset(buffer, 0, BUFFER_SIZE);
 	snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");
-	rv = send(sock, buffer, rv, 0);
+	printf("buffer: \"%s\"\n", buffer);
+	rv = send(sock, buffer, strlen(buffer), 0);
 	if (rv == -1) {
 		perror("send");
 		close(sock);
 		return;
 	}
 
+	printf("sent buffer: \"%s\" rv = %d\n", buffer, rv);
 	/* receive data */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
 		rv = recv(sock, buffer, BUFFER_SIZE, 0);
+		printf("recv buffer \"%s\" %d\n", buffer, rv);
 		if (rv < 0) {
 			perror("recv");
 			break;
@@ -383,6 +386,7 @@ void retrieve_assoclist(char *ip)
 		if (rv == 0)
 			break;
 
+		printf ("recv buffer: \"%s\"\n", buffer);
 		nbytes = fwrite(buffer, sizeof(char), rv, stdout);
 		if (nbytes != rv) {
 			perror("fwrite");
@@ -490,13 +494,16 @@ void repeater_mode(void)
 			continue;
 		}
 		client_connected = 1;
+		printf("a connection from %s\n", inet_ntoa(remote_addr.sin_addr));
 
 		/* TODO check that remote_addr is the gateway and is inteno */
 
 		/* receive data */
 		while (1) {
 			memset(buffer, 0, BUFFER_SIZE);
+			printf("before recv\n");
 			rv = recv(connection, buffer, BUFFER_SIZE, 0);
+			printf("after recv rv = %d\n", rv);
 			if (rv < 0) {
 				perror("recv");
 				break;
@@ -505,10 +512,14 @@ void repeater_mode(void)
 				break;
 
 			if (strstr(buffer, "give_me_assoclist")) {
+				printf("give_me_assoclist\n");
 				memset(buffer, 0, BUFFER_SIZE);
 				chrCmd(buffer, BUFFER_SIZE - 1,
 				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
+				if (strlen(buffer) == 0)
+					sprintf(buffer, "empty");
+				printf("buffer: \"%s\"\n", buffer);
 				rv = send(sock, buffer, strlen(buffer), 0);
 				if (rv == -1) {
 					perror("send");
@@ -516,6 +527,7 @@ void repeater_mode(void)
 				}
 				break;
 			}
+			printf("NOT give_me_assoclist\n");
 
 			/* open file for writing */
 			if (!file) {
