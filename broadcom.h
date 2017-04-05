@@ -731,6 +731,7 @@ int wl_get_rssi(const char *ifname, char *sta, int *buf);
 int wl_get_bitrate(const char *ifname, unsigned long *buf);
 int wl_get_isup(const char *ifname, int *buf);
 int wl_get_band(const char *ifname, int *buf);
+void wl_get_maxrate(const char *ifname, int band, int bandwidth, unsigned long *buf);
 int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise);
 int wl_get_chanlist(const char *ifname, int *buf);
 int wl_get_deviceid(const char *ifname, int *buf);

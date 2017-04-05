@@ -273,7 +273,7 @@ int wl_get_bitrate(const char *ifname, unsigned long *buf)
 	return ret;
 }
 
-int wl_get_maxrate(const char *ifname, int band, int bandwidth, unsigned long *buf)
+void wl_get_maxrate(const char *ifname, int band, int bandwidth, unsigned long *buf)
 {
 
 	char output[32] = {0};
