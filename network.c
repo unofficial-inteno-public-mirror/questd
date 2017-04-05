@@ -366,6 +366,13 @@ nextmac:
 				l++;
 			}	
 		}
+
+		if(strstr(port[i].device, "eth")) {
+			if(l > 0)
+				get_port_status(port[i].device, port[i].linkspeed, NULL);
+			else
+				strcpy(port[i].linkspeed, "Auto");
+		}
 	}
 }
 
