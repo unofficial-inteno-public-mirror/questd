@@ -543,7 +543,7 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b, int noise)
 	char buf[512];
 	char encryption[512] = {0};
 	char cipher[512] = {0};
-	int rssi;
+	int16 rssi;
 	void *t;
 
 	t = blobmsg_open_table(b, "");
@@ -553,7 +553,7 @@ void dump_bss_info_summary(wl_bss_info_t *bi, struct blob_buf *b, int noise)
 		bi->BSSID.octet[3], bi->BSSID.octet[4], bi->BSSID.octet[5]);
 	blobmsg_add_string(b, "bssid", buf);
 
-	rssi = eswap16((int16)(bi->RSSI));
+	rssi = eswap16((bi->RSSI));
 	blobmsg_add_u32(b, "rssi", rssi);
 
 	blobmsg_add_u32(b, "noise", bi->phy_noise);
