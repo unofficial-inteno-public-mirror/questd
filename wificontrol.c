@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <pthread.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
@@ -15,6 +16,7 @@
 
 char *filename;
 char *destination;
+int client_connected;
 
 
 enum RUNNING_MODE {
@@ -34,6 +36,7 @@ struct option long_options[] = {
 	{0,		0,			0,		0}
 };
 
+extern bool arping(const char *targetIP, char *device, int toms);
 /* TODO add usage() and functions definitions */
 
 /* parse_args */
@@ -67,8 +70,97 @@ void parse_args(int argc, char **argv)
 			break;
 		}
 	}
-
 }
+
+
+static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < retry; i++) {
+		usleep(100000);
+		if (client_connected == 1)
+			continue;
+		if (arping(ipaddr, device, tmo)) {
+			ret = 1;
+			break;
+		}
+	}
+
+	if (ret) {
+		system("ubus -t 1 call led.internet set '{\"state\":\"notice\"}'");
+		system("echo -e { \\\"online\\\" : true } > /tmp/internet_connection_status");
+	} else {
+		system("ubus -t 1 call led.internet set '{\"state\":\"error\"}'");
+		system("echo -e { \\\"online\\\" : false } > /tmp/internet_connection_status");
+	}
+
+	return ret;
+}
+
+
+static void sleeps(int seconds)
+{
+	usleep(seconds*1000000);
+}
+
+void *ping_uplink(void *arg)
+{
+	int rv;
+	char ipaddr[64];
+	unsigned long sleep = 5;
+#if IOPSYS_BROADCOM
+	char assoclist[512];
+#elif IOPSYS_MEDIATEK
+	char wetif[64];
+	int autoc = 1;
+#endif
+
+	pthread_detach(pthread_self());
+
+	while (1) {
+		sleeps(sleep);
+		if (client_connected == 1)
+			continue;
+		chrCmd(ipaddr, 64, "ip r | grep default | awk '{print$3}'");
+		if (strlen(ipaddr) < 7)
+			continue;
+		rv = arp_ping(ipaddr, "br-wan", 2000, 5);
+		if (rv == 0 && client_connected == 0) {
+#if IOPSYS_BROADCOM
+			memset(assoclist, 0, 512);
+			chrCmd(assoclist, 512,
+			"wlctl -i wl1 assoclist | head -1 | awk '{print$2}'");
+			runCmd("wlctl -i wl1 reassoc %s", assoclist);
+			/* runCmd("killall -9 udhcpc &"); */
+#elif IOPSYS_MEDIATEK
+			/* Disconnect clients on 2.4GHz radio */
+			runCmd("iwpriv ra0 set DisConnectAllSta=2");
+			/* Disconnect clients on 5GHz radio */
+			runCmd("iwpriv rai0 set DisConnectAllSta=2");
+			memset(wetif, 0, 64);
+			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
+			if (autoc) {
+				runCmd("iwpriv %s set ApCliAutoConnect=1",
+					wetif);
+				autoc = 0;
+			} else {
+				runCmd("iwpriv %s set ApCliEnable=0", wetif);
+				runCmd("iwpriv %s set ApCliEnable=1", wetif);
+				autoc = 1;
+				sleeps(60);
+			}
+#endif
+			sleep = 10;
+		} else {
+			sleep = 5;
+		}
+	}
+
+	return NULL;
+}
+
 
 /* collect_intenos_on_the_lan */
 /* populates the repeaters array with the host on the lan */
@@ -266,8 +358,16 @@ void repeater_mode(void)
 	struct sockaddr_in addr, remote_addr;
 	socklen_t remote_addr_len;
 	FILE *file = NULL;
+	pthread_t ping_thread;
 
 	printf("Repeater mode\n");
+
+	/* create a thread that trigger wireless reassociation if needed */
+	rv = pthread_create(&ping_thread, NULL, &ping_uplink, NULL);
+	if (rv != 0) {
+		perror("pthread_create");
+		return;
+	}
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
@@ -307,6 +407,8 @@ void repeater_mode(void)
 	}
 
 	while (1) {
+		client_connected = 0;
+
 		/* accept a connection on the listening socket */
 		remote_addr_len = sizeof(remote_addr);
 		connection = accept(sock,
@@ -321,6 +423,7 @@ void repeater_mode(void)
 			close(connection);
 			continue;
 		}
+		client_connected = 1;
 
 		/* open file for writing */
 		file = fopen_wrapper(filename, "w");
