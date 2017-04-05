@@ -980,7 +980,7 @@ inc:
 			}
 		}
 		if(!was_there)
-			runCmd("ubus send client '{\"action\":\"connect\",\"macaddr\":\"%s\",\"ipaddr\":\"%s\"}'", clients_new[i].macaddr, clients_new[i].ipaddr);
+			runCmd("ubus send client '{\"action\":\"connect\",\"macaddr\":\"%s\",\"ipaddr\":\"%s\",\"network\":\"%s\"}'", clients_new[i].macaddr, clients_new[i].ipaddr, clients_new[i].network);
 	}
 
 	memcpy(&clients_old, &clients_new, sizeof(clients));
