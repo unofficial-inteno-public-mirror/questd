@@ -554,11 +554,17 @@ void repeater_mode(void)
 			memset(md5_after, 0, 64);
 			chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
-			if (strncmp(md5_before, md5_after, 64) != 0)
-				/* aply the new wireless settings */
+			if (strncmp(md5_before, md5_after, 64) != 0) {
+				/* apply the new wireless settings */
+				printf("Applying new wireless settings for uplink\n");
+				runCmd(
+				"ubus call repeater set_creds_uplink '{\"file\":\"%s\"}'",
+				filename ? filename : WIFICONTROL_DEFAULT_FILE);
+				printf("Applying new wireless settings for downlink\n");
 				runCmd(
 				"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			}
 		}
 		close(connection);
 
