@@ -549,13 +549,14 @@ void repeater_mode(void)
 		if (file) {
 			fclose(file);
 			file = NULL;
+
+			/* aply the new wireless settings */
+			runCmd(
+			"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
+			filename ? filename : WIFICONTROL_DEFAULT_FILE);
 		}
 		close(connection);
 
-		/* aply the new wireless settings */
-		runCmd(
-		"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
-		filename ? filename : WIFICONTROL_DEFAULT_FILE);
 	}
 
 }
