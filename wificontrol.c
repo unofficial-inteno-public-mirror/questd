@@ -530,7 +530,7 @@ void repeater_mode(void)
 			/* open file for writing */
 			if (!file) {
 				memset(md5_before, 0, 64);
-				runCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+				chrCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
 					filename ? filename : WIFICONTROL_DEFAULT_FILE);
 				file = fopen_wrapper(filename, "w");
 				if (!file) {
@@ -552,7 +552,7 @@ void repeater_mode(void)
 			file = NULL;
 
 			memset(md5_after, 0, 64);
-			runCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+			chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			if (strncmp(md5_before, md5_after, 64) != 0)
 				/* aply the new wireless settings */
