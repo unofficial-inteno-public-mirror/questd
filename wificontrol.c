@@ -520,7 +520,7 @@ void repeater_mode(void)
 				if (strlen(buffer) == 0)
 					sprintf(buffer, "empty");
 				printf("buffer: \"%s\"\n", buffer);
-				rv = send(sock, buffer, strlen(buffer), 0);
+				rv = send(connection, buffer, strlen(buffer), 0);
 				if (rv == -1) {
 					perror("send");
 					break;
