@@ -386,7 +386,7 @@ void retrieve_assoclist(char *ip)
 		if (rv == 0)
 			break;
 
-		printf ("recv buffer: \"%s\"\n", buffer);
+		/* printf ("recv buffer: \"%s\"\n", buffer); */
 		nbytes = fwrite(buffer, sizeof(char), rv, stdout);
 		if (nbytes != rv) {
 			perror("fwrite");
@@ -517,8 +517,8 @@ void repeater_mode(void)
 				chrCmd(buffer, BUFFER_SIZE - 1,
 				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
-				if (strlen(buffer) == 0)
-					sprintf(buffer, "empty");
+				//if (strlen(buffer) == 0)
+				//	sprintf(buffer, "empty");
 				printf("buffer: \"%s\"\n", buffer);
 				rv = send(connection, buffer, strlen(buffer), 0);
 				if (rv == -1) {
