@@ -424,7 +424,7 @@ void router_mode(void)
 void repeater_mode(void)
 {
 	int sock, connection, rv, nbytes, yes = 1;
-	char buffer[BUFFER_SIZE];
+	char buffer[BUFFER_SIZE], md5_before[64], md5_after[64];
 	struct sockaddr_in addr, remote_addr;
 	socklen_t remote_addr_len;
 	FILE *file = NULL;
@@ -517,8 +517,6 @@ void repeater_mode(void)
 				chrCmd(buffer, BUFFER_SIZE - 1,
 				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
-				//if (strlen(buffer) == 0)
-				//	sprintf(buffer, "empty");
 				printf("buffer: \"%s\"\n", buffer);
 				rv = send(connection, buffer, strlen(buffer), 0);
 				if (rv == -1) {
@@ -531,6 +529,9 @@ void repeater_mode(void)
 
 			/* open file for writing */
 			if (!file) {
+				memset(md5_before, 0, 64);
+				runCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+					filename ? filename : WIFICONTROL_DEFAULT_FILE);
 				file = fopen_wrapper(filename, "w");
 				if (!file) {
 					perror("fopen_wrapper");
@@ -550,10 +551,14 @@ void repeater_mode(void)
 			fclose(file);
 			file = NULL;
 
-			/* aply the new wireless settings */
-			runCmd(
-			"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
-			filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			memset(md5_after, 0, 64);
+			runCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+				filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			if (strncmp(md5_before, md5_after, 64) != 0)
+				/* aply the new wireless settings */
+				runCmd(
+				"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
+				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 		}
 		close(connection);
 
