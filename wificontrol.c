@@ -52,7 +52,7 @@ void parse_args(int argc, char **argv)
 		c = getopt_long(argc, argv, "f:d:a",
 			long_options, &option_index);
 
-		printf("c = %d %c\n", c, c);
+		/* printf("c = %d %c\n", c, c); */
 
 		if (c == -1)
 			break;
@@ -62,13 +62,13 @@ void parse_args(int argc, char **argv)
 			break;
 		case 'f': /* -f --file file.txt*/
 			filename = strdup(optarg ? optarg : "");
-			printf("file: \"%s\"\n",
-				filename ? filename : "(NULL)");
+			/* printf("file: \"%s\"\n", */
+			/* 	filename ? filename : "(NULL)"); */
 			break;
 		case 'd': /* -d --destination 192.168.1.123*/
 			destination = strdup(optarg ? optarg : "");
-			printf("destination: \"%s\"\n",
-				destination ? destination : "(NULL)");
+			/* printf("destination: \"%s\"\n", */
+			/* 	destination ? destination : "(NULL)"); */
 			break;
 		case 'a': /* -a --assoclist */
 			mode = MODE_ROUTER_ASSOCLIST;
@@ -200,19 +200,19 @@ void collect_intenos_on_the_lan(char **repeaters)
 	len = point2 - point1 < 32 ? point2 - point1 : 31;
 	memcpy(lanname, point1, len);
 	lanname[len] = '\0';
-	printf("lanname \"%s\"\n", lanname);
+	/* printf("lanname \"%s\"\n", lanname); */
 
 	/* get lanip */
 	chrCmd(lanip, 17, "uci -q get network.%s.ipaddr", lanname);
-	printf("lanip \"%s\"\n", lanip);
+	/* printf("lanip \"%s\"\n", lanip); */
 
 	/* get lanmask */
 	chrCmd(lanmask, 17, "uci -q get network.%s.netmask", lanname);
-	printf("lanmask \"%s\"\n", lanmask);
+	/* printf("lanmask \"%s\"\n", lanmask); */
 
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		;
-	printf("repeaters index i = %d\n", i);
+	/* printf("repeaters index i = %d\n", i); */
 
 	/* parse the arp table in search of inteno repeaters on the lan */
 	arp = fopen("/proc/net/arp", "r");
@@ -221,19 +221,19 @@ void collect_intenos_on_the_lan(char **repeaters)
 	fgets(line, sizeof(line), arp); /* dump the first line */
 	while (fgets(line, sizeof(line), arp)) {
 		trim(line);
-		printf("line: \"%s\"\n", line);
+		/* printf("line: \"%s\"\n", line); */
 		/* IP address	HW type	Flags	HW address	Mask	Device
 		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
 		*/
 		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
-		printf("line: rv = %d ip \"%s\" mac \"%s\"\n", rv, ip, mac);
+		/* printf("line: rv = %d ip \"%s\" mac \"%s\"\n", rv, ip, mac); */
 		if (rv != 2)
 			continue;
 		if (!is_inteno_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, lanip, lanmask))
 			continue;
-		printf("ip \"%s\" is inteno product and in lan network\n", ip);
+		/* printf("ip \"%s\" is inteno product and in lan network\n", ip); */
 
 		/* add repeater's ip in the array */
 		repeaters[i++] = strdup(ip);
@@ -371,7 +371,7 @@ void retrieve_assoclist(char *ip)
 
 	memset(buffer, 0, BUFFER_SIZE);
 	snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");
-	printf("buffer: \"%s\"\n", buffer);
+	/* printf("buffer: \"%s\"\n", buffer); */
 	rv = send(sock, buffer, strlen(buffer), 0);
 	if (rv == -1) {
 		perror("send");
@@ -379,12 +379,12 @@ void retrieve_assoclist(char *ip)
 		return;
 	}
 
-	printf("sent buffer: \"%s\" rv = %d\n", buffer, rv);
+	/* printf("sent buffer: \"%s\" rv = %d\n", buffer, rv); */
 	/* receive data */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
 		rv = recv(sock, buffer, BUFFER_SIZE, 0);
-		printf("recv buffer \"%s\" %d\n", buffer, rv);
+		/* printf("recv buffer \"%s\" %d\n", buffer, rv); */
 		if (rv < 0) {
 			perror("recv");
 			break;
@@ -410,11 +410,11 @@ void router_mode(void)
 	int i;
 	char **repeaters = NULL;
 
-	printf("Router mode\n");
+	/* printf("Router mode\n"); */
 	repeaters = collect_repeaters();
 
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
-		printf("repeater[%d]: \"%s\"\n", i, repeaters[i]);
+		/* printf("repeater[%d]: \"%s\"\n", i, repeaters[i]); */
 
 	/* send data to each (possible) repeater found on lan */
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
@@ -436,7 +436,7 @@ void repeater_mode(void)
 	FILE *file = NULL;
 	pthread_t ping_thread;
 
-	printf("Repeater mode\n");
+	/* printf("Repeater mode\n"); */
 
 	/* create a thread that trigger wireless reassociation if needed */
 	rv = pthread_create(&ping_thread, NULL, &ping_uplink, NULL);
@@ -500,16 +500,16 @@ void repeater_mode(void)
 			continue;
 		}
 		client_connected = 1;
-		printf("a connection from %s\n", inet_ntoa(remote_addr.sin_addr));
+		/* printf("a connection from %s\n", inet_ntoa(remote_addr.sin_addr)); */
 
 		/* TODO check that remote_addr is the gateway and is inteno */
 
 		/* receive data */
 		while (1) {
 			memset(buffer, 0, BUFFER_SIZE);
-			printf("before recv\n");
+			/* printf("before recv\n"); */
 			rv = recv(connection, buffer, BUFFER_SIZE, 0);
-			printf("after recv rv = %d\n", rv);
+			/* printf("after recv rv = %d\n", rv); */
 			if (rv < 0) {
 				perror("recv");
 				break;
@@ -518,12 +518,12 @@ void repeater_mode(void)
 				break;
 
 			if (strstr(buffer, "give_me_assoclist")) {
-				printf("give_me_assoclist\n");
+				/* printf("give_me_assoclist\n"); */
 				memset(buffer, 0, BUFFER_SIZE);
 				chrCmd(buffer, BUFFER_SIZE - 1,
 				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
-				printf("buffer: \"%s\"\n", buffer);
+				/* printf("buffer: \"%s\"\n", buffer); */
 				rv = send(connection, buffer, strlen(buffer), 0);
 				if (rv == -1) {
 					perror("send");
@@ -531,7 +531,7 @@ void repeater_mode(void)
 				}
 				break;
 			}
-			printf("NOT give_me_assoclist\n");
+			/* printf("NOT give_me_assoclist\n"); */
 
 			/* open file for writing */
 			if (!file) {
@@ -562,7 +562,7 @@ void repeater_mode(void)
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			if (strncmp(md5_before, md5_after, 64) != 0) {
 				/* apply the new wireless settings */
-				printf("Applying new wireless settings\n");
+				/* printf("Applying new wireless settings\n"); */
 				runCmd(
 				"ubus call repeater set_creds '{\"file\":\"%s\"}'",
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
@@ -579,7 +579,7 @@ int main(int argc, char **argv)
 
 	parse_args(argc, argv);
 
-	printf("mode = %d\n", mode);
+	/* printf("mode = %d\n", mode); */
 
 	if (mode == MODE_NONE)
 		return 1;
