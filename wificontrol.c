@@ -292,11 +292,27 @@ void send_data(char *ip)
 	struct sockaddr_in addr;
 	FILE *file;
 	char buffer[BUFFER_SIZE];
+	struct timeval tv;
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
 	if (sock == -1) {
 		perror("socket");
+		return;
+	}
+
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+	rv = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	if (rv == -1) {
+		perror ("setsockopt SO_RCVTIMEO");
+		close(sock);
+		return;
+	}
+	rv = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+	if (rv == -1) {
+		perror ("setsockopt SO_SNDTIMEO");
+		close(sock);
 		return;
 	}
 
@@ -362,7 +378,13 @@ void retrieve_assoclist(char *ip)
 	tv.tv_usec = 0;
 	rv = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	if (rv == -1) {
-		perror ("setsockopt");
+		perror ("setsockopt SO_RCVTIMEO");
+		close(sock);
+		return;
+	}
+	rv = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+	if (rv == -1) {
+		perror ("setsockopt SO_SNDTIMEO");
 		close(sock);
 		return;
 	}
