@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include "tools.h"
 
@@ -348,11 +349,21 @@ void retrieve_assoclist(char *ip)
 	int sock, rv, nbytes;
 	struct sockaddr_in addr;
 	char buffer[BUFFER_SIZE];
+	struct timeval tv;
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
 	if (sock == -1) {
 		perror("socket");
+		return;
+	}
+
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+	rv = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	if (rv == -1) {
+		perror ("setsockopt");
+		close(sock);
 		return;
 	}
 
