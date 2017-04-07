@@ -115,7 +115,8 @@ static void sleeps(int seconds)
 void *ping_uplink(void *arg)
 {
 	int rv;
-	char ipaddr[64];
+	char ipaddr[64] = {0};
+	char device[64] = {0};
 	unsigned long sleep = 5;
 #if IOPSYS_BROADCOM
 	char assoclist[512];
@@ -130,10 +131,15 @@ void *ping_uplink(void *arg)
 		sleeps(sleep);
 		if (client_connected == 1)
 			continue;
+		memset(ipaddr, 0, 64);
 		chrCmd(ipaddr, 64, "ip r | grep default | awk '{print$3}'");
 		if (strlen(ipaddr) < 7)
 			continue;
-		rv = arp_ping(ipaddr, "br-wan", 2000, 5);
+		memset(device, 0, 64);
+		chrCmd(device, 64, "ip r | grep default | awk '{print$5}'");
+		if (strlen(device) < 3)
+			continue;
+		rv = arp_ping(ipaddr, device, 2000, 5);
 		if (rv == 0 && client_connected == 0) {
 #if IOPSYS_BROADCOM
 			memset(assoclist, 0, 512);
