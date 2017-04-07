@@ -562,13 +562,9 @@ void repeater_mode(void)
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			if (strncmp(md5_before, md5_after, 64) != 0) {
 				/* apply the new wireless settings */
-				printf("Applying new wireless settings for uplink\n");
+				printf("Applying new wireless settings\n");
 				runCmd(
-				"ubus call repeater set_creds_uplink '{\"file\":\"%s\"}'",
-				filename ? filename : WIFICONTROL_DEFAULT_FILE);
-				printf("Applying new wireless settings for downlink\n");
-				runCmd(
-				"ubus call repeater set_creds_downlink '{\"file\":\"%s\"}'",
+				"ubus call repeater set_creds '{\"file\":\"%s\"}'",
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			}
 		}
