@@ -928,6 +928,8 @@ inc:
 
 						if(clients[cno].connected && is_inteno_macaddr(clients[cno].macaddr)) {
 							memset(clients[cno].assoclist, '\0', 128);
+							memset(output, 0, 1280);
+							memset(assoclist, 0, 1280);
 							strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a --destination %s", clients[cno].ipaddr), 1280);
 
 							ano = 0;
