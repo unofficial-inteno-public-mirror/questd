@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
@@ -284,21 +285,17 @@ FILE *fopen_wrapper(char *filename, char *mode)
 	return file;
 }
 
-/* send_data */
-/* send data to a repeater identified by ip */
-void send_data(char *ip)
+int prepare_socket(char *ip)
 {
 	int sock, rv;
 	struct sockaddr_in addr;
-	FILE *file;
-	char buffer[BUFFER_SIZE];
 	struct timeval tv;
 
 	/* create a socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
 	if (sock == -1) {
 		perror("socket");
-		return;
+		return NULL;
 	}
 
 	tv.tv_sec = 2;
@@ -306,14 +303,12 @@ void send_data(char *ip)
 	rv = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	if (rv == -1) {
 		perror ("setsockopt SO_RCVTIMEO");
-		close(sock);
-		return;
+		goto error;
 	}
 	rv = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 	if (rv == -1) {
 		perror ("setsockopt SO_SNDTIMEO");
-		close(sock);
-		return;
+		goto error;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -325,7 +320,25 @@ void send_data(char *ip)
 	rv = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv == -1) {
 		perror("connect");
-		close(sock);
+		goto error;
+	}
+	return sock;
+error:
+	close(sock);
+	return NULL;
+}
+
+/* send_data */
+/* send data to a repeater identified by ip */
+void send_data(char *ip)
+{
+	int sock, rv;
+	FILE *file;
+	char buffer[BUFFER_SIZE];
+
+	sock = prepare_socket(ip);
+	if (!sock) {
+		perror("socket");
 		return;
 	}
 
@@ -333,8 +346,7 @@ void send_data(char *ip)
 	file = fopen_wrapper(filename, "r");
 	if (!file) {
 		perror("fopen_wrapper");
-		close(sock);
-		return;
+		goto out;
 	}
 
 	/* read data from file and send it to the repeater */
@@ -354,7 +366,7 @@ void send_data(char *ip)
 
 	if (file && file != stdin)
 		fclose(file);
-
+out:
 	close(sock);
 }
 
@@ -363,42 +375,11 @@ void send_data(char *ip)
 void retrieve_assoclist(char *ip)
 {
 	int sock, rv, nbytes;
-	struct sockaddr_in addr;
 	char buffer[BUFFER_SIZE];
-	struct timeval tv;
 
-	/* create a socket */
-	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
-	if (sock == -1) {
+	sock = prepare_socket(ip);
+	if (!sock) {
 		perror("socket");
-		return;
-	}
-
-	tv.tv_sec = 2;
-	tv.tv_usec = 0;
-	rv = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-	if (rv == -1) {
-		perror ("setsockopt SO_RCVTIMEO");
-		close(sock);
-		return;
-	}
-	rv = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-	if (rv == -1) {
-		perror ("setsockopt SO_SNDTIMEO");
-		close(sock);
-		return;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(ip);
-	addr.sin_port = htons(WIFICONTROL_LISTENING_PORT);
-
-	/* connect etc */
-	rv = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
-	if (rv == -1) {
-		perror("connect");
-		close(sock);
 		return;
 	}
 
@@ -408,8 +389,7 @@ void retrieve_assoclist(char *ip)
 	rv = send(sock, buffer, strlen(buffer), 0);
 	if (rv == -1) {
 		perror("send");
-		close(sock);
-		return;
+		goto out;
 	}
 
 	/* printf("sent buffer: \"%s\" rv = %d\n", buffer, rv); */
@@ -432,6 +412,7 @@ void retrieve_assoclist(char *ip)
 			break;
 		}
 	}
+out:
 	close(sock);
 }
 
