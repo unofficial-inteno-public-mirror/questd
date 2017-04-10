@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <json-c/json.h>
 #include <libubox/blobmsg.h>
+#include <pthread.h>
 #include <libubox/blobmsg_json.h>
 #include <libubus.h>
 #include "tools.h"
