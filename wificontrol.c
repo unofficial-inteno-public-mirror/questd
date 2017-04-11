@@ -556,7 +556,7 @@ void repeater_mode(void)
 				if (!file) {
 					perror("fopen_wrapper");
 					close(connection);
-					continue;
+					break;
 				}
 			}
 
