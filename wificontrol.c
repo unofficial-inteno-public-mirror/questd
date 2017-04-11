@@ -177,53 +177,34 @@ void *ping_uplink(void *arg)
 }
 
 
-/* collect_intenos_on_the_lan */
+/* collect_intenos_on_network */
 /* populates the repeaters array with the host on the lan */
 /* that have inteno mac and are possibly repeaters */
-void collect_intenos_on_the_lan(char **repeaters)
+int collect_intenos_on_network(char **repeaters, int i, const char *network)
 {
-	int len, rv, i;
-	char line[256], *point1, *point2;
-	char lanname[32], lanip[17], lanmask[17];
+	int rv;
+	char line[256];
+	char network_ip[17], netmask[17];
 	char ip[17], mac[18];
 	FILE *arp;
 
-	/* get lanname */
-	/* only the "first lan" is relevant for repeaters */
-	chrCmd(line, 256,
-	"uci -q show network | grep is_lan | grep -v loopback | head -n 1");
-	point1 = strchr(line, '.');
-	if (!point1)
-		return;
-	++point1;
-	point2 = strchr(point1, '.');
-	if (!point2)
-		return;
-	len = point2 - point1 < 32 ? point2 - point1 : 31;
-	memcpy(lanname, point1, len);
-	lanname[len] = '\0';
-	/* printf("lanname \"%s\"\n", lanname); */
+	/* get network ip */
+	chrCmd(network_ip, 17, "uci -q get network.%s.ipaddr", network);
 
-	/* get lanip */
-	chrCmd(lanip, 17, "uci -q get network.%s.ipaddr", lanname);
-	/* printf("lanip \"%s\"\n", lanip); */
-
-	/* get lanmask */
-	chrCmd(lanmask, 17, "uci -q get network.%s.netmask", lanname);
-	/* printf("lanmask \"%s\"\n", lanmask); */
-
-	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
-		;
-	/* printf("repeaters index i = %d\n", i); */
+	/* get netmask */
+	chrCmd(netmask, 17, "uci -q get network.%s.netmask", network);
+	/* printf("netmask \"%s\"\n", netmask); */
 
 	/* parse the arp table in search of inteno repeaters on the lan */
 	arp = fopen("/proc/net/arp", "r");
 	if (!arp)
-		return;
+		return i;
 	fgets(line, sizeof(line), arp); /* dump the first line */
 	while (fgets(line, sizeof(line), arp)) {
+		if (i >= MAX_REPEATERS)
+			break;
 		trim(line);
-		/* printf("line: \"%s\"\n", line); */
+		/*printf("line: \"%s\"\n", line);*/
 		/* IP address	HW type	Flags	HW address	Mask	Device
 		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
 		*/
@@ -233,16 +214,15 @@ void collect_intenos_on_the_lan(char **repeaters)
 			continue;
 		if (!is_inteno_macaddr(mac))
 			continue;
-		if (!is_ip_in_network(ip, lanip, lanmask))
+		if (!is_ip_in_network(ip, network_ip, netmask))
 			continue;
 		/* printf("ip \"%s\" is inteno product and in lan network\n", ip); */
 
 		/* add repeater's ip in the array */
 		repeaters[i++] = strdup(ip);
-		if (i >= MAX_REPEATERS)
-			break;
 	}
-
+	fclose(arp);
+	return i;
 }
 
 /* this function allocates memory. free it! when no longer needed */
@@ -250,6 +230,12 @@ char **collect_repeaters(void)
 {
 	int i;
 	char **repeaters = NULL;
+	struct uci_context *uci_ctx = NULL;
+	struct uci_package *uci_pkg;
+	struct uci_element *e;
+	struct uci_section *s;
+	char *is_lan = NULL;
+	char *name = NULL;
 
 	repeaters = (char **)malloc(MAX_REPEATERS * sizeof(char *));
 	if (!repeaters)
@@ -258,13 +244,37 @@ char **collect_repeaters(void)
 	for (i = 0; i < MAX_REPEATERS; i++)
 		repeaters[i] = NULL;
 
-	if (destination) {
-		repeaters[0] = strdup(destination);
+	uci_pkg = init_package(&uci_ctx, "network");
+
+	if (!uci_pkg)
 		goto out;
+
+	i = 0;
+	uci_foreach_element(&uci_pkg->sections, e) {
+		name = strdup(e->name);
+		if (!name)
+			goto next;
+
+		s = uci_to_section(e);
+		if (strcmp(s->type, "interface") != 0)
+			goto next;
+
+		if (strcmp(name, "loopback") == 0)
+			goto next;
+
+		is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
+		if(!is_lan)
+			goto next;
+
+		if (strncmp(is_lan, "1", 1) == 0){
+			i = collect_intenos_on_network(repeaters, i, name);
+		}
+next:
+		if (name)
+			free(name);
+		name = NULL;
 	}
-
-	collect_intenos_on_the_lan(repeaters);
-
+	free_uci_context(&uci_ctx);
 out:
 	return repeaters;
 }
