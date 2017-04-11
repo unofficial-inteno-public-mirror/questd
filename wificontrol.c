@@ -16,9 +16,17 @@
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
 
+#define DBG(fmt, ...)\
+	do {\
+		if(VERBOSE){\
+			printf("line %d in %s: " fmt "\n", __LINE__, __func__, ##__VA_ARGS__);\
+		}\
+	}while(0);
+
 char *filename;
 char *destination;
 int client_connected;
+int VERBOSE;
 
 
 enum RUNNING_MODE {
@@ -38,6 +46,7 @@ struct option long_options[] = {
 	{"repeater",	no_argument,		(int *)&mode,	MODE_REPEATER},
 	{"file",	required_argument,	0,		'f'},
 	{"destination",	required_argument,	0,		'd'},
+	{"verbose",	no_argument,		0,		'v'},
 	{0,		0,			0,		0}
 };
 
@@ -51,7 +60,7 @@ void parse_args(int argc, char **argv)
 	int c, option_index = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "f:d:a",
+		c = getopt_long(argc, argv, "f:d:av",
 			long_options, &option_index);
 
 		/* printf("c = %d %c\n", c, c); */
@@ -71,6 +80,9 @@ void parse_args(int argc, char **argv)
 			destination = strdup(optarg ? optarg : "");
 			/* printf("destination: \"%s\"\n", */
 			/* 	destination ? destination : "(NULL)"); */
+			break;
+		case 'v': /* -v --verbose */
+			VERBOSE = 1;
 			break;
 		case 'a': /* -a --assoclist */
 			mode = MODE_ROUTER_ASSOCLIST;
