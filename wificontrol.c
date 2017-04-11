@@ -295,7 +295,7 @@ int prepare_socket(char *ip)
 	sock = socket(AF_INET, SOCK_STREAM, 0 /* IP */);
 	if (sock == -1) {
 		perror("socket");
-		return NULL;
+		return 0;
 	}
 
 	tv.tv_sec = 2;
@@ -325,7 +325,7 @@ int prepare_socket(char *ip)
 	return sock;
 error:
 	close(sock);
-	return NULL;
+	return 0;
 }
 
 /* send_data */
