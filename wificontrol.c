@@ -16,9 +16,9 @@
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
 
-#define DBG(fmt, ...)\
+#define DBG(verbose, fmt, ...)\
 	do {\
-		if(VERBOSE){\
+		if(verbose <= VERBOSE){\
 			printf("line %d in %s: " fmt "\n", __LINE__, __func__, ##__VA_ARGS__);\
 		}\
 	}while(0);
@@ -46,7 +46,7 @@ struct option long_options[] = {
 	{"repeater",	no_argument,		(int *)&mode,	MODE_REPEATER},
 	{"file",	required_argument,	0,		'f'},
 	{"destination",	required_argument,	0,		'd'},
-	{"verbose",	no_argument,		0,		'v'},
+	{"verbosity",	required_argument,	0,		'v'},
 	{0,		0,			0,		0}
 };
 
@@ -60,10 +60,10 @@ void parse_args(int argc, char **argv)
 	int c, option_index = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "f:d:av",
+		c = getopt_long(argc, argv, "f:d:av:",
 			long_options, &option_index);
 
-		/* printf("c = %d %c\n", c, c); */
+		DBG(3, "c = %d %c", c, c);
 
 		if (c == -1)
 			break;
@@ -73,16 +73,16 @@ void parse_args(int argc, char **argv)
 			break;
 		case 'f': /* -f --file file.txt*/
 			filename = strdup(optarg ? optarg : "");
-			/* printf("file: \"%s\"\n", */
-			/* 	filename ? filename : "(NULL)"); */
+			DBG(2, "file: \"%s\"",
+				filename ? filename : "(NULL)");
 			break;
 		case 'd': /* -d --destination 192.168.1.123*/
 			destination = strdup(optarg ? optarg : "");
-			/* printf("destination: \"%s\"\n", */
-			/* 	destination ? destination : "(NULL)"); */
+			DBG(2, "destination: \"%s\"",
+				destination ? destination : "(NULL)");
 			break;
 		case 'v': /* -v --verbose */
-			VERBOSE = 1;
+			VERBOSE = atoi(optarg);
 			break;
 		case 'a': /* -a --assoclist */
 			mode = MODE_ROUTER_ASSOCLIST;
@@ -205,7 +205,7 @@ int collect_intenos_on_network(char **repeaters, int i, const char *network)
 
 	/* get netmask */
 	chrCmd(netmask, 17, "uci -q get network.%s.netmask", network);
-	/* printf("netmask \"%s\"\n", netmask); */
+	DBG(3, "netmask \"%s\"", netmask);
 
 	/* parse the arp table in search of inteno repeaters on the lan */
 	arp = fopen("/proc/net/arp", "r");
@@ -216,19 +216,19 @@ int collect_intenos_on_network(char **repeaters, int i, const char *network)
 		if (i >= MAX_REPEATERS)
 			break;
 		trim(line);
-		/*printf("line: \"%s\"\n", line);*/
+		DBG(3, "line: \"%s\"", line);
 		/* IP address	HW type	Flags	HW address	Mask	Device
 		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
 		*/
 		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
-		/* printf("line: rv = %d ip \"%s\" mac \"%s\"\n", rv, ip, mac); */
+		DBG(3, "line: rv = %d ip \"%s\" mac \"%s\"", rv, ip, mac);
 		if (rv != 2)
 			continue;
 		if (!is_inteno_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, network_ip, netmask))
 			continue;
-		/* printf("ip \"%s\" is inteno product and in lan network\n", ip); */
+		DBG(3, "ip \"%s\" is inteno product and in lan network", ip);
 
 		/* add repeater's ip in the array */
 		repeaters[i++] = strdup(ip);
@@ -407,19 +407,19 @@ void retrieve_assoclist(char *ip)
 
 	memset(buffer, 0, BUFFER_SIZE);
 	snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");
-	/* printf("buffer: \"%s\"\n", buffer); */
+	DBG(3, "buffer: \"%s\"", buffer);
 	rv = send(sock, buffer, strlen(buffer), 0);
 	if (rv == -1) {
 		perror("send");
 		goto out;
 	}
 
-	/* printf("sent buffer: \"%s\" rv = %d\n", buffer, rv); */
+	DBG(3, "sent buffer: \"%s\" rv = %d", buffer, rv);
 	/* receive data */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
 		rv = recv(sock, buffer, BUFFER_SIZE, 0);
-		/* printf("recv buffer \"%s\" %d\n", buffer, rv); */
+		DBG(3, "recv buffer \"%s\" %d", buffer, rv);
 		if (rv < 0) {
 			perror("recv");
 			break;
@@ -427,7 +427,7 @@ void retrieve_assoclist(char *ip)
 		if (rv == 0)
 			break;
 
-		/* printf ("recv buffer: \"%s\"\n", buffer); */
+		DBG(3, "recv buffer: \"%s\"", buffer);
 		nbytes = fwrite(buffer, sizeof(char), rv, stdout);
 		if (nbytes != rv) {
 			perror("fwrite");
@@ -446,11 +446,11 @@ void router_mode(void)
 	int i;
 	char **repeaters = NULL;
 
-	/* printf("Router mode\n"); */
+	DBG(3, "Router mode");
 	repeaters = collect_repeaters();
 
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
-		/* printf("repeater[%d]: \"%s\"\n", i, repeaters[i]); */
+		DBG(3, "repeater[%d]: \"%s\"", i, repeaters[i]);
 
 	/* send data to each (possible) repeater found on lan */
 	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
@@ -472,7 +472,7 @@ void repeater_mode(void)
 	FILE *file = NULL;
 	pthread_t ping_thread;
 
-	/* printf("Repeater mode\n"); */
+	DBG(2, "Repeater mode");
 
 	/* create a thread that trigger wireless reassociation if needed */
 	rv = pthread_create(&ping_thread, NULL, &ping_uplink, NULL);
@@ -536,16 +536,16 @@ void repeater_mode(void)
 			continue;
 		}
 		client_connected = 1;
-		/* printf("a connection from %s\n", inet_ntoa(remote_addr.sin_addr)); */
+		DBG(2, "a connection from %s", inet_ntoa(remote_addr.sin_addr));
 
 		/* TODO check that remote_addr is the gateway and is inteno */
 
 		/* receive data */
 		while (1) {
 			memset(buffer, 0, BUFFER_SIZE);
-			/* printf("before recv\n"); */
+			DBG(3, "before recv");
 			rv = recv(connection, buffer, BUFFER_SIZE, 0);
-			/* printf("after recv rv = %d\n", rv); */
+			DBG(3, "after recv rv = %d", rv);
 			if (rv < 0) {
 				perror("recv");
 				break;
@@ -554,12 +554,12 @@ void repeater_mode(void)
 				break;
 
 			if (strstr(buffer, "give_me_assoclist")) {
-				/* printf("give_me_assoclist\n"); */
+				DBG(3, "give_me_assoclist");
 				memset(buffer, 0, BUFFER_SIZE);
 				chrCmd(buffer, BUFFER_SIZE - 1,
 				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
-				/* printf("buffer: \"%s\"\n", buffer); */
+				DBG(3, "buffer: \"%s\"", buffer);
 				rv = send(connection, buffer, strlen(buffer), 0);
 				if (rv == -1) {
 					perror("send");
@@ -567,7 +567,7 @@ void repeater_mode(void)
 				}
 				break;
 			}
-			/* printf("NOT give_me_assoclist\n"); */
+			DBG(3, "NOT give_me_assoclist");
 
 			/* open file for writing */
 			if (!file) {
@@ -598,7 +598,7 @@ void repeater_mode(void)
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			if (strncmp(md5_before, md5_after, 64) != 0) {
 				/* apply the new wireless settings */
-				/* printf("Applying new wireless settings\n"); */
+				DBG(2, "Applying new wireless settings");
 				runCmd(
 				"ubus call repeater set_creds '{\"file\":\"%s\"}'",
 				filename ? filename : WIFICONTROL_DEFAULT_FILE);
@@ -615,7 +615,7 @@ int main(int argc, char **argv)
 
 	parse_args(argc, argv);
 
-	/* printf("mode = %d\n", mode); */
+	DBG(2, "mode = %d", mode);
 
 	if (mode == MODE_NONE)
 		return 1;
