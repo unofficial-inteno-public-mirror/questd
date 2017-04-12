@@ -15,6 +15,8 @@
 #define BUFFER_SIZE (1024)
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
+#define TYPE_ASSOC	'a'
+#define TYPE_CREDS	'c'
 
 #define DBG(verbose, fmt, ...)\
 	do {\
@@ -357,6 +359,7 @@ void send_data(char *ip)
 	int sock, rv;
 	FILE *file;
 	char buffer[BUFFER_SIZE];
+	char type = TYPE_CREDS;
 
 	sock = prepare_socket(ip);
 	if (!sock) {
@@ -368,6 +371,12 @@ void send_data(char *ip)
 	file = fopen_wrapper(filename, "r");
 	if (!file) {
 		perror("fopen_wrapper");
+		goto out;
+	}
+
+	rv = send(sock, &type, sizeof(type), 0);
+	if (rv == -1){
+		perror("send");
 		goto out;
 	}
 
@@ -398,6 +407,7 @@ void retrieve_assoclist(char *ip)
 {
 	int sock, rv, nbytes;
 	char buffer[BUFFER_SIZE];
+	char type = TYPE_ASSOC;
 
 	sock = prepare_socket(ip);
 	if (!sock) {
@@ -405,10 +415,11 @@ void retrieve_assoclist(char *ip)
 		return;
 	}
 
-	memset(buffer, 0, BUFFER_SIZE);
-	snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");
-	DBG(3, "buffer: \"%s\"", buffer);
-	rv = send(sock, buffer, strlen(buffer), 0);
+	/*memset(buffer, 0, BUFFER_SIZE);*/
+	/*snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");*/
+	/*DBG(3, "buffer: \"%s\"", buffer);*/
+	/*rv = send(sock, buffer, strlen(buffer), 0);*/
+	rv = send(sock, &type, sizeof(type), 0);
 	if (rv == -1) {
 		perror("send");
 		goto out;
@@ -471,6 +482,7 @@ void repeater_mode(void)
 	socklen_t remote_addr_len;
 	FILE *file = NULL;
 	pthread_t ping_thread;
+	char type;
 
 	DBG(2, "Repeater mode");
 
@@ -539,21 +551,14 @@ void repeater_mode(void)
 		DBG(2, "a connection from %s", inet_ntoa(remote_addr.sin_addr));
 
 		/* TODO check that remote_addr is the gateway and is inteno */
-
-		/* receive data */
-		while (1) {
-			memset(buffer, 0, BUFFER_SIZE);
-			DBG(3, "before recv");
-			rv = recv(connection, buffer, BUFFER_SIZE, 0);
-			DBG(3, "after recv rv = %d", rv);
-			if (rv < 0) {
-				perror("recv");
-				break;
-			}
-			if (rv == 0)
-				break;
-
-			if (strstr(buffer, "give_me_assoclist")) {
+		type = '0';
+		rv = recv(connection, &type, sizeof(type), 0);
+		if (rv == -1){
+			perror("recv");
+			continue;
+		}
+		switch(type) {
+			case TYPE_ASSOC:
 				DBG(3, "give_me_assoclist");
 				memset(buffer, 0, BUFFER_SIZE);
 				chrCmd(buffer, BUFFER_SIZE - 1,
@@ -566,11 +571,7 @@ void repeater_mode(void)
 					break;
 				}
 				break;
-			}
-			DBG(3, "NOT give_me_assoclist");
-
-			/* open file for writing */
-			if (!file) {
+			case TYPE_CREDS:
 				memset(md5_before, 0, 64);
 				chrCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
 					filename ? filename : WIFICONTROL_DEFAULT_FILE);
@@ -580,32 +581,47 @@ void repeater_mode(void)
 					close(connection);
 					break;
 				}
-			}
+				while (1) {
+					memset(buffer, 0, BUFFER_SIZE);
+					DBG(3, "before recv");
+					rv = recv(connection, buffer, BUFFER_SIZE, 0);
+					DBG(3, "after recv rv = %d", rv);
+					if (rv < 0) {
+						perror("recv");
+						break;
+					}
+					if (rv == 0)
+						break;
 
-			nbytes = fwrite(buffer, sizeof(char), rv, file);
-			if (nbytes != rv) {
-				perror("fwrite");
+					if (strstr(buffer, "give_me_assoclist")) {
+					}
+					DBG(3, "NOT give_me_assoclist");
+
+					/* open file for writing */
+					nbytes = fwrite(buffer, sizeof(char), rv, file);
+					if (nbytes != rv) {
+						perror("fwrite");
+						break;
+					}
+				}
+				fclose(file);
+				file = NULL;
+
+				memset(md5_after, 0, 64);
+				chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+					filename ? filename : WIFICONTROL_DEFAULT_FILE);
+				if (strncmp(md5_before, md5_after, 64) != 0) {
+					/* apply the new wireless settings */
+					DBG(2, "Applying new wireless settings");
+					runCmd(
+					"ubus call repeater set_creds '{\"file\":\"%s\"}'",
+					filename ? filename : WIFICONTROL_DEFAULT_FILE);
+				}
 				break;
-			}
-		}
-
-		if (file) {
-			fclose(file);
-			file = NULL;
-
-			memset(md5_after, 0, 64);
-			chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
-				filename ? filename : WIFICONTROL_DEFAULT_FILE);
-			if (strncmp(md5_before, md5_after, 64) != 0) {
-				/* apply the new wireless settings */
-				DBG(2, "Applying new wireless settings");
-				runCmd(
-				"ubus call repeater set_creds '{\"file\":\"%s\"}'",
-				filename ? filename : WIFICONTROL_DEFAULT_FILE);
-			}
+			default:
+				break;
 		}
 		close(connection);
-
 	}
 
 }
