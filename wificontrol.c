@@ -171,14 +171,13 @@ void *ping_uplink(void *arg)
 			memset(wetif, 0, 64);
 			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
 			if (autoc) {
-				runCmd("iwpriv %s set ApCliAutoConnect=1",
-					wetif);
+				//runCmd("iwpriv %s set ApCliAutoConnect=1",
+				//	wetif);
 				autoc = 0;
 			} else {
-				runCmd("iwpriv %s set ApCliEnable=0", wetif);
-				runCmd("iwpriv %s set ApCliEnable=1", wetif);
+				//runCmd("iwpriv %s set ApCliEnable=0", wetif);
+				//runCmd("iwpriv %s set ApCliEnable=1", wetif);
 				autoc = 1;
-				sleeps(60);
 			}
 #endif
 			sleep = 10;
