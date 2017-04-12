@@ -248,7 +248,7 @@ char **collect_repeaters(void)
 	struct uci_package *uci_pkg;
 	struct uci_element *e;
 	struct uci_section *s;
-	char *is_lan = NULL;
+	const char *is_lan = NULL;
 	char *name = NULL;
 
 	repeaters = (char **)malloc(MAX_REPEATERS * sizeof(char *));
