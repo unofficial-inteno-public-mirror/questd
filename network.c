@@ -348,6 +348,8 @@ get_clients:
 			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 				if(l >= MAX_CLIENT) break;
 				if (clients[k].connected && strstr(macaddr, clients[k].macaddr)) {
+					if (clients[k].repeated)
+						continue;
 					port[i].client[l] = clients[k];
 					l++;
 				}
