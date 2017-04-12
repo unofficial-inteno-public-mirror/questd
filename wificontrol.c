@@ -415,10 +415,6 @@ void retrieve_assoclist(char *ip)
 		return;
 	}
 
-	/*memset(buffer, 0, BUFFER_SIZE);*/
-	/*snprintf(buffer, BUFFER_SIZE, "give_me_assoclist");*/
-	/*DBG(3, "buffer: \"%s\"", buffer);*/
-	/*rv = send(sock, buffer, strlen(buffer), 0);*/
 	rv = send(sock, &type, sizeof(type), 0);
 	if (rv == -1) {
 		perror("send");
