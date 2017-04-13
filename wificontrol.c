@@ -468,8 +468,8 @@ void repeater_mode(void)
 
 	DBG(2, "Repeater mode");
 
-	DBG(2, "Open UDP port %d on WAN", WIFICONTROL_LISTENING_PORT);
-	runCmd("iptables -t filter -A zone_wan_forward -p udp -m udp --dport %d -m comment --comment WiFi-Control -j ACCEPT 2>/dev/null", WIFICONTROL_LISTENING_PORT);
+	DBG(2, "Open TCP port %d on WAN", WIFICONTROL_LISTENING_PORT);
+	runCmd("iptables -t filter -A zone_wan_forward -p tcp -m tcp --dport %d -m comment --comment WiFi-Control -j ACCEPT 2>/dev/null", WIFICONTROL_LISTENING_PORT);
 
 	/* create a thread that trigger wireless reassociation if needed */
 	rv = pthread_create(&ping_thread, NULL, &ping_uplink, NULL);
