@@ -69,14 +69,14 @@ wireless_assoclist()
 	for (i = 0; i < MAX_VIF && strlen(wireless[i].device) > 0; i++) {
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
-			for (j = 0; j < MAX_CLIENT && j < macs->count; j++)
+			for (j = 0; j < MAX_CLIENT && j < macs->count && sno < MAX_CLIENT; j++)
 			{
 				stas[sno].exists = true;
 				sprintf(stas[sno].macaddr, "%02X:%02X:%02X:%02X:%02X:%02X",
 					macs->ea[j].octet[0], macs->ea[j].octet[1], macs->ea[j].octet[2],
 					macs->ea[j].octet[3], macs->ea[j].octet[4], macs->ea[j].octet[5]
 				);
-				strcpy(stas[sno].wdev, wireless[i].vif);
+				strncpy(stas[sno].wdev, wireless[i].vif, 8);
 				sno++;
 			}
 
