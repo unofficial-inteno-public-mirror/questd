@@ -346,10 +346,9 @@ get_clients:
 		l = 0;
 		if(network->is_lan) {
 			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
+				if (clients[k].repeated) continue;
 				if(l >= MAX_CLIENT) break;
 				if (clients[k].connected && strstr(macaddr, clients[k].macaddr)) {
-					if (clients[k].repeated)
-						continue;
 					port[i].client[l] = clients[k];
 					l++;
 				}
@@ -749,6 +748,7 @@ ipv4_clients()
 			remove_newline(line);
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
+			clients[cno].repeated = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
 			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
@@ -812,6 +812,7 @@ ipv4_clients()
 			remove_newline(line);
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
+			clients[cno].repeated = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
 			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if (sscanf(line, "%s %s %s %s %s", clients[cno].leasetime, clients[cno].macaddr, clients[cno].ipaddr, clients[cno].hostname, mask) == 5) {
@@ -876,6 +877,7 @@ inc:
 			there = false;
 			clients[cno].exists = false;
 			clients[cno].wireless = false;
+			clients[cno].repeated = false;
 			memset(clients[cno].hostname, '\0', sizeof(clients[cno].hostname));
 			memset(clients[cno].ethport, '\0', sizeof(clients[cno].ethport));
 			if ((lno > 0) && sscanf(line, "%s 0x%d 0x%d %s %s %s", clients[cno].ipaddr, &hw, &flag, clients[cno].macaddr, mask, clients[cno].device)) {
