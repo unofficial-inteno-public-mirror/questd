@@ -135,10 +135,8 @@ void *ping_uplink(void *arg)
 	char device[64] = {0};
 	unsigned long sleep = 5;
 #if IOPSYS_BROADCOM
-	char assoclist[512];
-#elif IOPSYS_MEDIATEK
 	char wetif[64];
-	int autoc = 1;
+	char assoclist[512];
 #endif
 
 	pthread_detach(pthread_self());
@@ -158,27 +156,16 @@ void *ping_uplink(void *arg)
 		rv = arp_ping(ipaddr, device, 2000, 5);
 		if (rv == 0 && client_connected == 0) {
 #if IOPSYS_BROADCOM
+			memset(wetif, 0, 64);
+			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
 			memset(assoclist, 0, 512);
-			chrCmd(assoclist, 512,
-			"wlctl -i wl1 assoclist | head -1 | awk '{print$2}'");
-			runCmd("wlctl -i wl1 reassoc %s", assoclist);
-			/* runCmd("killall -9 udhcpc &"); */
+			chrCmd(assoclist, 512, "wlctl -i %s assoclist | head -1 | awk '{print$2}'", wetif);
+			runCmd("wlctl -i %s reassoc %s", wetif, assoclist);
 #elif IOPSYS_MEDIATEK
 			/* Disconnect clients on 2.4GHz radio */
 			runCmd("iwpriv ra0 set DisConnectAllSta=2");
 			/* Disconnect clients on 5GHz radio */
 			runCmd("iwpriv rai0 set DisConnectAllSta=2");
-			memset(wetif, 0, 64);
-			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
-			if (autoc) {
-				//runCmd("iwpriv %s set ApCliAutoConnect=1",
-				//	wetif);
-				autoc = 0;
-			} else {
-				//runCmd("iwpriv %s set ApCliEnable=0", wetif);
-				//runCmd("iwpriv %s set ApCliEnable=1", wetif);
-				autoc = 1;
-			}
 #endif
 			sleep = 10;
 		} else {
