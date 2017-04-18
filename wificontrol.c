@@ -54,14 +54,14 @@ enum MSG_TYPE {
 
 
 struct option long_options[] = {
-	/* {char *name;	int has_arg;		int *flag;	int val; }*/
-	{"router",	no_argument,		(int *)&mode,	MODE_ROUTER},
-	{"assoclist",	no_argument,		(int *)&mode,	MODE_ROUTER_ASSOCLIST},
-	{"repeater",	no_argument,		(int *)&mode,	MODE_REPEATER},
-	{"file",	required_argument,	0,		'f'},
-	{"destination",	required_argument,	0,		'd'},
-	{"verbose",	required_argument,	0,		'v'},
-	{0,		0,			0,		0}
+/* {char *name; int has_arg; int *flag; int val; }*/
+	{"router", no_argument, (int *)&mode, MODE_ROUTER},
+	{"assoclist", no_argument, (int *)&mode, MODE_ROUTER_ASSOCLIST},
+	{"repeater", no_argument, (int *)&mode, MODE_REPEATER},
+	{"file", required_argument, 0, 'f'},
+	{"destination", required_argument, 0, 'd'},
+	{"verbose", required_argument, 0, 'v'},
+	{0, 0, 0, 0}
 };
 
 extern bool arping(const char *targetIP, char *device, int toms);
@@ -221,14 +221,15 @@ int collect_intenos_on_network(char **repeaters, int i, const char *network)
 		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
 		*/
 		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
-		DEBUG(LOG_DEBUG, "line: rv = %d ip \"%s\" mac \"%s\"", rv, ip, mac);
+		DEBUG(LOG_DEBUG, "rv = %d ip \"%s\" mac \"%s\"", rv, ip, mac);
 		if (rv != 2)
 			continue;
 		if (!is_inteno_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, network_ip, netmask))
 			continue;
-		DEBUG(LOG_DEBUG, "ip \"%s\" is inteno product and in lan network", ip);
+		DEBUG(LOG_DEBUG,
+			"ip \"%s\" is inteno product and in lan network", ip);
 
 		/* add repeater's ip in the array */
 		repeaters[i++] = strdup(ip);
@@ -275,12 +276,11 @@ char **collect_repeaters(void)
 			goto next;
 
 		is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
-		if(!is_lan)
+		if (!is_lan)
 			goto next;
 
-		if (strncmp(is_lan, "1", 1) == 0){
+		if (strncmp(is_lan, "1", 1) == 0)
 			i = collect_intenos_on_network(repeaters, i, name);
-		}
 next:
 		if (name)
 			free(name);
@@ -324,12 +324,12 @@ int prepare_socket(char *ip)
 	tv.tv_usec = 0;
 	rv = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	if (rv == -1) {
-		perror ("setsockopt SO_RCVTIMEO");
+		perror("setsockopt SO_RCVTIMEO");
 		goto error;
 	}
 	rv = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 	if (rv == -1) {
-		perror ("setsockopt SO_SNDTIMEO");
+		perror("setsockopt SO_SNDTIMEO");
 		goto error;
 	}
 
@@ -373,7 +373,7 @@ void send_data(char *ip)
 	}
 
 	rv = send(sock, &type, sizeof(type), 0);
-	if (rv == -1){
+	if (rv == -1) {
 		perror("send");
 		goto out;
 	}
@@ -550,73 +550,73 @@ void repeater_mode(void)
 		/* TODO check that remote_addr is the gateway and is inteno */
 		type = MSG_TYPE_NONE;
 		rv = recv(connection, &type, sizeof(type), 0);
-		if (rv == -1){
+		if (rv == -1) {
 			perror("recv");
 			continue;
 		}
-		switch(type) {
-			case MSG_TYPE_ASSOC:
-				DEBUG(LOG_DEBUG, "give_me_assoclist");
+		switch (type) {
+		case MSG_TYPE_ASSOC:
+			DEBUG(LOG_DEBUG, "give_me_assoclist");
+			memset(buffer, 0, BUFFER_SIZE);
+			chrCmd(buffer, BUFFER_SIZE - 1,
+					"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
+
+			DEBUG(LOG_DEBUG, "buffer: \"%s\"", buffer);
+			rv = send(connection, buffer, strlen(buffer), 0);
+			if (rv == -1) {
+				perror("send");
+				break;
+			}
+			break;
+		case MSG_TYPE_CREDS:
+			memset(md5_before, 0, 64);
+			chrCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+					filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			file = fopen_wrapper(filename, "w");
+			if (!file) {
+				perror("fopen_wrapper");
+				close(connection);
+				break;
+			}
+			while (1) {
 				memset(buffer, 0, BUFFER_SIZE);
-				chrCmd(buffer, BUFFER_SIZE - 1,
-				"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
-
-				DEBUG(LOG_DEBUG, "buffer: \"%s\"", buffer);
-				rv = send(connection, buffer, strlen(buffer), 0);
-				if (rv == -1) {
-					perror("send");
+				DEBUG(LOG_DEBUG, "before recv");
+				rv = recv(connection, buffer, BUFFER_SIZE, 0);
+				DEBUG(LOG_DEBUG, "after recv rv = %d", rv);
+				if (rv < 0) {
+					perror("recv");
 					break;
 				}
-				break;
-			case MSG_TYPE_CREDS:
-				memset(md5_before, 0, 64);
-				chrCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
-					filename ? filename : WIFICONTROL_DEFAULT_FILE);
-				file = fopen_wrapper(filename, "w");
-				if (!file) {
-					perror("fopen_wrapper");
-					close(connection);
+				if (rv == 0)
+					break;
+
+				if (strstr(buffer, "give_me_assoclist")) {
+				}
+				DEBUG(LOG_DEBUG, "NOT give_me_assoclist");
+
+				/* open file for writing */
+				nbytes = fwrite(buffer, sizeof(char), rv, file);
+				if (nbytes != rv) {
+					perror("fwrite");
 					break;
 				}
-				while (1) {
-					memset(buffer, 0, BUFFER_SIZE);
-					DEBUG(LOG_DEBUG, "before recv");
-					rv = recv(connection, buffer, BUFFER_SIZE, 0);
-					DEBUG(LOG_DEBUG, "after recv rv = %d", rv);
-					if (rv < 0) {
-						perror("recv");
-						break;
-					}
-					if (rv == 0)
-						break;
+			}
+			fclose(file);
+			file = NULL;
 
-					if (strstr(buffer, "give_me_assoclist")) {
-					}
-					DEBUG(LOG_DEBUG, "NOT give_me_assoclist");
-
-					/* open file for writing */
-					nbytes = fwrite(buffer, sizeof(char), rv, file);
-					if (nbytes != rv) {
-						perror("fwrite");
-						break;
-					}
-				}
-				fclose(file);
-				file = NULL;
-
-				memset(md5_after, 0, 64);
-				chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
+			memset(md5_after, 0, 64);
+			chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
 					filename ? filename : WIFICONTROL_DEFAULT_FILE);
-				if (strncmp(md5_before, md5_after, 64) != 0) {
-					/* apply the new wireless settings */
-					DEBUG(LOG_INFO, "Applying new wireless settings");
-					runCmd(
-					"ubus call repeater set_creds '{\"file\":\"%s\"}'",
-					filename ? filename : WIFICONTROL_DEFAULT_FILE);
-				}
-				break;
-			default:
-				break;
+			if (strncmp(md5_before, md5_after, 64) != 0) {
+				/* apply the new wireless settings */
+				DEBUG(LOG_INFO, "Applying new wireless settings");
+				runCmd(
+						"ubus call repeater set_creds '{\"file\":\"%s\"}'",
+						filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			}
+			break;
+		default:
+			break;
 		}
 		close(connection);
 	}
