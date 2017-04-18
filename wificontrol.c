@@ -590,10 +590,6 @@ void repeater_mode(void)
 				if (rv == 0)
 					break;
 
-				if (strstr(buffer, "give_me_assoclist")) {
-				}
-				DEBUG(LOG_DEBUG, "NOT give_me_assoclist");
-
 				/* open file for writing */
 				nbytes = fwrite(buffer, sizeof(char), rv, file);
 				if (nbytes != rv) {
