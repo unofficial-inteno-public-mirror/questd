@@ -15,6 +15,7 @@
 #define BUFFER_SIZE (1024)
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
+#define INTERNET_CONNECTION_STATUS "/tmp/internet_connection_status"
 
 #define DEBUG(level, fmt, ...)\
 	do {\
@@ -123,13 +124,11 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 		}
 	}
 
-	if (ret) {
-		system("ubus -t 1 call led.internet set '{\"state\":\"notice\"}'");
-		system("echo -e { \\\"online\\\" : true } > /tmp/internet_connection_status");
-	} else {
-		system("ubus -t 1 call led.internet set '{\"state\":\"error\"}'");
-		system("echo -e { \\\"online\\\" : false } > /tmp/internet_connection_status");
-	}
+	runCmd("ubus -t 1 call led.internet set '{\"state\":\"%s\"}'",
+		ret ? "notice" : "error");
+	runCmd("echo -e { \\\"online\\\" : %s } > %s",
+		ret ? "true" : "false",
+		INTERNET_CONNECTION_STATUS);
 
 	return ret;
 }
@@ -545,7 +544,8 @@ void repeater_mode(void)
 			continue;
 		}
 		client_connected = 1;
-		DEBUG(LOG_INFO, "a connection from %s", inet_ntoa(remote_addr.sin_addr));
+		DEBUG(LOG_INFO, "new connection from %s",
+			inet_ntoa(remote_addr.sin_addr));
 
 		/* TODO check that remote_addr is the gateway and is inteno */
 		type = MSG_TYPE_NONE;
@@ -554,6 +554,7 @@ void repeater_mode(void)
 			perror("recv");
 			continue;
 		}
+
 		switch (type) {
 		case MSG_TYPE_ASSOC:
 			DEBUG(LOG_DEBUG, "give_me_assoclist");
@@ -568,10 +569,12 @@ void repeater_mode(void)
 				break;
 			}
 			break;
+
 		case MSG_TYPE_CREDS:
 			memset(md5_before, 0, 64);
-			chrCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
-					filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			chrCmd(md5_before, 64,
+				"md5sum %s 2>/dev/null | awk '{print $1}'",
+				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			file = fopen_wrapper(filename, "w");
 			if (!file) {
 				perror("fopen_wrapper");
@@ -600,16 +603,18 @@ void repeater_mode(void)
 			file = NULL;
 
 			memset(md5_after, 0, 64);
-			chrCmd(md5_after, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
-					filename ? filename : WIFICONTROL_DEFAULT_FILE);
+			chrCmd(md5_after, 64,
+				"md5sum %s 2>/dev/null | awk '{print $1}'",
+				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			if (strncmp(md5_before, md5_after, 64) != 0) {
 				/* apply the new wireless settings */
-				DEBUG(LOG_INFO, "Applying new wireless settings");
-				runCmd(
-						"ubus call repeater set_creds '{\"file\":\"%s\"}'",
-						filename ? filename : WIFICONTROL_DEFAULT_FILE);
+				DEBUG(LOG_INFO,
+					"Applying new wireless settings");
+				runCmd("ubus call repeater set_creds '{\"file\":\"%s\"}'",
+				filename ? filename : WIFICONTROL_DEFAULT_FILE);
 			}
 			break;
+
 		default:
 			break;
 		}
