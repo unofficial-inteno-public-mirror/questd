@@ -52,7 +52,7 @@ struct option long_options[] = {
 	{"repeater",	no_argument,		(int *)&mode,	MODE_REPEATER},
 	{"file",	required_argument,	0,		'f'},
 	{"destination",	required_argument,	0,		'd'},
-	{"verbosity",	required_argument,	0,		'v'},
+	{"verbose",	required_argument,	0,		'v'},
 	{0,		0,			0,		0}
 };
 
