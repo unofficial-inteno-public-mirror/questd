@@ -188,12 +188,12 @@ void *ping_uplink(void *arg)
 }
 
 
-/* collect_intenos_on_network */
-/* populates the repeaters array with the host on the lan */
+/* collect_intenos */
+/* populate the repeaters array with the hosts on the network */
 /* that have inteno mac and are possibly repeaters */
-int collect_intenos_on_network(char **repeaters, int i, const char *network)
+void collect_intenos(char **repeaters, const char *network)
 {
-	int rv;
+	int i, rv;
 	char line[256];
 	char network_ip[17], netmask[17];
 	char ip[17], mac[18];
@@ -209,13 +209,17 @@ int collect_intenos_on_network(char **repeaters, int i, const char *network)
 	/* parse the arp table in search of inteno repeaters on the lan */
 	arp = fopen("/proc/net/arp", "r");
 	if (!arp)
-		return i;
+		return;
+
+
+	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++);
+
 	fgets(line, sizeof(line), arp); /* dump the first line */
 	while (fgets(line, sizeof(line), arp)) {
 		if (i >= MAX_REPEATERS)
 			break;
 		trim(line);
-		DEBUG(LOG_DEBUG, "line: \"%s\"", line);
+		DEBUG(LOG_DEBUG, "arp line: \"%s\"", line);
 		/* IP address	HW type	Flags	HW address	Mask	Device
 		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
 		*/
@@ -228,13 +232,14 @@ int collect_intenos_on_network(char **repeaters, int i, const char *network)
 		if (!is_ip_in_network(ip, network_ip, netmask))
 			continue;
 		DEBUG(LOG_DEBUG,
-			"ip \"%s\" is inteno product and in lan network", ip);
+			"ip \"%s\" is inteno product and in %s network",
+			ip, network);
 
 		/* add repeater's ip in the array */
 		repeaters[i++] = strdup(ip);
 	}
+
 	fclose(arp);
-	return i;
 }
 
 /* this function allocates memory. free it! when no longer needed */
@@ -261,29 +266,26 @@ char **collect_repeaters(void)
 	if (!uci_pkg)
 		goto out;
 
-	i = 0;
 	uci_foreach_element(&uci_pkg->sections, e) {
+		if (name)
+			free(name);
 		name = strdup(e->name);
 		if (!name)
-			goto next;
+			continue;
 
 		s = uci_to_section(e);
 		if (strcmp(s->type, "interface") != 0)
-			goto next;
+			continue;
 
 		if (strcmp(name, "loopback") == 0)
-			goto next;
+			continue;
 
 		is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
 		if (!is_lan)
-			goto next;
+			continue;
 
 		if (strncmp(is_lan, "1", 1) == 0)
-			i = collect_intenos_on_network(repeaters, i, name);
-next:
-		if (name)
-			free(name);
-		name = NULL;
+			collect_intenos(repeaters, name);
 	}
 	free_uci_context(&uci_ctx);
 out:
@@ -453,14 +455,14 @@ void router_mode(void)
 	DEBUG(LOG_DEBUG, "Router mode");
 	repeaters = collect_repeaters();
 
-	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
-		DEBUG(LOG_DEBUG, "repeater[%d]: \"%s\"", i, repeaters[i]);
+	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
+		DEBUG(LOG_INFO, "repeaters[%d]: \"%s\"", i, repeaters[i]);
 
 	/* send data to each (possible) repeater found on lan */
-	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
+	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		send_data(repeaters[i]);
 
-	for (i = 0; i <= MAX_REPEATERS && repeaters[i]; i++)
+	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		free(repeaters[i]);
 }
 
