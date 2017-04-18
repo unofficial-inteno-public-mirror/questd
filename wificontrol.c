@@ -15,8 +15,6 @@
 #define BUFFER_SIZE (1024)
 #define WIFICONTROL_LISTENING_PORT (9875)
 #define WIFICONTROL_DEFAULT_FILE "/tmp/wificontrol.txt"
-#define TYPE_ASSOC	'a'
-#define TYPE_CREDS	'c'
 
 #define DBG(verbose, fmt, ...)\
 	do {\
@@ -40,6 +38,12 @@ enum RUNNING_MODE {
 };
 enum RUNNING_MODE mode = MODE_NONE;
 
+enum MSG_TYPE {
+	MSG_TYPE_NONE,
+	MSG_TYPE_ASSOC,
+	MSG_TYPE_CREDS,
+	MSG_TYPE_COUNT
+};
 
 struct option long_options[] = {
 	/* {char *name;	int has_arg;		int *flag;	int val; }*/
@@ -345,7 +349,7 @@ void send_data(char *ip)
 	int sock, rv;
 	FILE *file;
 	char buffer[BUFFER_SIZE];
-	char type = TYPE_CREDS;
+	char type = MSG_TYPE_CREDS;
 
 	sock = prepare_socket(ip);
 	if (!sock) {
@@ -393,7 +397,7 @@ void retrieve_assoclist(char *ip)
 {
 	int sock, rv, nbytes;
 	char buffer[BUFFER_SIZE];
-	char type = TYPE_ASSOC;
+	char type = MSG_TYPE_ASSOC;
 
 	sock = prepare_socket(ip);
 	if (!sock) {
@@ -536,14 +540,14 @@ void repeater_mode(void)
 		DBG(2, "a connection from %s", inet_ntoa(remote_addr.sin_addr));
 
 		/* TODO check that remote_addr is the gateway and is inteno */
-		type = '0';
+		type = MSG_TYPE_NONE;
 		rv = recv(connection, &type, sizeof(type), 0);
 		if (rv == -1){
 			perror("recv");
 			continue;
 		}
 		switch(type) {
-			case TYPE_ASSOC:
+			case MSG_TYPE_ASSOC:
 				DBG(3, "give_me_assoclist");
 				memset(buffer, 0, BUFFER_SIZE);
 				chrCmd(buffer, BUFFER_SIZE - 1,
@@ -556,7 +560,7 @@ void repeater_mode(void)
 					break;
 				}
 				break;
-			case TYPE_CREDS:
+			case MSG_TYPE_CREDS:
 				memset(md5_before, 0, 64);
 				chrCmd(md5_before, 64, "md5sum %s 2>/dev/null | awk '{print $1}'",
 					filename ? filename : WIFICONTROL_DEFAULT_FILE);
