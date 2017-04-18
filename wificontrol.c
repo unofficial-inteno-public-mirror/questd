@@ -424,13 +424,13 @@ void retrieve_assoclist(char *ip)
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
 		rv = recv(sock, buffer, BUFFER_SIZE, 0);
-		DEBUG(LOG_DEBUG, "recv buffer \"%s\" %d", buffer, rv);
 		if (rv < 0) {
 			perror("recv");
 			break;
 		}
 		if (rv == 0)
 			break;
+		DEBUG(LOG_DEBUG, "recv buffer \"%s\" %d", buffer, rv);
 
 		DEBUG(LOG_DEBUG, "recv buffer: \"%s\"", buffer);
 		nbytes = fwrite(buffer, sizeof(char), rv, stdout);
@@ -580,13 +580,12 @@ void repeater_mode(void)
 			}
 			while (1) {
 				memset(buffer, 0, BUFFER_SIZE);
-				DEBUG(LOG_DEBUG, "before recv");
 				rv = recv(connection, buffer, BUFFER_SIZE, 0);
-				DEBUG(LOG_DEBUG, "after recv rv = %d", rv);
 				if (rv < 0) {
 					perror("recv");
 					break;
 				}
+				DEBUG(LOG_DEBUG, "recv %d bytes", rv);
 				if (rv == 0)
 					break;
 
