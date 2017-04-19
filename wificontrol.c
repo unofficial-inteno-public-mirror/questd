@@ -78,11 +78,10 @@ void parse_args(int argc, char **argv)
 		c = getopt_long(argc, argv, "f:d:av:",
 			long_options, &option_index);
 
-		DEBUG(LOG_DEBUG, "c = %d %c", c, c);
-
 		if (c == -1)
 			break;
 
+		DEBUG(LOG_DEBUG, "c = %d %c", c, c);
 		switch (c) {
 		case 0: /* long_options */
 			break;
@@ -420,7 +419,7 @@ void retrieve_assoclist(char *ip)
 		goto out;
 	}
 
-	DEBUG(LOG_DEBUG, "sent buffer: \"%s\" rv = %d", buffer, rv);
+	DEBUG(LOG_DEBUG, "sent: MSG_TYPE_ASSOC bytes = %d", rv);
 	/* receive data */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
@@ -431,9 +430,8 @@ void retrieve_assoclist(char *ip)
 		}
 		if (rv == 0)
 			break;
-		DEBUG(LOG_DEBUG, "recv buffer \"%s\" %d", buffer, rv);
+		DEBUG(LOG_DEBUG, "recv: \"%s\" bytes %d", buffer, rv);
 
-		DEBUG(LOG_DEBUG, "recv buffer: \"%s\"", buffer);
 		nbytes = fwrite(buffer, sizeof(char), rv, stdout);
 		if (nbytes != rv) {
 			perror("fwrite");
@@ -559,12 +557,12 @@ void repeater_mode(void)
 
 		switch (type) {
 		case MSG_TYPE_ASSOC:
-			DEBUG(LOG_DEBUG, "give_me_assoclist");
+			DEBUG(LOG_DEBUG, "recv: MSG_TYPE_ASSOC");
 			memset(buffer, 0, BUFFER_SIZE);
 			chrCmd(buffer, BUFFER_SIZE - 1,
 					"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
-			DEBUG(LOG_DEBUG, "buffer: \"%s\"", buffer);
+			DEBUG(LOG_DEBUG, "send: \"%s\"", buffer);
 			rv = send(connection, buffer, strlen(buffer), 0);
 			if (rv == -1) {
 				perror("send");
@@ -590,9 +588,9 @@ void repeater_mode(void)
 					perror("recv");
 					break;
 				}
-				DEBUG(LOG_DEBUG, "recv %d bytes", rv);
 				if (rv == 0)
 					break;
+				DEBUG(LOG_DEBUG, "recv: %d bytes", rv);
 
 				/* open file for writing */
 				nbytes = fwrite(buffer, sizeof(char), rv, file);
