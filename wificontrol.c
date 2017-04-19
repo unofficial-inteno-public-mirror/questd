@@ -226,7 +226,7 @@ void collect_intenos(char **repeaters, const char *network)
 		DEBUG(LOG_DEBUG, "rv = %d ip \"%s\" mac \"%s\"", rv, ip, mac);
 		if (rv != 2)
 			continue;
-		if (!is_inteno_macaddr(mac))
+		if (!is_inteno_macaddr(mac) && !is_inteno_altered_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, network_ip, netmask))
 			continue;
