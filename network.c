@@ -787,7 +787,7 @@ ipv4_clients()
 				if(clients[cno].connected) {
 					memset(clients[cno].assoclist, '\0', 128);
 					memset(output, 0, 1280);
-					strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a --destination %s", clients[cno].ipaddr), 1280);
+					strncpy(assoclist, chrCmd(output, 1280, "wificontrol --assoclist --destination %s", clients[cno].ipaddr), 1280);
 
 					ano = 0;
 					token = strtok_r(assoclist, " ", &saveptr1);
@@ -930,7 +930,7 @@ inc:
 							memset(clients[cno].assoclist, '\0', 128);
 							memset(output, 0, 1280);
 							memset(assoclist, 0, 1280);
-							strncpy(assoclist, chrCmd(output, 1280, "wificontrol -a --destination %s", clients[cno].ipaddr), 1280);
+							strncpy(assoclist, chrCmd(output, 1280, "wificontrol --assoclist --destination %s", clients[cno].ipaddr), 1280);
 
 							ano = 0;
 							token = strtok_r(assoclist, " ", &saveptr2);
