@@ -81,7 +81,6 @@ void parse_args(int argc, char **argv)
 		if (c == -1)
 			break;
 
-		DEBUG(LOG_DEBUG, "c = %d %c", c, c);
 		switch (c) {
 		case 0: /* long_options */
 			break;
@@ -198,8 +197,11 @@ void collect_intenos(char **repeaters, const char *network)
 	char ip[17], mac[18];
 	FILE *arp;
 
+	DEBUG(LOG_DEBUG, "network name \"%s\"", network);
+
 	/* get network ip */
 	chrCmd(network_ip, 17, "uci -q get network.%s.ipaddr", network);
+	DEBUG(LOG_DEBUG, "network ip \"%s\"", network_ip);
 
 	/* get netmask */
 	chrCmd(netmask, 17, "uci -q get network.%s.netmask", network);
@@ -209,6 +211,7 @@ void collect_intenos(char **repeaters, const char *network)
 	arp = fopen("/proc/net/arp", "r");
 	if (!arp)
 		return;
+	DEBUG(LOG_DEBUG, "Parsing arp table /proc/net/arp");
 
 
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++);
@@ -218,14 +221,14 @@ void collect_intenos(char **repeaters, const char *network)
 		if (i >= MAX_REPEATERS)
 			break;
 		trim(line);
-		DEBUG(LOG_DEBUG, "arp line: \"%s\"", line);
+		/* DEBUG(LOG_DEBUG, "arp line: \"%s\"", line); */
 		/* IP address	HW type	Flags	HW address	Mask	Device
 		* 192.168.1.140	0x1	0x2	02:0c:07:07:74:b8  *	br-lan
 		*/
 		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
-		DEBUG(LOG_DEBUG, "rv = %d ip \"%s\" mac \"%s\"", rv, ip, mac);
 		if (rv != 2)
 			continue;
+		DEBUG(LOG_DEBUG, "arp entry: ip \"%s\" mac \"%s\"", ip, mac);
 		if (!is_inteno_macaddr(mac) && !is_inteno_altered_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, network_ip, netmask))
@@ -378,6 +381,7 @@ void send_data(char *ip)
 		goto out;
 	}
 
+	DEBUG(LOG_DEBUG, "Sending the wireless credentials to \"%s\"", ip);
 	/* read data from file and send it to the repeater */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
@@ -389,6 +393,7 @@ void send_data(char *ip)
 			perror("send");
 			break;
 		}
+		DEBUG(LOG_DEBUG, "Sent %d bytes", rv);
 	}
 	if (ferror(file))
 		perror("fgets");
@@ -406,6 +411,8 @@ void retrieve_assoclist(char *ip)
 	int sock, rv, nbytes;
 	char buffer[BUFFER_SIZE];
 	char type = MSG_TYPE_ASSOC;
+
+	DEBUG(LOG_INFO, "Retrieve assoclist mode");
 
 	sock = prepare_socket(ip);
 	if (!sock) {
@@ -451,6 +458,7 @@ void router_mode(void)
 	char **repeaters = NULL;
 
 	DEBUG(LOG_DEBUG, "Router mode");
+
 	repeaters = collect_repeaters();
 
 	if (destination) {
@@ -582,6 +590,7 @@ void repeater_mode(void)
 			break;
 
 		case MSG_TYPE_CREDS:
+			DEBUG(LOG_DEBUG, "recv: MSG_TYPE_CREDS");
 			memset(md5_before, 0, 64);
 			chrCmd(md5_before, 64,
 				"md5sum %s 2>/dev/null | awk '{print $1}'",
@@ -639,9 +648,7 @@ int main(int argc, char **argv)
 
 	parse_args(argc, argv);
 
-	DEBUG(LOG_INFO, "mode = %d", mode);
-
-	if (mode == MODE_NONE)
+	if (mode == MODE_NONE || mode >= MODE_COUNT)
 		return 1;
 
 	if (mode == MODE_ROUTER)
