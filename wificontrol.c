@@ -453,6 +453,16 @@ void router_mode(void)
 	DEBUG(LOG_DEBUG, "Router mode");
 	repeaters = collect_repeaters();
 
+	if (destination) {
+		for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++) {
+			if(strcmp(repeaters[i], destination) == 0){
+				send_data(repeaters[i]);
+				goto out;
+			}
+		}
+		goto out;
+	}
+
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		DEBUG(LOG_INFO, "repeaters[%d]: \"%s\"", i, repeaters[i]);
 
@@ -460,6 +470,7 @@ void router_mode(void)
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		send_data(repeaters[i]);
 
+out:
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		free(repeaters[i]);
 }
