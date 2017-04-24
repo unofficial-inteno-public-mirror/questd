@@ -644,6 +644,8 @@ void repeater_mode(void)
 
 int main(int argc, char **argv)
 {
+	freopen("/dev/console", "w", stdout);
+	freopen("/dev/console", "w", stderr);
 
 	parse_args(argc, argv);
 
