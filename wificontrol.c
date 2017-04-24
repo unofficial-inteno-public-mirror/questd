@@ -104,6 +104,8 @@ void parse_args(int argc, char **argv)
 			break;
 		}
 	}
+
+	loglevel = LOG_DEBUG;
 }
 
 
