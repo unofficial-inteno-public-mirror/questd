@@ -20,8 +20,8 @@
 #define DEBUG(level, fmt, ...)\
 	do {\
 		if (level <= loglevel) \
-			printf("%s:%d: %s(): " fmt "\n",\
-				__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+			printf("%s:%d[%d]: %s(): " fmt "\n",\
+				__FILE__, __LINE__, getpid(), __func__, ##__VA_ARGS__);\
 	} while (0)
 
 char *filename;
@@ -197,15 +197,14 @@ void collect_intenos(char **repeaters, const char *network)
 	char ip[17], mac[18];
 	FILE *arp;
 
-	DEBUG(LOG_DEBUG, "network name \"%s\"", network);
 
 	/* get network ip */
 	chrCmd(network_ip, 17, "uci -q get network.%s.ipaddr", network);
-	DEBUG(LOG_DEBUG, "network ip \"%s\"", network_ip);
 
 	/* get netmask */
 	chrCmd(netmask, 17, "uci -q get network.%s.netmask", network);
-	DEBUG(LOG_DEBUG, "netmask \"%s\"", netmask);
+
+	DEBUG(LOG_DEBUG, "network %s %s/%s", network, network_ip, netmask);
 
 	/* parse the arp table in search of inteno repeaters on the lan */
 	arp = fopen("/proc/net/arp", "r");
@@ -228,13 +227,13 @@ void collect_intenos(char **repeaters, const char *network)
 		rv = sscanf(line, "%16s %*s %*s %17s %*s %*s", ip, mac);
 		if (rv != 2)
 			continue;
-		DEBUG(LOG_DEBUG, "arp entry: ip \"%s\" mac \"%s\"", ip, mac);
+		DEBUG(LOG_DEBUG, "  arp entry: ip \"%s\" mac \"%s\"", ip, mac);
 		if (!is_inteno_macaddr(mac) && !is_inteno_altered_macaddr(mac))
 			continue;
 		if (!is_ip_in_network(ip, network_ip, netmask))
 			continue;
 		DEBUG(LOG_DEBUG,
-			"ip \"%s\" is inteno product and in %s network",
+			"    ip \"%s\" is inteno product and in %s network",
 			ip, network);
 
 		/* add repeater's ip in the array */
@@ -362,9 +361,9 @@ void send_data(char *ip)
 	char buffer[BUFFER_SIZE];
 	char type = MSG_TYPE_CREDS;
 
+	DEBUG(LOG_DEBUG, "Sending the wireless credentials to \"%s\"", ip);
 	sock = prepare_socket(ip);
 	if (!sock) {
-		perror("socket");
 		return;
 	}
 
@@ -381,7 +380,6 @@ void send_data(char *ip)
 		goto out;
 	}
 
-	DEBUG(LOG_DEBUG, "Sending the wireless credentials to \"%s\"", ip);
 	/* read data from file and send it to the repeater */
 	while (1) {
 		memset(buffer, 0, BUFFER_SIZE);
@@ -412,11 +410,10 @@ void retrieve_assoclist(char *ip)
 	char buffer[BUFFER_SIZE];
 	char type = MSG_TYPE_ASSOC;
 
-	DEBUG(LOG_INFO, "Retrieve assoclist mode");
+	DEBUG(LOG_INFO, "Retrieve assoclist mode from %s", ip);
 
 	sock = prepare_socket(ip);
 	if (!sock) {
-		perror("socket");
 		return;
 	}
 
