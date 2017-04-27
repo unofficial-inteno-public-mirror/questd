@@ -696,14 +696,12 @@ quest_router_autochannel(struct ubus_context *ctx, struct ubus_object *obj,
 
 	blob_buf_init(&bb, 0);
 	blobmsg_add_u32(&bb, "code", ret);
-	if(ret == 0){
+	if (ret == 0)
 		blobmsg_add_string(&bb, "status", "success");
-		ubus_send_reply(ctx, req, bb.head);
-		return 	UBUS_STATUS_OK;
-	}
-	blobmsg_add_string(&bb, "status", "error");
+	else
+		blobmsg_add_string(&bb, "status", "error");
 	ubus_send_reply(ctx, req, bb.head);
-	return UBUS_STATUS_UNKNOWN_ERROR;
+	return 	UBUS_STATUS_OK;
 }
 
 struct ubus_method wireless_object_methods[] = {
