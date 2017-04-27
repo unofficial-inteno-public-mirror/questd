@@ -910,11 +910,9 @@ int wl_autochannel(const char *ifname)
 	char buf[AC_BUF_SIZE] = {0};
 	int channel;
 
-	if (strcmp(ifname, "wl0") == 0) {
-		wl_get_channel(ifname, &channel);
-		if (channel >= 52)
-			return -1;
-	}
+	wl_get_channel(ifname, &channel);
+	if (channel >= 52)
+		return -1;
 
 	chrCmd(buf, AC_BUF_SIZE, "acs_cli -i %s autochannel", ifname);
 	return strncmp(buf, "Request finished", 16);
