@@ -552,6 +552,15 @@ typedef struct wl_bss_info {
 	/* variable length Information Elements */
 } wl_bss_info_t;
 
+struct bs_data {
+	char macaddr[24];
+	char phy_mbps[8];
+	char data_mbps[8];
+	char air_use[8];
+	char data_use[8];
+	char retries[8];
+};
+
 typedef struct wl_scan_results {
 	uint32 buflen;
 	uint32 version;
@@ -737,6 +746,7 @@ int wl_get_chanlist(const char *ifname, int *buf);
 int wl_get_deviceid(const char *ifname, int *buf);
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
+int wl_bs_data(const char *ifname, const char *macaddr, struct bs_data *bs_array, int array_length)
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
 int wl_get_wpa_auth(const char *ifname, char *wpa);
 int wl_get_wsec(const char *ifname, int *buf);

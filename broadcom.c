@@ -834,6 +834,59 @@ int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_in
 	return assoced;
 }
 
+int wl_parse_bs_data(char *line, struct bs_data *bs){
+	int ret;
+
+	remove_newline(line);
+	if (strlen(line) == 0)
+		return -1;
+	ret = sscanf(single_space(line), "%24s %8s %8s %8s %8s %8s", bs->macaddr, bs->phy_mbps,
+			bs->data_mbps, bs->air_use, bs->data_use, bs->retries);
+	if (ret != 6 || strlen(bs->macaddr) == 0)
+		return -2;
+	return 0;
+}
+
+int wl_bs_data(const char *ifname, const char *macaddr, struct bs_data *bs_array, int array_length)
+{
+	FILE *file;
+	char cmnd[64] = {0};
+	char line[512] = {0};
+	int ret, i = 0;
+	struct bs_data tmp;
+	char *tmp_p;
+
+	if (array_length < 1)
+		return -2;
+
+	sprintf(cmnd, "wlctl -i %s bs_data 2>/dev/null", ifname);
+	file = popen(cmnd, "r");
+	if (!file)
+		return -2;
+	tmp_p = fgets(line, sizeof(line), file); // ignore the first line
+	if (tmp_p == NULL)
+		return -3;
+	while(fgets(line, sizeof(line), file) != NULL && i < array_length)
+	{
+		memset(&tmp, 0, sizeof(struct bs_data));
+		ret = wl_parse_bs_data(line, &tmp);
+		if (ret != 0) // invalid line
+			continue;
+		if (macaddr != NULL)
+		{
+			if (strncasecmp(macaddr, tmp.macaddr, strlen(macaddr)) != 0)
+				continue;
+			memcpy(bs_array + 0, &tmp, sizeof(struct bs_data));
+			return 0;
+		}
+		memcpy(bs_array + i, &tmp, sizeof(struct bs_data));
+		i++;
+	}
+	pclose(file);
+	if(macaddr == NULL)
+		return i; // success return number of items filled
+	return -1; // error not found
+}
 
 int wl_scan(const char *ifname)
 {
