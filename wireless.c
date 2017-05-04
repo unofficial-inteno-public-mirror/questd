@@ -234,7 +234,7 @@ load_wireless()
 static void
 router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 {
-	void *t, *r;
+	void *t, *r, *bs_data_t;
 	char compare[8];
 	char stanum[8];
 	int num = 1;
@@ -242,7 +242,8 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 
 	struct wl_sta_info sta_info;
 	int bandwidth, channel, noise, rssi, snr;
-	int htcaps;
+	int htcaps, has_bs_data;
+	struct bs_data bs;
 
 	Client clients[MAX_CLIENT];
 
@@ -266,6 +267,8 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		wl_get_stas_info(clients[i].wdev, clients[i].macaddr, &sta_info, &htcaps);
 		wl_get_bssinfo(clients[i].wdev, &bandwidth, &channel, &noise);
 		wl_get_rssi(clients[i].wdev, clients[i].macaddr, &rssi);
+		memset(&bs, 0, sizeof(struct bs_data));
+		has_bs_data = wl_bs_data(clients[i].wdev, clients[i].macaddr, &bs, 1);
 		snr = rssi - noise;
 		sta_info.ht_capabilities = htcaps;
 
@@ -284,6 +287,15 @@ router_dump_stas(struct blob_buf *b, char *wname, bool vif)
 		blobmsg_add_u32(&bb, "snr", snr);
 		blobmsg_add_u32(&bb, "idle", sta_info.idle);
 		blobmsg_add_u32(&bb, "in_network", sta_info.in);
+		if (has_bs_data == 0){
+			bs_data_t = blobmsg_open_table(&bb, "bs_data");
+			blobmsg_add_string(&bb, "phy_mbps", bs.phy_mbps);
+			blobmsg_add_string(&bb, "data_mbps", bs.data_mbps);
+			blobmsg_add_string(&bb, "air_use", bs.air_use);
+			blobmsg_add_string(&bb, "data_use", bs.data_use);
+			blobmsg_add_string(&bb, "retries", bs.retries);
+			blobmsg_close_table(&bb, bs_data_t);
+		}
 
 #if IOPSYS_BROADCOM
 		void *f, *h, *s, *v;
@@ -707,6 +719,60 @@ quest_router_autochannel(struct ubus_context *ctx, struct ubus_object *obj,
 	return 	UBUS_STATUS_OK;
 }
 
+#if IOPSYS_BROADCOM
+static int
+quest_bs_data(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct blob_attr *tb[__WL_MAX];
+	struct bs_data bs[MAX_CLIENT];
+	int ret, i;
+	bool found = false;
+	char vif[MAX_VIF_LENGTH];
+	void *a, *t;
+
+	blobmsg_parse(vif_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
+
+	blob_buf_init(&bb, 0);
+	if (!tb[VIF_NAME])
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	strncpy(vif, blobmsg_get_string(tb[VIF_NAME]), MAX_VIF_LENGTH);
+	for(i = 0; i < MAX_VIF; i++){
+		if(!*wireless[i].vif)
+			break;
+		if(strncmp(wireless[i].vif, vif, MAX_VIF_LENGTH) == 0){
+			found = true;
+			break;
+		}
+	}
+
+	if(!found)
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	ret = wl_bs_data(vif, NULL, bs, MAX_CLIENT);
+	if (ret < 0)
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	a = blobmsg_open_array(&bb, "stations");
+	for (i = 0; i < ret; i++)
+	{
+		t = blobmsg_open_table(&bb, NULL);
+		blobmsg_add_string(&bb, "macaddr", bs[i].macaddr);
+		blobmsg_add_string(&bb, "phy_mbps", bs[i].phy_mbps);
+		blobmsg_add_string(&bb, "data_mbps", bs[i].data_mbps);
+		blobmsg_add_string(&bb, "air_use", bs[i].air_use);
+		blobmsg_add_string(&bb, "data_use", bs[i].data_use);
+		blobmsg_add_string(&bb, "retries", bs[i].retries);
+		blobmsg_close_table(&bb, t);
+	}
+	blobmsg_close_array(&bb, a);
+	ubus_send_reply(ctx, req, bb.head);
+
+	return 0;
+}
+#endif
+
 struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD("status", quest_router_vif_status, vif_policy),
 	UBUS_METHOD("stas", quest_router_stas, vif_policy),
@@ -715,6 +781,9 @@ struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD("autochannel", quest_router_autochannel, wl_scan_policy),
 	UBUS_METHOD("scan", quest_router_scan, wl_scan_policy),
 	UBUS_METHOD("scanresults", quest_router_scanresults, wl_scan_policy),
+#if IOPSYS_BROADCOM
+	UBUS_METHOD("bs_data", quest_bs_data, vif_policy),
+#endif
 };
 
 struct ubus_object_type wireless_object_type =
