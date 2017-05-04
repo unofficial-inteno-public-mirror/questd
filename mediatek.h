@@ -53,6 +53,15 @@ typedef struct wl_rateset {
     uint8_t   				rates[WL_NUMRATES]; /* rates in 500kbps units w/hi bit set if basic */
 } wl_rateset_t;
 
+struct bs_data {
+	char macaddr[24];
+	char phy_mbps[8];
+	char data_mbps[8];
+	char air_use[8];
+	char data_use[8];
+	char retries[8];
+};
+
 typedef struct wl_sta_info {
 	uint16			ver;		/**< version of this struct */
 	uint16			len;		/**< length in bytes of this structure */
@@ -115,6 +124,7 @@ int wl_ether_atoe(const char *a, struct wl_ether_addr *n);
 char* wl_ether_etoa(const struct wl_ether_addr *n);
 int wl_get_channel(const char *ifname, int *buf);
 int wl_scan(const char *ifname);
+int wl_bs_data(const char *ifname, const char *macaddr, struct bs_data *bs_array, int array_length);
 int wl_get_scanresults(const char *ifname, char *data, int size);
 int wl_get_ssid(const char *ifname, char *buf);
 int wl_get_bssid(const char *ifname, char *buf);

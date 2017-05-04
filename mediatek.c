@@ -119,6 +119,12 @@ int wl_get_channel(const char *ifname, int *channel)
 	return rv;
 }
 
+int wl_bs_data(const char *ifname, const char *macaddr, struct bs_data *bs_array, int array_length)
+{
+	//NOT SUPPORTED
+	return -1;
+}
+
 int wl_scan(const char *ifname)
 {
 	char data[255] = {0};
