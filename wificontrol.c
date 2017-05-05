@@ -27,6 +27,8 @@
 char *filename;
 char *destination;
 int client_connected;
+int need_update = 1;
+char led_success[8];
 
 enum RUNNING_MODE {
 	MODE_NONE,
@@ -106,6 +108,48 @@ void parse_args(int argc, char **argv)
 	}
 }
 
+void update_led_success()
+{
+	struct uci_context *uci_ctx = NULL;
+	struct uci_package *uci_pkg;
+	struct uci_element *e;
+	struct uci_section *s;
+	const char *is_lan = NULL;
+	char *name = NULL;
+
+	uci_pkg = init_package(&uci_ctx, "network");
+
+	if (!uci_pkg)
+		goto out;
+
+	uci_foreach_element(&uci_pkg->sections, e) {
+		if (name)
+			free(name);
+		name = strdup(e->name);
+		if (!name)
+			continue;
+
+		s = uci_to_section(e);
+		if (strcmp(s->type, "interface") != 0)
+			continue;
+
+		if (strcmp(name, "loopback") == 0)
+			continue;
+
+		is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
+		if (!is_lan)
+			continue;
+
+		if (strncmp(is_lan, "1", 1) == 0){
+			strcpy(led_success, "ok");
+			return;
+		}
+	}
+	free_uci_context(&uci_ctx);
+out:
+	strcpy(led_success, "notice");
+	return;
+}
 
 static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 {
@@ -121,9 +165,13 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 			break;
 		}
 	}
+	if(!ret)
+		need_update = 1;
+	if(ret && need_update)
+		update_led_success();
 
 	runCmd("ubus -t 1 call led.internet set '{\"state\":\"%s\"}'",
-		ret ? "notice" : "error");
+		ret ? led_success : "error");
 	runCmd("echo -e { \\\"online\\\" : %s } > %s",
 		ret ? "true" : "false",
 		INTERNET_CONNECTION_STATUS);
