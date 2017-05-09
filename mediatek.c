@@ -317,7 +317,7 @@ int wl_get_bssinfo(const char *ifname, int *bandwidth, int *channel, int *noise)
 
 	wl_get_bitrate(ifname, &rate);
 
-	if((rate/2) > 300)
+	if((rate/2) > 400)
 		*bandwidth = 80;
 	else if((rate/2) > 144)
 		*bandwidth = 40;
