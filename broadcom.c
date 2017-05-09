@@ -877,6 +877,7 @@ int wl_bs_data(const char *ifname, const char *macaddr, struct bs_data *bs_array
 			if (strncasecmp(macaddr, tmp.macaddr, strlen(macaddr)) != 0)
 				continue;
 			memcpy(bs_array + 0, &tmp, sizeof(struct bs_data));
+			pclose(file);
 			return 0;
 		}
 		memcpy(bs_array + i, &tmp, sizeof(struct bs_data));
