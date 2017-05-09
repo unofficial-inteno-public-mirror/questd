@@ -189,11 +189,11 @@ load_wireless()
 				chrCmd(output, 32, "wlctl -i %s chanspecs | grep -c '0xe872'", radio[rno].name);
 				if (*output?atoi(output):0 == 1)
 					bw160 = true;
-			#elif IOPSYS_MEDIATEK
-				if (!strncmp(radio[rno].name, "rai", 3)) {
-					radio[rno].is_ac = true;
-					bw160 = true;
-				}
+/*			#elif IOPSYS_MEDIATEK*/
+/*				if (!strncmp(radio[rno].name, "rai", 3)) {*/
+/*					radio[rno].is_ac = true;*/
+/*					bw160 = true;*/
+/*				}*/
 			#endif
 
 				if(radio[rno].frequency == 2) {
