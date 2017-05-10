@@ -727,16 +727,47 @@ quest_bs_data(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	struct blob_attr *tb[__WL_MAX];
 	struct bs_data bs[MAX_CLIENT];
-	int ret, i;
+	int ret, i, j, c;
 	bool found = false;
 	char vif[MAX_VIF_LENGTH];
-	void *a, *t;
+	void *a, *t, *t2;
 
 	blobmsg_parse(vif_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
 
 	blob_buf_init(&bb, 0);
-	if (!tb[VIF_NAME])
-		return UBUS_STATUS_INVALID_ARGUMENT;
+	if (!tb[VIF_NAME]){
+		for (i = 0; i < MAX_RADIO; i++){
+			if(!*radio[i].name)
+				break;
+			t = blobmsg_open_table(&bb, radio[i].name);
+			a = blobmsg_open_array(&bb, "stations");
+			for (j = 0; j < MAX_VIF; j++){
+				if (!*wireless[j].device)
+					break;
+				if (strncmp(radio[i].name, wireless[j].device, MAX_DEVICE_LENGTH) == 0){
+					memset(bs, 0, sizeof(struct bs_data) * MAX_CLIENT);
+					ret = wl_bs_data(wireless[j].vif, NULL, bs, MAX_CLIENT);
+					if (ret < 0)
+						continue;
+					for (c = 0; c < ret; c++){
+						t2 = blobmsg_open_table(&bb, NULL);
+						blobmsg_add_string(&bb, "vif", wireless[j].vif);
+						blobmsg_add_string(&bb, "macaddr", bs[c].macaddr);
+						blobmsg_add_string(&bb, "phy_mbps", bs[c].phy_mbps);
+						blobmsg_add_string(&bb, "data_mbps", bs[c].data_mbps);
+						blobmsg_add_string(&bb, "air_use", bs[c].air_use);
+						blobmsg_add_string(&bb, "data_use", bs[c].data_use);
+						blobmsg_add_string(&bb, "retries", bs[c].retries);
+						blobmsg_close_table(&bb, t2);
+					}
+				}
+			}
+			blobmsg_close_array(&bb, a);
+			blobmsg_close_table(&bb, t);
+		}
+		ubus_send_reply(ctx, req, bb.head);
+		return UBUS_STATUS_OK;
+	}
 
 	strncpy(vif, blobmsg_get_string(tb[VIF_NAME]), MAX_VIF_LENGTH);
 	for(i = 0; i < MAX_VIF; i++){
