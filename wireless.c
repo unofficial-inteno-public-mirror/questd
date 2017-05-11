@@ -33,6 +33,7 @@
 
 #if IOPSYS_BROADCOM
 #define NUM_BSD_INFO 50
+#define NUM_BSD_RECORDS 50
 #endif
 
 enum {
@@ -844,6 +845,37 @@ quest_bsd_sta_info(struct ubus_context *ctx, struct ubus_object *obj,
 	return UBUS_STATUS_OK;
 }
 
+static int
+quest_bsd_records(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct bsd_record record_array[NUM_BSD_RECORDS];
+	void *a, *t;
+	int ret, i;
+
+	ret = wl_get_bsd_records(record_array, NUM_BSD_RECORDS);
+	if (ret < 0)
+		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	blob_buf_init(&bb, 0);
+	a = blobmsg_open_array(&bb, "logs");
+	for (i = 0; i < ret; i++) {
+		t = blobmsg_open_table(&bb, NULL);
+		blobmsg_add_u32(&bb, "timestamp", record_array[i].timestamp);
+		blobmsg_add_string(&bb, "sta_mac", record_array[i].sta_mac);
+		blobmsg_add_u32(&bb, "from_ch", record_array[i].from_ch);
+		blobmsg_add_u32(&bb, "to_ch", record_array[i].to_ch);
+		blobmsg_add_string(&bb, "reason", record_array[i].reason);
+		blobmsg_add_string(&bb, "description", record_array[i].desc);
+		blobmsg_close_table(&bb, t);
+	}
+	blobmsg_close_array(&bb, a);
+
+	ubus_send_reply(ctx, req, bb.head);
+	return UBUS_STATUS_OK;
+}
+
 #endif
 
 struct ubus_method wireless_object_methods[] = {
@@ -857,6 +889,7 @@ struct ubus_method wireless_object_methods[] = {
 #if IOPSYS_BROADCOM
 	UBUS_METHOD("bs_data", quest_bs_data, vif_policy),
 	UBUS_METHOD_NOARG("bsd_sta_info", quest_bsd_sta_info),
+	UBUS_METHOD_NOARG("bsd_records", quest_bsd_records),
 #endif
 };
 

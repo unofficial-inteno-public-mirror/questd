@@ -573,6 +573,15 @@ struct bsd_sta_info {
 	bool dualband;
 };
 
+struct bsd_record {
+	int timestamp;
+	char sta_mac[32];
+	int from_ch;
+	int to_ch;
+	char reason[16];
+	char desc[64];
+};
+
 typedef struct wl_scan_results {
 	uint32 buflen;
 	uint32 version;
@@ -759,6 +768,7 @@ int wl_get_deviceid(const char *ifname, int *buf);
 int wl_get_stainfo(const char *ifname, char *bssid, unsigned long *buf);
 int wl_get_sta_info(const char *ifname, char *bssid, unsigned long *stainfo);
 int wl_get_bsd_sta_info(struct bsd_sta_info *info_array, int array_length);
+int wl_get_bsd_records(struct bsd_record *record_array, int array_length);
 int wl_bs_data(const char *ifname, const char *macaddr, struct bs_data *bs_array, int array_length);
 int wl_get_stas_info(const char *ifname, char *bssid, struct wl_sta_info *sta_info, int *htcaps);
 int wl_get_wpa_auth(const char *ifname, char *wpa);

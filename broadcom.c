@@ -1014,6 +1014,47 @@ int wl_get_bsd_sta_info(struct bsd_sta_info *info_array, int array_length)
 	return i;
 }
 
+int wl_get_bsd_records(struct bsd_record *record_array, int array_length)
+{
+	int i, ret;
+	char line[128];
+	char from_ch[8], to_ch[8];
+	char *endptr;
+	FILE *record_stream;
+
+	record_stream = popen("bsd -l | grep ':'", "r");
+	if (!record_stream)
+		return -1;
+
+	i = 0;
+	while (fgets(line, sizeof(line), record_stream) != NULL
+			&& i < array_length){
+		memset(from_ch, 0, sizeof(from_ch));
+		memset(to_ch, 0, sizeof(to_ch));
+		ret = sscanf(line, "%*d %d %32s %8s %8s %16s %64[^\t\n]",
+			&record_array[i].timestamp, record_array[i].sta_mac,
+			from_ch, to_ch, record_array[i].reason,
+			record_array[i].desc);
+		if (ret != 6)
+			goto invalid;
+		from_ch[2] = '0';
+		to_ch[2] = '0';
+		record_array[i].from_ch = (int) strtol(from_ch, &endptr, 16);
+		if (*endptr != 0)
+			goto invalid;
+		record_array[i].to_ch = (int) strtol(to_ch, &endptr, 16);
+		if (*endptr != 0)
+			goto invalid;
+		trim(record_array[i].desc);
+		i++;
+invalid:
+		memset(&record_array[i], 0, sizeof(struct bsd_record));
+	}
+
+	pclose(record_stream);
+	return i;
+}
+
 /* -------------------------------------------------------------------------- */
 #endif /* IOPSYS_BROADCOM */
 /* -------------------------------------------------------------------------- */
