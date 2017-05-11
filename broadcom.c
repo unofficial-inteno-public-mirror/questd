@@ -972,6 +972,48 @@ int wl_autochannel(const char *ifname)
 	return strncmp(buf, "Request finished", 16);
 }
 
+int wl_get_bsd_sta_info(struct bsd_sta_info *info_array, int array_length)
+{
+	int i, ret, b;
+	char line[128];
+	char chrArr[5][8];
+	FILE *bsd_sta_info;
+
+	bsd_sta_info = popen("bsd -s | grep ':'", "r");
+	if (!bsd_sta_info)
+		return -1;
+
+	i = 0;
+	while (fgets(line, sizeof(line), bsd_sta_info) != NULL
+			&& i < array_length){
+		memset(chrArr, 0, (5 * 8 * sizeof(char)));
+		ret = sscanf(line, "%32s %8s %d %d %d %8s %8s %8s %8s %8s",
+			info_array[i].sta_mac, info_array[i].iface,
+			&info_array[i].timestamp, &info_array[i].tx_rate,
+			&info_array[i].rssi, chrArr[0], chrArr[1],
+			chrArr[2], chrArr[3], chrArr[4]);
+		if (ret != 9 && ret != 10) {
+			memset(&info_array[i], 0, sizeof(bsd_sta_info));
+			continue;
+		}
+		b = strncasecmp(chrArr[0], "yes", 8);
+		info_array[i].bounce = (b == 0 ? true : false);
+		b = strncasecmp(chrArr[1], "yes", 8);
+		info_array[i].picky = (b == 0 ? true : false);
+		b = strncasecmp(chrArr[2], "yes", 8);
+		info_array[i].psta = (b == 0 ? true : false);
+		if (ret == 9)
+			b = strncasecmp(chrArr[3], "yes", 8);
+		else
+			b = strncasecmp(chrArr[4], "yes", 8);
+		info_array[i].dualband = (b == 0 ? true : false);
+		i++;
+	}
+
+	pclose(bsd_sta_info);
+	return i;
+}
+
 /* -------------------------------------------------------------------------- */
 #endif /* IOPSYS_BROADCOM */
 /* -------------------------------------------------------------------------- */

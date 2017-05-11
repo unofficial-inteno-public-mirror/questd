@@ -31,6 +31,10 @@
 #include "tools.h"
 #include "wireless.h"
 
+#if IOPSYS_BROADCOM
+#define NUM_BSD_INFO 50
+#endif
+
 enum {
 	VIF_NAME,
 	__WL_MAX,
@@ -806,6 +810,40 @@ quest_bs_data(struct ubus_context *ctx, struct ubus_object *obj,
 
 }
 
+static int
+quest_bsd_sta_info(struct ubus_context *ctx, struct ubus_object *obj,
+		  struct ubus_request_data *req, const char *method,
+		  struct blob_attr *msg)
+{
+	struct bsd_sta_info info_array[NUM_BSD_INFO];
+	void *a, *t;
+	int ret, i;
+
+	ret = wl_get_bsd_sta_info(info_array, NUM_BSD_INFO);
+	if (ret < 0)
+		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	blob_buf_init(&bb, 0);
+	a = blobmsg_open_array(&bb, "stations");
+	for (i = 0; i < ret; i++) {
+		t = blobmsg_open_table(&bb, NULL);
+		blobmsg_add_string(&bb, "sta_mac", info_array[i].sta_mac);
+		blobmsg_add_string(&bb, "interface", info_array[i].iface);
+		blobmsg_add_u32(&bb, "timestamp", info_array[i].timestamp);
+		blobmsg_add_u32(&bb, "tx_rate", info_array[i].tx_rate);
+		blobmsg_add_u32(&bb, "rssi", info_array[i].rssi);
+		blobmsg_add_u8(&bb, "bounce", info_array[i].bounce);
+		blobmsg_add_u8(&bb, "picky", info_array[i].picky);
+		blobmsg_add_u8(&bb, "psta", info_array[i].psta);
+		blobmsg_add_u8(&bb, "dualband", info_array[i].dualband);
+		blobmsg_close_table(&bb, t);
+	}
+	blobmsg_close_array(&bb, a);
+
+	ubus_send_reply(ctx, req, bb.head);
+	return UBUS_STATUS_OK;
+}
+
 #endif
 
 struct ubus_method wireless_object_methods[] = {
@@ -818,6 +856,7 @@ struct ubus_method wireless_object_methods[] = {
 	UBUS_METHOD("scanresults", quest_router_scanresults, wl_scan_policy),
 #if IOPSYS_BROADCOM
 	UBUS_METHOD("bs_data", quest_bs_data, vif_policy),
+	UBUS_METHOD_NOARG("bsd_sta_info", quest_bsd_sta_info),
 #endif
 };
 
