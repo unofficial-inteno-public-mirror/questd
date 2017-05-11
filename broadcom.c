@@ -977,14 +977,14 @@ int wl_get_bsd_sta_info(struct bsd_sta_info *info_array, int array_length)
 	int i, ret, b;
 	char line[128];
 	char chrArr[5][8];
-	FILE *bsd_sta_info;
+	FILE *sta_info_file;
 
-	bsd_sta_info = popen("bsd -s | grep ':'", "r");
-	if (!bsd_sta_info)
+	sta_info_file = popen("bsd -s | grep ':'", "r");
+	if (!sta_info_file)
 		return -1;
 
 	i = 0;
-	while (fgets(line, sizeof(line), bsd_sta_info) != NULL
+	while (fgets(line, sizeof(line), sta_info_file) != NULL
 			&& i < array_length){
 		memset(chrArr, 0, (5 * 8 * sizeof(char)));
 		ret = sscanf(line, "%32s %8s %d %d %d %8s %8s %8s %8s %8s",
@@ -993,7 +993,7 @@ int wl_get_bsd_sta_info(struct bsd_sta_info *info_array, int array_length)
 			&info_array[i].rssi, chrArr[0], chrArr[1],
 			chrArr[2], chrArr[3], chrArr[4]);
 		if (ret != 9 && ret != 10) {
-			memset(&info_array[i], 0, sizeof(bsd_sta_info));
+			memset(&info_array[i], 0, sizeof(struct bsd_sta_info));
 			continue;
 		}
 		b = strncasecmp(chrArr[0], "yes", 8);
@@ -1010,7 +1010,7 @@ int wl_get_bsd_sta_info(struct bsd_sta_info *info_array, int array_length)
 		i++;
 	}
 
-	pclose(bsd_sta_info);
+	pclose(sta_info_file);
 	return i;
 }
 
