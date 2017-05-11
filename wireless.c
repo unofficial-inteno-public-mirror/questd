@@ -735,73 +735,77 @@ quest_bs_data(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_parse(vif_policy, __WL_MAX, tb, blob_data(msg), blob_len(msg));
 
 	blob_buf_init(&bb, 0);
-	if (!tb[VIF_NAME]){
-		for (i = 0; i < MAX_RADIO; i++){
-			if(!*radio[i].name)
+	if (tb[VIF_NAME]){
+		strncpy(vif, blobmsg_get_string(tb[VIF_NAME]), MAX_VIF_LENGTH);
+		for(i = 0; i < MAX_VIF; i++){
+			if(!*wireless[i].vif)
 				break;
-			t = blobmsg_open_table(&bb, radio[i].name);
-			a = blobmsg_open_array(&bb, "stations");
-			for (j = 0; j < MAX_VIF; j++){
-				if (!*wireless[j].device)
-					break;
-				if (strncmp(radio[i].name, wireless[j].device, MAX_DEVICE_LENGTH) == 0){
-					memset(bs, 0, sizeof(struct bs_data) * MAX_CLIENT);
-					ret = wl_bs_data(wireless[j].vif, NULL, bs, MAX_CLIENT);
-					if (ret < 0)
-						continue;
-					for (c = 0; c < ret; c++){
-						t2 = blobmsg_open_table(&bb, NULL);
-						blobmsg_add_string(&bb, "vif", wireless[j].vif);
-						blobmsg_add_string(&bb, "macaddr", bs[c].macaddr);
-						blobmsg_add_string(&bb, "phy_mbps", bs[c].phy_mbps);
-						blobmsg_add_string(&bb, "data_mbps", bs[c].data_mbps);
-						blobmsg_add_string(&bb, "air_use", bs[c].air_use);
-						blobmsg_add_string(&bb, "data_use", bs[c].data_use);
-						blobmsg_add_string(&bb, "retries", bs[c].retries);
-						blobmsg_close_table(&bb, t2);
-					}
-				}
+			if(strncmp(wireless[i].vif, vif, MAX_VIF_LENGTH) == 0){
+				found = true;
+				break;
 			}
-			blobmsg_close_array(&bb, a);
+		}
+
+		if(!found)
+			return UBUS_STATUS_INVALID_ARGUMENT;
+
+		ret = wl_bs_data(vif, NULL, bs, MAX_CLIENT);
+		if (ret < 0)
+			return UBUS_STATUS_UNKNOWN_ERROR;
+		a = blobmsg_open_array(&bb, "stations");
+		for (i = 0; i < ret; i++)
+		{
+			t = blobmsg_open_table(&bb, NULL);
+			blobmsg_add_string(&bb, "macaddr", bs[i].macaddr);
+			blobmsg_add_string(&bb, "phy_mbps", bs[i].phy_mbps);
+			blobmsg_add_string(&bb, "data_mbps", bs[i].data_mbps);
+			blobmsg_add_string(&bb, "air_use", bs[i].air_use);
+			blobmsg_add_string(&bb, "data_use", bs[i].data_use);
+			blobmsg_add_string(&bb, "retries", bs[i].retries);
 			blobmsg_close_table(&bb, t);
 		}
+		blobmsg_close_array(&bb, a);
 		ubus_send_reply(ctx, req, bb.head);
+
 		return UBUS_STATUS_OK;
 	}
 
-	strncpy(vif, blobmsg_get_string(tb[VIF_NAME]), MAX_VIF_LENGTH);
-	for(i = 0; i < MAX_VIF; i++){
-		if(!*wireless[i].vif)
+	// No iface provided
+	for (i = 0; i < MAX_RADIO; i++){
+		if(!*radio[i].name)
 			break;
-		if(strncmp(wireless[i].vif, vif, MAX_VIF_LENGTH) == 0){
-			found = true;
-			break;
+		t = blobmsg_open_table(&bb, radio[i].name);
+		a = blobmsg_open_array(&bb, "stations");
+		for (j = 0; j < MAX_VIF; j++){
+			if (!*wireless[j].device)
+				break;
+			if (strncmp(radio[i].name, wireless[j].device,
+						MAX_DEVICE_LENGTH) != 0)
+				continue;
+			memset(bs, 0, sizeof(struct bs_data) * MAX_CLIENT);
+			ret = wl_bs_data(wireless[j].vif, NULL, bs, MAX_CLIENT);
+			if (ret < 0)
+				continue;
+			for (c = 0; c < ret; c++){
+				t2 = blobmsg_open_table(&bb, NULL);
+				blobmsg_add_string(&bb, "vif", wireless[j].vif);
+				blobmsg_add_string(&bb, "macaddr", bs[c].macaddr);
+				blobmsg_add_string(&bb, "phy_mbps", bs[c].phy_mbps);
+				blobmsg_add_string(&bb, "data_mbps", bs[c].data_mbps);
+				blobmsg_add_string(&bb, "air_use", bs[c].air_use);
+				blobmsg_add_string(&bb, "data_use", bs[c].data_use);
+				blobmsg_add_string(&bb, "retries", bs[c].retries);
+				blobmsg_close_table(&bb, t2);
+			}
 		}
-	}
-
-	if(!found)
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	ret = wl_bs_data(vif, NULL, bs, MAX_CLIENT);
-	if (ret < 0)
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	a = blobmsg_open_array(&bb, "stations");
-	for (i = 0; i < ret; i++)
-	{
-		t = blobmsg_open_table(&bb, NULL);
-		blobmsg_add_string(&bb, "macaddr", bs[i].macaddr);
-		blobmsg_add_string(&bb, "phy_mbps", bs[i].phy_mbps);
-		blobmsg_add_string(&bb, "data_mbps", bs[i].data_mbps);
-		blobmsg_add_string(&bb, "air_use", bs[i].air_use);
-		blobmsg_add_string(&bb, "data_use", bs[i].data_use);
-		blobmsg_add_string(&bb, "retries", bs[i].retries);
+		blobmsg_close_array(&bb, a);
 		blobmsg_close_table(&bb, t);
 	}
-	blobmsg_close_array(&bb, a);
 	ubus_send_reply(ctx, req, bb.head);
+	return UBUS_STATUS_OK;
 
-	return 0;
 }
+
 #endif
 
 struct ubus_method wireless_object_methods[] = {
