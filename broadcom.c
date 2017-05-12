@@ -965,9 +965,14 @@ int wl_autochannel(const char *ifname)
 	int channel;
 
 	wl_get_channel(ifname, &channel);
-	if (channel >= 52)
-		return -1;
-
+	if (channel >= 52){
+		runCmd("wlctl -i %s down", ifname);
+		usleep(10*1000);
+		runCmd("wlctl -i %s chanspec 36/80", ifname);
+		usleep(10*1000);
+		runCmd("wlctl -i %s up", ifname);
+		usleep(10*1000);
+	}
 	chrCmd(buf, AC_BUF_SIZE, "acs_cli -i %s autochannel", ifname);
 	return strncmp(buf, "Request finished", 16);
 }
