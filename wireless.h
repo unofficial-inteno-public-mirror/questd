@@ -10,6 +10,7 @@ typedef struct {
 	char device[MAX_DEVICE_LENGTH];
 	char ssid[MAX_SSID_LENGTH];
 	char network[MAX_NETWORK_LENGTH];
+	char apmode;
 } Wireless;
 
 typedef struct {

@@ -72,6 +72,8 @@ wireless_assoclist()
 	memset(stas, '\0', sizeof(stas));
 
 	for (i = 0; i < MAX_VIF && strlen(wireless[i].device) > 0; i++) {
+		if (!wireless[i].apmode)
+			continue;
 		if ((macs = wl_read_assoclist(wireless[i].vif)) != NULL)
 		{
 			for (j = 0; j < MAX_CLIENT && j < macs->count && sno < MAX_CLIENT; j++)
@@ -127,7 +129,7 @@ void
 load_wireless()
 {
 	struct uci_element *e;
-	const char *device, *network, *ssid, *band;
+	const char *device, *network, *ssid, *band, *mode;
 	int rno = 0, wno = 0, vif0 = 0, vif1 = 0, vif = 0;
 
 	memset(wireless, '\0', sizeof(wireless));
@@ -141,10 +143,15 @@ load_wireless()
 				device = uci_lookup_option_string(uci_ctx, s, "device");
 				network = uci_lookup_option_string(uci_ctx, s, "network");
 				ssid = uci_lookup_option_string(uci_ctx, s, "ssid");
+				mode = uci_lookup_option_string(uci_ctx, s, "mode");
 				if (device && strlen(device) && wno < MAX_VIF) {
 					strncpy(wireless[wno].device, device, MAX_DEVICE_LENGTH-1);
 					strncpy(wireless[wno].network, (network)? network : "", MAX_NETWORK_LENGTH-1);
 					strncpy(wireless[wno].ssid, (ssid)? ssid : "", MAX_SSID_LENGTH-1);
+					if (mode)
+						wireless[wno].apmode = (strncasecmp(mode, "ap", 2) == 0) ? 1 : 0;
+					else
+						wireless[wno].apmode = 1;
 				#if IOPSYS_BROADCOM
 					if (!strcmp(device, "wl0")) {
 						vif = vif0;
