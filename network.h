@@ -26,6 +26,7 @@ typedef struct {
 	char ethport[8];
 	char wdev[8];
 	struct wl_ether_addr assoclist[32];
+	int nassoc;
 } Client;
 
 typedef struct {

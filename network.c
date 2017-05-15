@@ -446,7 +446,7 @@ static void dump_client(struct blob_buf *b, Client client)
 
 		a = blobmsg_open_array(b, "assoclist");
 
-		while (i < 32 && client.assoclist[i].octet[0] != 0)
+		while (i < client.nassoc)
 		{
 			strncpy(stamac, (char*) wl_ether_etoa(&(client.assoclist[i])), 24);
 			t = blobmsg_open_table(b, "");
@@ -534,7 +534,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
 				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
 					if (is_inteno_macaddr(clients[k].macaddr)) {
-						for(l=0; l < 32 && clients[k].assoclist[l].octet[0] != 0; l++) {
+						for(l=0; l < clients[k].nassoc; l++) {
 							if (!strcasecmp((char*) wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
 								continue;
 						}
@@ -734,7 +734,6 @@ ipv4_clients()
 	int toms = 1000;
 	char assoclist[1280];
 	char *saveptr1, *saveptr2;
-	int ano = 0;
 	char *token;
 	char brindex[8] = {0};
 	char output[1280];
@@ -789,13 +788,16 @@ ipv4_clients()
 					memset(output, 0, 1280);
 					strncpy(assoclist, chrCmd(output, 1280, "wificontrol --assoclist --destination %s", clients[cno].ipaddr), 1280);
 
-					ano = 0;
+					clients[cno].nassoc = 0;
 					token = strtok_r(assoclist, " ", &saveptr1);
 					while (token != NULL)
 					{
-						wl_ether_atoe(token, &(clients[cno].assoclist[ano]));
+						wl_ether_atoe(token, &(clients[cno].assoclist[clients[cno].nassoc]));
 						token = strtok_r (NULL, " ", &saveptr1);
-						ano++;
+						if (clients[cno].nassoc < 32)
+							clients[cno].nassoc++;
+						else
+							break;
 					}
 				}
 
@@ -826,7 +828,7 @@ ipv4_clients()
 				handle_client(&clients[cno]);
 
 				for (i=0; i < cno; i++) {
-					for(j=0; j < 32 && clients[i].assoclist[j].octet[0] != 0; j++) {
+					for(j=0; j < clients[i].nassoc; j++) {
 						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
 							clients[cno].repeated = true;
 							clients[cno].connected = true;
@@ -932,13 +934,16 @@ inc:
 							memset(assoclist, 0, 1280);
 							strncpy(assoclist, chrCmd(output, 1280, "wificontrol --assoclist --destination %s", clients[cno].ipaddr), 1280);
 
-							ano = 0;
+							clients[cno].nassoc = 0;
 							token = strtok_r(assoclist, " ", &saveptr2);
 							while (token != NULL)
 							{
-								wl_ether_atoe(token, &(clients[cno].assoclist[ano]));
+								wl_ether_atoe(token, &(clients[cno].assoclist[clients[cno].nassoc]));
 								token = strtok_r (NULL, " ", &saveptr2);
-								ano++;
+								if (clients[cno].nassoc < 32)
+									clients[cno].nassoc++;
+								else
+									break;
 							}
 						}
 
