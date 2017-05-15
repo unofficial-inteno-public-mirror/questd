@@ -486,6 +486,7 @@ router_dump_ports(struct blob_buf *b, char *interface)
 	void *t, *c, *h, *s;
 	int pno, i, j;
 	int k, l;
+	bool skip_client_j;
 	const char *ports[8];
 	bool found = false;
 
@@ -532,14 +533,18 @@ router_dump_ports(struct blob_buf *b, char *interface)
 			}
 			c = blobmsg_open_array(b, "hosts");
 			for(j=0; j < MAX_CLIENT_PER_PORT && port[i].client[j].exists; j++) {
-				for(k=0; k < MAX_CLIENT && clients[k].exists; k++) {
+
+				skip_client_j = false;
+				for(k=0; k < MAX_CLIENT && clients[k].exists && !skip_client_j; k++) {
 					if (is_inteno_macaddr(clients[k].macaddr)) {
-						for(l=0; l < clients[k].nassoc; l++) {
+						for(l=0; l < clients[k].nassoc && !skip_client_j; l++) {
 							if (!strcasecmp((char*) wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
-								continue;
+								skip_client_j = true;
 						}
 					}
 				}
+				if (skip_client_j)
+					continue;
 
 				port[i].client[j].connected = true;
 			#if IOPSYS_BROADCOM
