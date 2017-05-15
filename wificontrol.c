@@ -147,7 +147,7 @@ void update_led_success()
 	}
 	free_uci_context(&uci_ctx);
 out:
-	strcpy(led_success, "notice");
+	strcpy(led_success, "eok");
 	return;
 }
 
