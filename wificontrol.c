@@ -217,9 +217,11 @@ void *ping_uplink(void *arg)
 		if (rv == 0 && client_connected == 0) {
 #if IOPSYS_BROADCOM
 			memset(wetif, 0, 64);
-			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless | grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
+			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless |\
+					grep 'mode=.*wet.*' | cut -d'.' -f2).ifname");
 			memset(assoclist, 0, 512);
-			chrCmd(assoclist, 512, "wlctl -i %s assoclist | head -1 | awk '{print$2}'", wetif);
+			chrCmd(assoclist, 512, "wlctl -i %s assoclist | head -1 |\
+					awk '{print$2}'", wetif);
 			runCmd("wlctl -i %s reassoc %s", wetif, assoclist);
 #elif IOPSYS_MEDIATEK
 			/* Disconnect clients on 2.4GHz radio */
@@ -552,7 +554,8 @@ void repeater_mode(void)
 	DEBUG(LOG_INFO, "Repeater mode");
 
 	DEBUG(LOG_INFO, "Open TCP port %d on WAN", WIFICONTROL_LISTENING_PORT);
-	runCmd("iptables -t filter -A zone_wan_forward -p tcp -m tcp --dport %d -m comment --comment WiFi-Control -j ACCEPT 2>/dev/null", WIFICONTROL_LISTENING_PORT);
+	runCmd("iptables -t filter -A zone_wan_forward -p tcp -m tcp --dport %d -m comment\
+			--comment WiFi-Control -j ACCEPT 2>/dev/null", WIFICONTROL_LISTENING_PORT);
 
 	/* create a thread that trigger wireless reassociation if needed */
 	rv = pthread_create(&ping_thread, NULL, &ping_uplink, NULL);
@@ -632,7 +635,8 @@ void repeater_mode(void)
 			DEBUG(LOG_DEBUG, "recv: MSG_TYPE_ASSOC");
 			memset(buffer, 0, BUFFER_SIZE);
 			chrCmd(buffer, BUFFER_SIZE - 1,
-					"ubus -t 1 call router.wireless assoclist | grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
+				"ubus -t 1 call router.wireless assoclist | \
+				grep macaddr | cut -d'\"' -f4 | sort -u | tr '\n' ' '");
 
 			DEBUG(LOG_DEBUG, "send: \"%s\"", buffer);
 			rv = send(connection, buffer, strlen(buffer), 0);
