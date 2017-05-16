@@ -344,7 +344,7 @@ char **collect_repeaters(void)
 		if (!is_lan)
 			continue;
 
-		if (strncmp(is_lan, "1", 1) == 0)
+		if (strncmp(is_lan, "1", 2) == 0)
 			collect_intenos(repeaters, name);
 	}
 	free_uci_context(&uci_ctx);
