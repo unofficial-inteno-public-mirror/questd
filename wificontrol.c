@@ -28,7 +28,6 @@ char *filename;
 char *network;
 char *destination;
 int client_connected;
-int need_update = 1;
 char led_success[8];
 
 enum RUNNING_MODE {
@@ -171,9 +170,7 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 			break;
 		}
 	}
-	if(!ret)
-		need_update = 1;
-	if(ret && need_update)
+	if(ret)
 		update_led_success();
 
 	runCmd("ubus -t 1 call led.internet set '{\"state\":\"%s\"}'",
