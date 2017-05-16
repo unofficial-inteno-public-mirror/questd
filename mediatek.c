@@ -507,9 +507,17 @@ next:
 		buf = newline + 1;
 	}
 }
+
 int wl_autochannel(const char *ifname)
 {
 	return chrCmd(NULL, 0, "iwpriv %s set AutoChannelSel=2", ifname);
+}
+
+int wl_disassociate(const char *ifname, char *stamac)
+{
+	runCmd("iwpriv %s set DisConnectSta=%s", ifname, stamac);
+
+	return 1;
 }
 
 /* -------------------------------------------------------------------------- */

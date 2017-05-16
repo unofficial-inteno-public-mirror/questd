@@ -1060,6 +1060,13 @@ invalid:
 	return i;
 }
 
+int wl_disassociate(const char *ifname, char *stamac)
+{
+	runCmd("wlctl -i %s deauthenticate %s", ifname, stamac);
+
+	return 1;
+}
+
 /* -------------------------------------------------------------------------- */
 #endif /* IOPSYS_BROADCOM */
 /* -------------------------------------------------------------------------- */
