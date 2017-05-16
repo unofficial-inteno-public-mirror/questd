@@ -25,6 +25,7 @@
 	} while (0)
 
 char *filename;
+char *network;
 char *destination;
 int client_connected;
 int need_update = 1;
@@ -64,6 +65,7 @@ struct option long_options[] = {
 	{"file", required_argument, 0, 'f'},
 	{"destination", required_argument, 0, 'd'},
 	{"verbose", required_argument, 0, 'v'},
+	{"network", required_argument, 0, 'n'},
 	{0, 0, 0, 0}
 };
 
@@ -90,6 +92,10 @@ void parse_args(int argc, char **argv)
 			filename = strdup(optarg ? optarg : "");
 			DEBUG(LOG_INFO, "file: \"%s\"",
 				filename ? filename : "(NULL)");
+			break;
+		case 'n': /* -n --network guest */
+			network = strdup(optarg ? optarg : "");
+			DEBUG(LOG_INFO, "network: \"%s\"", network);
 			break;
 		case 'd': /* -d --destination 192.168.1.123*/
 			destination = strdup(optarg ? optarg : "");
@@ -329,6 +335,11 @@ char **collect_repeaters(void)
 		if (strcmp(name, "loopback") == 0)
 			continue;
 
+		if(network){
+			if(strncmp(name, network, strlen(network)) != 0)
+				continue;
+		}
+
 		is_lan = uci_lookup_option_string(uci_ctx, s, "is_lan");
 		if (!is_lan)
 			continue;
@@ -519,7 +530,7 @@ void router_mode(void)
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		DEBUG(LOG_INFO, "repeaters[%d]: \"%s\"", i, repeaters[i]);
 
-	/* send data to each (possible) repeater found on lan */
+	/* send data to each (possible) repeater found on <network> */
 	for (i = 0; i < MAX_REPEATERS && repeaters[i]; i++)
 		send_data(repeaters[i]);
 
