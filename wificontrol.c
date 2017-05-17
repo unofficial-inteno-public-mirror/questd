@@ -198,6 +198,7 @@ void *ping_uplink(void *arg)
 	char wetif[64];
 	char assoclist[512];
 #elif IOPSYS_MEDIATEK
+	int enableCounter = 0;
 	bool AccessPolicy = false;
 #endif
 
@@ -227,6 +228,13 @@ void *ping_uplink(void *arg)
 					awk '{print$2}'", wetif);
 			runCmd("wlctl -i %s reassoc %s", wetif, assoclist);
 #elif IOPSYS_MEDIATEK
+			enableCounter++;
+			if (enableCounter > 12) {
+				enableCounter = 0;
+				runCmd("iwpriv apclii0 set ApCliEnable=0");
+				sleeps(1);
+				runCmd("iwpriv apclii0 set ApCliEnable=1");
+			}
 			if (AccessPolicy)
 				continue;
 			AccessPolicy = true;
@@ -240,6 +248,9 @@ void *ping_uplink(void *arg)
 			runCmd("iwpriv rai0 set DisConnectAllSta=2");
 #endif
 		} else {
+#if IOPSYS_MEDIATEK
+			enableCounter = 0;
+#endif
 			sleep = 5;
 			if (!AccessPolicy)
 				continue;
