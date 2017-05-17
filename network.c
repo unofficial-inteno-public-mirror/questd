@@ -442,13 +442,20 @@ static void dump_client(struct blob_buf *b, Client client)
 		void *a, *t;
 		int i = 0;
 		int j = 0;
+		int nassoc;
 		char stamac[24];
+		struct wl_ether_addr assoclist_buf[32];
 
 		a = blobmsg_open_array(b, "assoclist");
 
-		while (i < client.nassoc)
+		/* acquire lock client.assoclist_lock */
+		nassoc = client.nassoc;
+		memcpy(assoclist_buf, client.assoclist, 32 * sizeof(struct wl_ether_addr));
+		/* release lock client.assoclist_lock */
+
+		while (i < nassoc)
 		{
-			strncpy(stamac, (char*) wl_ether_etoa(&(client.assoclist[i])), 24);
+			strncpy(stamac, (char*) wl_ether_etoa(&(assoclist_buf[i])), 24);
 			t = blobmsg_open_table(b, "");
 			blobmsg_add_string(b, "macaddr", stamac);
 			for (j=0; j < MAX_CLIENT && clients[j].exists; j++) {
@@ -537,10 +544,12 @@ router_dump_ports(struct blob_buf *b, char *interface)
 				skip_client_j = false;
 				for(k=0; k < MAX_CLIENT && clients[k].exists && !skip_client_j; k++) {
 					if (is_inteno_macaddr(clients[k].macaddr)) {
+						/* acquire lock clients[k].assoclist_lock */
 						for(l=0; l < clients[k].nassoc && !skip_client_j; l++) {
 							if (!strcasecmp((char*) wl_ether_etoa(&(clients[k].assoclist[l])), port[i].client[j].macaddr))
 								skip_client_j = true;
 						}
+						/* release lock clients[k].assoclist_lock */
 					}
 				}
 				if (skip_client_j)
@@ -737,7 +746,10 @@ ipv4_clients()
 	int i, j;
 	bool there;
 	int toms = 1000;
-	char assoclist[1280];
+	int assoclist_maxlen = 2560;
+	char assoclist_line[assoclist_maxlen];
+	struct wl_ether_addr assoclist_buf[32];
+	int nassoc;
 	char *saveptr1, *saveptr2;
 	char *token;
 	char brindex[8] = {0};
@@ -789,21 +801,26 @@ ipv4_clients()
 				}
 
 				if(clients[cno].connected) {
-					memset(clients[cno].assoclist, '\0', 128);
-					memset(output, 0, 1280);
-					strncpy(assoclist, chrCmd(output, 1280, "wificontrol --assoclist --destination %s", clients[cno].ipaddr), 1280);
+					memset(assoclist_buf, 0, 32 * sizeof(struct wl_ether_addr));
+					memset(assoclist_line, 0, assoclist_maxlen);
+					chrCmd(assoclist_line, assoclist_maxlen, "wificontrol --assoclist --destination %s", clients[cno].ipaddr);
 
-					clients[cno].nassoc = 0;
-					token = strtok_r(assoclist, " ", &saveptr1);
-					while (token != NULL)
+					nassoc = 0;
+					token = strtok_r(assoclist_line, " ", &saveptr1);
+					while (token)
 					{
-						wl_ether_atoe(token, &(clients[cno].assoclist[clients[cno].nassoc]));
+						wl_ether_atoe(token, &(assoclist_buf[nassoc]));
 						token = strtok_r (NULL, " ", &saveptr1);
-						if (clients[cno].nassoc < 32)
-							clients[cno].nassoc++;
+						if (nassoc < 32)
+							nassoc++;
 						else
 							break;
 					}
+
+					/* acquire lock clients[cno].assoclist_lock */
+					clients[cno].nassoc = nassoc;
+					memcpy(clients[cno].assoclist, assoclist_buf, 32 * sizeof(struct wl_ether_addr));
+					/* release lock clients[cno].assoclist_lock */
 				}
 
 				cno++;
@@ -833,13 +850,16 @@ ipv4_clients()
 				handle_client(&clients[cno]);
 
 				for (i=0; i < cno; i++) {
+					/* acquire lock clients[i].assoclist_lock */
 					for(j=0; j < clients[i].nassoc; j++) {
 						if (!strcasecmp((char*)wl_ether_etoa(&(clients[i].assoclist[j])), clients[cno].macaddr)) {
 							clients[cno].repeated = true;
 							clients[cno].connected = true;
+							/* release lock clients[i].assoclist_lock */
 							goto inc;
 						}
 					}
+					/* release lock clients[i].assoclist_lock */
 				}
 
 				if((clients[cno].connected = wireless_sta(&clients[cno]))) {
@@ -934,22 +954,26 @@ inc:
 						}
 
 						if(clients[cno].connected && is_inteno_macaddr(clients[cno].macaddr)) {
-							memset(clients[cno].assoclist, '\0', 128);
-							memset(output, 0, 1280);
-							memset(assoclist, 0, 1280);
-							strncpy(assoclist, chrCmd(output, 1280, "wificontrol --assoclist --destination %s", clients[cno].ipaddr), 1280);
+							memset(assoclist_buf, 0, 32 * sizeof(struct wl_ether_addr));
+							memset(assoclist_line, 0, assoclist_maxlen);
+							chrCmd(assoclist_line, assoclist_maxlen, "wificontrol --assoclist --destination %s", clients[cno].ipaddr);
 
-							clients[cno].nassoc = 0;
-							token = strtok_r(assoclist, " ", &saveptr2);
+							nassoc = 0;
+							token = strtok_r(assoclist_line, " ", &saveptr2);
 							while (token != NULL)
 							{
-								wl_ether_atoe(token, &(clients[cno].assoclist[clients[cno].nassoc]));
+								wl_ether_atoe(token, &(assoclist_buf[nassoc]));
 								token = strtok_r (NULL, " ", &saveptr2);
-								if (clients[cno].nassoc < 32)
-									clients[cno].nassoc++;
+								if (nassoc < 32)
+									nassoc++;
 								else
 									break;
 							}
+
+							/* acquire lock clients[cno].assoclist_lock */
+							clients[cno].nassoc = nassoc;
+							memcpy(clients[cno].assoclist, assoclist_buf, 32 * sizeof(struct wl_ether_addr));
+							/* release lock clients[cno].assoclist_lock */
 						}
 
 						cno++;
