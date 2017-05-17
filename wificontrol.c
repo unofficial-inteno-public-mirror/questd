@@ -197,6 +197,8 @@ void *ping_uplink(void *arg)
 #if IOPSYS_BROADCOM
 	char wetif[64];
 	char assoclist[512];
+#elif IOPSYS_MEDIATEK
+	bool AccessPolicy = false;
 #endif
 
 	pthread_detach(pthread_self());
@@ -215,6 +217,7 @@ void *ping_uplink(void *arg)
 			continue;
 		rv = arp_ping(ipaddr, device, 2000, 5);
 		if (rv == 0 && client_connected == 0) {
+			sleep = 10;
 #if IOPSYS_BROADCOM
 			memset(wetif, 0, 64);
 			chrCmd(wetif, 64, "uci -q get wireless.$(uci show wireless |\
@@ -224,14 +227,26 @@ void *ping_uplink(void *arg)
 					awk '{print$2}'", wetif);
 			runCmd("wlctl -i %s reassoc %s", wetif, assoclist);
 #elif IOPSYS_MEDIATEK
+			if (AccessPolicy)
+				continue;
+			AccessPolicy = true;
+			/* Do not allow clients to connect on 2.4GHz radio */
+			runCmd("iwpriv ra0 set AccessPolicy=%d", AccessPolicy);
+			/* Do not allow clients to connect on 5GHz radio */
+			runCmd("iwpriv rai0 set AccessPolicy=%d", AccessPolicy);
 			/* Disconnect clients on 2.4GHz radio */
 			runCmd("iwpriv ra0 set DisConnectAllSta=2");
 			/* Disconnect clients on 5GHz radio */
 			runCmd("iwpriv rai0 set DisConnectAllSta=2");
 #endif
-			sleep = 10;
 		} else {
 			sleep = 5;
+			if (!AccessPolicy)
+				continue;
+			/* Uplink working, allow clients to connect */
+			AccessPolicy = false;
+			runCmd("iwpriv ra0 set AccessPolicy=%d", AccessPolicy);
+			runCmd("iwpriv rai0 set AccessPolicy=%d", AccessPolicy);
 		}
 	}
 
