@@ -248,16 +248,16 @@ void *ping_uplink(void *arg)
 			runCmd("iwpriv rai0 set DisConnectAllSta=2");
 #endif
 		} else {
+			sleep = 5;
 #if IOPSYS_MEDIATEK
 			enableCounter = 0;
-#endif
-			sleep = 5;
 			if (!AccessPolicy)
 				continue;
 			/* Uplink working, allow clients to connect */
 			AccessPolicy = false;
 			runCmd("iwpriv ra0 set AccessPolicy=%d", AccessPolicy);
 			runCmd("iwpriv rai0 set AccessPolicy=%d", AccessPolicy);
+#endif
 		}
 	}
 
