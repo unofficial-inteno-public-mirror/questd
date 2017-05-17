@@ -173,8 +173,10 @@ static int arp_ping(const char *ipaddr, char *device, int tmo, int retry)
 	}
 	if(!ret)
 		need_update = 1;
-	if(ret && need_update)
+	if(ret && need_update){
 		update_led_success();
+		need_update = 0;
+	}
 
 	runCmd("ubus -t 1 call led.internet set '{\"state\":\"%s\"}'",
 		ret ? led_success : "error");
