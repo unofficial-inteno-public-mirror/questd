@@ -510,7 +510,8 @@ next:
 
 int wl_autochannel(const char *ifname)
 {
-	return chrCmd(NULL, 0, "iwpriv %s set AutoChannelSel=2", ifname);
+	chrCmd(NULL, 0, "iwpriv %s set AutoChannelSel=2", ifname);
+	return 0;
 }
 
 int wl_disassociate(const char *ifname, char *stamac)
