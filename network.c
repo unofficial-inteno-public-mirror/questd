@@ -296,6 +296,11 @@ populate_ports(Network *network)
 	int i = 1;
 	int j, k, l;
 	Port port[MAX_PORT];
+	Client clients_copy[MAX_CLIENT];
+
+	/* get the lock for the clients */
+	memcpy(clients_copy, clients, MAX_CLIENT * sizeof(Client));
+	/* release the lock for the clients */
 
 	/* work on a copy of the ports, not directly on the ports array in the network structure */
 	/* when the new ports array is ready, memcpy it in the network structure */
@@ -350,11 +355,11 @@ get_clients:
 
 		l = 0;
 		if(network->is_lan) {
-			for (k=0; k < MAX_CLIENT && clients[k].exists; k++) {
-				if (clients[k].repeated) continue;
+			for (k=0; k < MAX_CLIENT && clients_copy[k].exists; k++) {
+				if (clients_copy[k].repeated) continue;
 				if(l >= MAX_CLIENT) break;
-				if (clients[k].connected && strstr(macaddr, clients[k].macaddr)) {
-					port[i].client[l] = clients[k];
+				if (clients_copy[k].connected && strstr(macaddr, clients_copy[k].macaddr)) {
+					port[i].client[l] = clients_copy[k];
 					l++;
 				}
 			}
