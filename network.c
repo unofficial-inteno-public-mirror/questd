@@ -295,7 +295,12 @@ populate_ports(Network *network)
 	char *saveptr1, *saveptr2;
 	int i = 1;
 	int j, k, l;
-	Port *port = (Port*)&network->port;
+	Port port[MAX_PORT];
+
+	/* work on a copy of the ports, not directly on the ports array in the network structure */
+	/* when the new ports array is ready, memcpy it in the network structure */
+	/* this minimizes the time during which the ports array is incosistent */
+	memcpy(port, network->port, MAX_PORT * sizeof(Port));
 	
 	sprintf(bridge, "br-%s", network->name);
 
@@ -375,6 +380,11 @@ nextmac:
 				strcpy(port[i].linkspeed, "Auto");
 		}
 	}
+
+	/* the ports array copy is ready, copy it over the network ports array */
+	/* acquire the lock network.ports_lock */
+	memcpy(network->port, port, MAX_PORT * sizeof(Port));
+	/* release the lock network.ports_lock */
 }
 
 static void dump_client(struct blob_buf *b, Client client)
