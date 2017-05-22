@@ -298,7 +298,7 @@ int wl_get_band(const char *ifname, int *buf)
 {
 	unsigned int band;
 
-	if(!strncmp(ifname, "rai", 3))
+	if (!strncmp(ifname, "rai", 3) || !strncmp(ifname, "apclii", 6))
 		band = 1;
 	else
 		band = 0;
